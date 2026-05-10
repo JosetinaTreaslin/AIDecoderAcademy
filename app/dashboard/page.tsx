@@ -273,9 +273,9 @@ export default function HubPage() {
       <style>{`
         .hub-grid { grid-template-columns: 23fr 34fr 23fr 20fr; }
         .hub-spacer { height: 18%; }
-        .hub-col-left  { padding-left: 25px; padding-top: 60px; }
+        .hub-col-left  { padding-left: 55px; padding-top: 60px; }
         .hub-col-right { padding-right: 12px; padding-top: 60px; }
-        .hub-img { display: block; width: 100%; height: calc((100dvh - 40dvh) / 4); }
+        .hub-img { display: block; width: 100%; height: calc((100dvh - 40dvh) / 4); margin: 0; padding: 0; }
         @media (max-width: 1280px) {
           .hub-grid { grid-template-columns: 25fr 30fr 25fr 20fr; }
         }
