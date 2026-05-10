@@ -2,16 +2,7 @@ import Link from "next/link";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col">
-
-      {/* ── Background image (matches hub page) ────────────────────────── */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/panels/background.png" alt="" aria-hidden draggable={false}
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-        style={{ zIndex: 0 }} />
-
-      {/* ── Overlay to soften background for readability ─────────────── */}
-      <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ zIndex: 1, background: "rgba(255,255,255,0.18)" }} />
+    <div className="min-h-screen relative overflow-hidden flex flex-col" style={{ background: "linear-gradient(145deg, #F3F0FF 0%, #EDE9FE 35%, #F8F6FF 65%, #EEF2FF 100%)" }}>
 
       {/* ── Nav ───────────────────────────────────────────────────────── */}
       <nav className="relative z-10 flex items-center justify-between px-6 sm:px-10 py-5 max-w-6xl mx-auto w-full">
@@ -28,8 +19,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </Link>
         <div className="flex items-center gap-2">
           <Link href="/auth/sign-in"
-            className="text-sm font-semibold transition-colors px-4 py-2 rounded-xl"
-            style={{ color: "rgba(26,26,46,0.7)", background: "rgba(255,255,255,0.6)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.6)" }}>
+            className="text-sm font-semibold transition-colors px-4 py-2 rounded-xl hover:bg-black/[0.06]"
+            style={{ color: "rgba(26,26,46,0.6)" }}>
             Log in
           </Link>
           <Link href="/auth/sign-up"
@@ -47,7 +38,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       {/* ── Footer ────────────────────────────────────────────────────── */}
       <footer className="relative z-10 text-center py-5 text-[11px]"
-        style={{ color: "rgba(26,26,46,0.5)", borderTop: "1px solid rgba(255,255,255,0.4)" }}>
+        style={{ color: "rgba(26,26,46,0.4)", borderTop: "1px solid rgba(0,0,0,0.08)" }}>
         © 2026 AI Decoder Academy · Safe for students aged 11–16 · Teacher accounts available
       </footer>
     </div>
