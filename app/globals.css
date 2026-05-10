@@ -29,8 +29,6 @@
 
 @layer base {
   html, body {
-    overflow: hidden;
-    height: 100%;
     overscroll-behavior: none;
   }
   html { scroll-behavior: smooth; }

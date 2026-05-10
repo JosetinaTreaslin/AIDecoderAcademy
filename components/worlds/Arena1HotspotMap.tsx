@@ -7,31 +7,24 @@ import type { Objective } from "@/lib/objectives";
 
 // Percentage positions [left%, top%] — top-left corner of each invisible card hit-area
 const HOTSPOT_POSITIONS: Record<number, [number, number]> = {
-  // ── TOP-LEFT wall ──
-  1:  [6,   18],
-  2:  [14,  20],
-  3:  [20,  21],
-  4:  [26,  22],
-  5:  [32,  23],
+  // ── LEFT WALL — col 1 (01,03,05,07) and col 2 (02,04,06,08) ──
+  1:  [8,  10],   // col 1, row 1
+  2:  [25, 12],   // col 2, row 1
+  3:  [8,  28],   // col 1, row 2
+  4:  [25, 30],   // col 2, row 2
+  5:  [8,  47],   // col 1, row 3
+  6:  [25, 47],   // col 2, row 3
+  7:  [8,  63],   // col 1, row 4
+  8:  [25, 61],   // col 2, row 4
 
-  // ── BOTTOM-LEFT wall ──
-  6:  [6,   45],
-  7:  [14,  45],
-  8:  [21,  45],
-  9:  [28,  45],
-
-  // ── TOP-RIGHT wall ──
-  10: [69,  24],
-  11: [76,  23],
-  12: [84,  22],
-  13: [92,  21],
-
-  // ── BOTTOM-RIGHT wall ──
-  14: [69,  49],
-  15: [74,  49],
-  16: [80,  49],
-  17: [86,  49],
-  18: [92,  49],
+  // ── RIGHT WALL — col 1 (09,11,13,15) and col 2 (10,12,14) ──
+  9:  [72, 12],   // col 1, row 1
+  10: [87, 10],   // col 2, row 1
+  11: [72, 30],   // col 1, row 2
+  12: [88, 29],   // col 2, row 2
+  13: [72, 46],   // col 1, row 3
+  14: [88, 46],   // col 2, row 3
+  15: [72, 62],   // col 1, row 4 (no col 2)
 };
 
 const OUTPUT_COLORS: Record<string, string> = {
@@ -43,9 +36,9 @@ const OUTPUT_COLORS: Record<string, string> = {
 };
 
 function getTooltipStyle(left: number, top: number): React.CSSProperties {
-  const showBelow   = top < 35;
-  const anchorRight = left > 78;
-  const anchorLeft  = left < 18;
+  const showBelow   = top < 44;
+  const anchorRight = left > 65;
+  const anchorLeft  = left < 35;
 
   const hAlign = anchorRight
     ? { right: 0 }
@@ -65,9 +58,9 @@ function getTooltipStyle(left: number, top: number): React.CSSProperties {
 }
 
 function getArrowStyle(left: number, top: number, accent: string): React.CSSProperties {
-  const showBelow   = top < 35;
-  const anchorRight = left > 78;
-  const anchorLeft  = left < 18;
+  const showBelow   = top < 44;
+  const anchorRight = left > 65;
+  const anchorLeft  = left < 35;
 
   const hPos = anchorRight
     ? { right: 14, left: "auto" }
@@ -130,21 +123,30 @@ export default function Arena1HotspotMap({ objectives, completed, onObjectiveCli
               style={{
                 width:      "clamp(56px, 5.5vw, 90px)",
                 height:     "clamp(64px, 12vh, 110px)",
-                background: "transparent",
-                border:     "none",
+                background: "rgba(255,100,0,0.25)",
+                border:     "2px solid rgba(255,140,0,0.8)",
+                borderRadius: 6,
                 cursor:     "pointer",
-                display:    "block",
+                display:    "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 padding:    0,
+                color:      "rgba(255,200,0,0.9)",
+                fontSize:   11,
+                fontWeight: 700,
+                fontFamily: "monospace",
               }}
-            />
+            >
+              {obj.order}
+            </button>
 
             {/* Tooltip popup */}
             <AnimatePresence>
               {isVisible && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: top < 35 ? -8 : 8 }}
+                  initial={{ opacity: 0, scale: 0.9, y: top < 44 ? -8 : 8 }}
                   animate={{ opacity: 1, scale: 1,   y: 0 }}
-                  exit={{    opacity: 0, scale: 0.9, y: top < 35 ? -8 : 8 }}
+                  exit={{    opacity: 0, scale: 0.9, y: top < 44 ? -8 : 8 }}
                   transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
                   style={getTooltipStyle(left, top)}
                   onMouseEnter={() => setHoveredId(obj.id)}

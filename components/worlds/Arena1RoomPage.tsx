@@ -281,7 +281,7 @@ export default function Arena1RoomPage({ level }: { level: number }) {
               <p className="font-display font-extrabold text-sm" style={{ color: ACCENT }}>
                 Arena Complete!
               </p>
-              <p className="text-xs text-white/40">All 14 missions done. You're an AI Explorer.</p>
+              <p className="text-xs text-white/40">All 15 missions done. You're an AI Explorer.</p>
             </div>
             <button
               onClick={() => router.push("/dashboard/world/2")}
