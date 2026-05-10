@@ -273,7 +273,7 @@ export default function HubPage() {
       <style>{`
         .hub-grid { grid-template-columns: 23fr 34fr 23fr 20fr; }
         .hub-spacer { height: 18%; }
-        .hub-col-left  { padding-left: 55px; padding-top: 60px; }
+        .hub-col-left  { padding-left: 12px; padding-top: 60px; transform: translateX(40px); }
         .hub-col-right { padding-right: 12px; padding-top: 60px; }
         .hub-img { display: block; width: 100%; height: calc((100dvh - 40dvh) / 4); margin: 0; padding: 0; }
         @media (max-width: 1280px) {
