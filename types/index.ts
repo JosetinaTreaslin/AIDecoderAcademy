@@ -43,6 +43,8 @@ export interface Creation {
   file_url?:    string;
   tags:         string[];
   is_favourite: boolean;
+  is_public?:   boolean;
+  share_token?: string;
   project_id?:  string;
   session_id?:  string;
   prompt_used?: string;
