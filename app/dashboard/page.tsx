@@ -4,49 +4,236 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ARENAS } from "@/lib/arenas";
-import { isArenaComplete, isArenaUnlocked } from "@/lib/objectives";
+import { isArenaUnlocked } from "@/lib/objectives";
 import type { Profile } from "@/types";
 
-// ── Panel definitions ──────────────────────────────────────────────────────
-// Each panel is a floating holographic screen positioned over the background.
-// left/top/width are % of the container. rotate is degrees (Z-axis tilt).
-// perspective3d gives the outward lean seen in the reference art.
-const PANELS: {
-  arenaId:      number;
-  src:          string | null;
-  left:         string;
-  top:          string;
-  width:        string;
-  aspect:       string;          // CSS aspect-ratio for the image box
-  rotateZ:      number;
-  rotateY:      number;          // positive = face right (left panels), negative = face left (right panels)
-  rotateX:      number;          // positive = tilt top away (bottom panels)
-  floatDelay:   number;
-  floatRange:   number;          // px amplitude for idle float
-  zIndex:       number;
-}[] = [
-  // ── CENTER ───────────────────────────────────────────────────────────────
-  // Video Fusion — hero panel, wide cinematic ratio, top center
-  { arenaId: 7, src: "/panels/video_vision.png",  left: "33%", top: "5%",  width: "35%", aspect: "16/10",  rotateZ:  0, rotateY:   0, rotateX:  6, floatDelay: 0.0, floatRange: 10, zIndex: 10 },
+// ── Leaderboard types ──────────────────────────────────────────────────────
 
-  // ── LEFT COLUMN: audio fusion · slide skate · script lab ─────────────────
-  { arenaId: 5, src: "/panels/audio_fusion.png",  left:  "3%", top: "3%",  width: "42%", aspect: "16/10", rotateZ: -2, rotateY:  28, rotateX:  7, floatDelay: 0.6, floatRange: 12, zIndex: 11 },
-  { arenaId: 6, src: "/panels/slide_skate.png",   left:  "12%", top: "35%", width: "23%", aspect: "16/10", rotateZ: -2, rotateY:  22, rotateX:  0, floatDelay: 1.1, floatRange:  9, zIndex: 14 },
-  { arenaId: 3, src: "/panels/script.png",         left:  "12%", top: "58%", width: "30%", aspect: "16/10", rotateZ: -8, rotateY:  28, rotateX: 0, floatDelay: 1.7, floatRange:  8, zIndex: 32 },
+type LeaderboardEntry = {
+  display_name: string;
+  avatar_emoji: string;
+  xp: number;
+  level: number;
+  streak_days: number;
+  active_arena: number;
+  rank: number;
+  is_current_user: boolean;
+};
 
-  // ── RIGHT COLUMN: ai explorer · prompt lab · image module ────────────────
-  { arenaId: 1, src: "/panels/ai_explorer.png",   left: "63%", top: "7%",  width: "30%", aspect: "16/10", rotateZ:  2, rotateY: -28, rotateX:  7, floatDelay: 0.4, floatRange: 12, zIndex: 11 },
-  { arenaId: 2, src: "/panels/prompt_lab.png",    left: "64%", top: "35%", width: "27%", aspect: "16/10", rotateZ:  2, rotateY: -22, rotateX:  0, floatDelay: 0.9, floatRange:  9, zIndex: 14 },
-  { arenaId: 4, src: "/panels/pic_drop.png",      left: "63%", top: "60%", width: "27%", aspect: "16/10", rotateZ:  8, rotateY: -28, rotateX: 0, floatDelay: 2.2, floatRange:  8, zIndex: 32 },
+type LeaderboardData = {
+  top10: LeaderboardEntry[];
+  currentUserRank: number | null;
+  currentUserEntry: LeaderboardEntry | null;
+  isInTop10: boolean;
+};
+
+const ARENA_ACCENTS: Record<number, string> = {
+  1: "#7C3AED", 2: "#00D4FF", 3: "#FF6B2B",
+  4: "#00FF94", 5: "#FF2D78", 6: "#C8FF00",
+};
+
+const PODIUM_META = [
+  { rank: 2, ring: "#C0C0C0", glow: "rgba(192,192,192,0.35)", platform: 28, avatar: 30, label: "🥈" },
+  { rank: 1, ring: "#FFD700", glow: "rgba(255,215,0,0.40)",   platform: 42, avatar: 38, label: "👑" },
+  { rank: 3, ring: "#CD7F32", glow: "rgba(205,127,50,0.35)",  platform: 18, avatar: 26, label: "🥉" },
 ];
+
+function PodiumSpot({ entry, meta }: { entry: LeaderboardEntry; meta: typeof PODIUM_META[0] }) {
+  const isMe = entry.is_current_user;
+  const accentColor = ARENA_ACCENTS[entry.active_arena] ?? "#7C3AED";
+  return (
+    <motion.div className="flex flex-col items-center flex-1"
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: meta.rank === 1 ? 0 : 0.15, ease: [0.16, 1, 0.3, 1] }}>
+      <div style={{ fontSize: meta.rank === 1 ? 14 : 12, marginBottom: 3 }}>{meta.label}</div>
+      <div className="rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ width: meta.avatar, height: meta.avatar,
+          background: isMe ? "rgba(124,58,237,0.12)" : "rgba(255,255,255,0.85)",
+          border: `2.5px solid ${meta.ring}`, boxShadow: `0 0 10px ${meta.glow}`,
+          fontSize: meta.avatar * 0.52 }}>
+        {entry.avatar_emoji || "🧑‍💻"}
+      </div>
+      <div className="w-1.5 h-1.5 rounded-full mt-1.5" style={{ background: accentColor }} />
+      <div className="font-black text-center truncate mt-0.5"
+        style={{ fontSize: 10, color: isMe ? "#7C3AED" : "#1a1a2e", maxWidth: 64, lineHeight: 1.2 }}>
+        {isMe ? "You" : entry.display_name.split(" ")[0]}
+      </div>
+      <div className="font-black" style={{ fontSize: 10, color: "#7C3AED", marginTop: 1 }}>
+        {entry.xp.toLocaleString()}
+      </div>
+      <div className="w-full rounded-t-lg flex items-end justify-center pb-1 mt-2"
+        style={{ height: meta.platform,
+          background: `linear-gradient(180deg, ${meta.ring}28, ${meta.ring}0c)`,
+          borderTop: `1.5px solid ${meta.ring}55`, borderLeft: `1px solid ${meta.ring}33`,
+          borderRight: `1px solid ${meta.ring}33`, fontSize: 11, color: meta.ring, fontWeight: 900 }}>
+        {meta.rank}
+      </div>
+    </motion.div>
+  );
+}
+
+function LeaderboardRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
+  const isMe = entry.is_current_user;
+  const accentColor = ARENA_ACCENTS[entry.active_arena] ?? "#7C3AED";
+  return (
+    <motion.div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl"
+      style={{ background: isMe ? "rgba(124,58,237,0.08)" : "rgba(0,0,0,0.02)",
+        border: `1px solid ${isMe ? "rgba(124,58,237,0.22)" : "transparent"}` }}
+      initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.04, ease: [0.16, 1, 0.3, 1] }}>
+      <div className="flex-shrink-0 w-4 text-center font-black" style={{ fontSize: 10, color: "#ccc" }}>
+        {entry.rank}
+      </div>
+      <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full" style={{ background: accentColor }} />
+      <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+        style={{ background: isMe ? "rgba(124,58,237,0.10)" : "rgba(0,0,0,0.05)", fontSize: 13 }}>
+        {entry.avatar_emoji || "🧑‍💻"}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-bold truncate" style={{ fontSize: 11, color: isMe ? "#7C3AED" : "#1a1a2e", lineHeight: 1 }}>
+          {isMe ? "You" : entry.display_name.split(" ")[0]}
+        </div>
+        <div style={{ fontSize: 9, color: "#bbb", lineHeight: 1, marginTop: 2 }}>Lv {entry.level}</div>
+      </div>
+      {entry.streak_days >= 3 && (
+        <div className="flex-shrink-0 flex items-center gap-0.5 font-bold" style={{ fontSize: 9, color: "#FF6B2B" }}>
+          🔥{entry.streak_days}
+        </div>
+      )}
+      <div className="flex-shrink-0 text-right">
+        <div className="font-black" style={{ fontSize: 11, color: isMe ? "#7C3AED" : "#333", lineHeight: 1 }}>
+          {entry.xp.toLocaleString()}
+        </div>
+        <div style={{ fontSize: 8, color: "#ccc", lineHeight: 1, marginTop: 2 }}>XP</div>
+      </div>
+    </motion.div>
+  );
+}
+
+function LeaderboardPanel() {
+  const [data, setData] = useState<LeaderboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/leaderboard")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const entries = data?.top10 ?? [];
+  const podiumEntries = entries.slice(0, 3);
+  const listEntries = entries.slice(3);
+
+  return (
+    <div style={{ height: "75%", display: "flex", flexDirection: "column", paddingRight: 12, paddingBottom: 12, paddingTop: 4, overflow: "hidden", fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", borderRadius: 16, overflow: "hidden",
+        background: "rgba(255,255,255,0.90)", backdropFilter: "blur(20px)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
+        border: "1px solid rgba(255,255,255,0.75)" }}>
+        {/* Header */}
+        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2.5"
+          style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.10), rgba(0,212,255,0.05))",
+            borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+          <span style={{ fontSize: 16 }}>🏆</span>
+          <span className="font-black tracking-tight flex-1"
+            style={{ fontSize: 13, color: "#1a1a2e", fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)" }}>
+            Leaderboard
+          </span>
+          {!loading && !data?.isInTop10 && data?.currentUserRank && (
+            <motion.span initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }}
+              className="font-bold"
+              style={{ fontSize: 10, color: "#7C3AED", background: "rgba(124,58,237,0.10)",
+                borderRadius: 8, padding: "2px 7px", border: "1px solid rgba(124,58,237,0.18)" }}>
+              You · #{data.currentUserRank}
+            </motion.span>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="p-3 flex flex-col gap-2">
+            <div className="flex gap-2 justify-center mb-1">
+              {[28, 38, 26].map((h, i) => (
+                <div key={i} className="flex-1 animate-pulse rounded-xl" style={{ height: h + 60, background: "rgba(0,0,0,0.06)" }} />
+              ))}
+            </div>
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="h-8 rounded-xl animate-pulse" style={{ background: "rgba(0,0,0,0.05)" }} />
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <p style={{ fontSize: 11, color: "#bbb" }}>No data yet</p>
+          </div>
+        ) : (
+          <>
+            {podiumEntries.length === 3 && (
+              <div className="flex-shrink-0 flex items-end gap-1 px-3 pt-4 pb-0"
+                style={{ background: "linear-gradient(180deg, rgba(124,58,237,0.04), transparent)" }}>
+                {PODIUM_META.map(meta => {
+                  const entry = podiumEntries.find(e => e.rank === meta.rank);
+                  return entry ? <PodiumSpot key={meta.rank} entry={entry} meta={meta} /> : null;
+                })}
+              </div>
+            )}
+            {listEntries.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 flex-shrink-0">
+                <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.06)" }} />
+                <span style={{ fontSize: 9, color: "#ccc", fontWeight: 700, letterSpacing: "0.08em" }}>RANKING</span>
+                <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.06)" }} />
+              </div>
+            )}
+            {listEntries.length > 0 && (
+              <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+                <div className="flex flex-col gap-0.5 px-2 pb-2">
+                  {listEntries.map((entry, i) => (
+                    <LeaderboardRow key={entry.rank} entry={entry} index={i} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const LEFT_PANELS = [
+  { arenaId: 1, src: "/panels/ai_explorer.png",  alt: "AI Explorer"   },
+  { arenaId: 2, src: "/panels/prompt_lab.png",   alt: "Prompt Lab"    },
+  { arenaId: 3, src: "/panels/script.png",        alt: "Story Forge"   },
+  { arenaId: 4, src: "/panels/pic_drop.png",      alt: "Visual Studio" },
+] as const;
+
+const RIGHT_PANELS = [
+  { arenaId: 5, src: "/panels/audio_fusion.png", alt: "Sound Booth"    },
+  { arenaId: 6, src: "/panels/slide_skate.png",  alt: "Director Suite" },
+  { arenaId: 7, src: "/panels/video_vision.png", alt: "Script Module"  },
+] as const;
+
+function PanelImage({ arenaId, src, alt, onClick }: {
+  arenaId: number; src: string; alt: string; onClick: (id: number) => void;
+}) {
+  return (
+    <motion.div
+      aria-label={alt}
+      className="hub-img"
+      style={{ width: "100%", backgroundImage: `url(${src})`, backgroundSize: "cover",
+        backgroundPosition: "center center", cursor: "pointer", flexShrink: 0 }}
+      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+      onClick={() => onClick(arenaId)}
+    />
+  );
+}
 
 export default function HubPage() {
   const router = useRouter();
-  const [profile,      setProfile]      = useState<Profile | null>(null);
-  const [hoveredArena, setHoveredArena] = useState<number | null>(null);
+  const [profile,       setProfile]       = useState<Profile | null>(null);
   const [transitioning, setTransitioning] = useState<number | null>(null);
-  const [videoError,   setVideoError]   = useState(false);
-  const [lockedToast,  setLockedToast]  = useState<{ arenaId: number; x: number; y: number } | null>(null);
+  const [videoError,    setVideoError]    = useState(false);
+  const [lockedToast,   setLockedToast]   = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -55,9 +242,9 @@ export default function HubPage() {
       .catch(() => {});
   }, []);
 
-  const handleArenaClick = useCallback((arenaId: number, e?: React.MouseEvent) => {
+  const handleClick = useCallback((arenaId: number) => {
     if (!isArenaUnlocked(arenaId)) {
-      if (e) setLockedToast({ arenaId, x: e.clientX, y: e.clientY });
+      setLockedToast(arenaId);
       setTimeout(() => setLockedToast(null), 2200);
       return;
     }
@@ -66,427 +253,161 @@ export default function HubPage() {
     setVideoError(false);
   }, []);
 
-  // Auto-navigate after 8s fallback
   useEffect(() => {
     if (transitioning === null) return;
-    const timer = setTimeout(() => {
-      router.push(`/dashboard/world/${transitioning}`);
-    }, 8000);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => router.push(`/dashboard/world/${transitioning}`), 8000);
+    return () => clearTimeout(t);
   }, [transitioning, router]);
 
   const goToWorld = useCallback(() => {
     if (transitioning !== null) router.push(`/dashboard/world/${transitioning}`);
   }, [transitioning, router]);
 
-  const level = profile?.level ?? 1;
+  const firstName = (profile?.display_name ?? "Explorer").split(" ")[0];
 
   return (
-    <div
-      className="relative w-full overflow-hidden select-none"
-      style={{ height: "100dvh", background: "#06060f" }}
-    >
+    <div className="relative w-full flex flex-col overflow-hidden"
+      style={{ height: "100dvh", fontFamily: "var(--font-dm-sans,'DM Sans',sans-serif)" }}>
 
-      {/* ── Room background ── */}
-      <img
-        src="/panels/background.png"
-        alt=""
-        aria-hidden
-        draggable={false}
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ objectFit: "cover", objectPosition: "center" }}
-      />
+      {/* Responsive styles */}
+      <style>{`
+        .hub-grid { grid-template-columns: 23fr 34fr 23fr 20fr; }
+        .hub-spacer { height: 18%; }
+        .hub-col-left  { padding-left: 48px; padding-top: 80px; transform: translateX(48px); }
+        .hub-col-right { padding-right: 20px; padding-top: 80px; }
+        .hub-img { display: block; width: 100%; height: calc((100dvh - 18dvh) / 4); }
+        @media (max-width: 1280px) {
+          .hub-grid { grid-template-columns: 25fr 30fr 25fr 20fr; }
+        }
+        @media (max-width: 1100px) {
+          .hub-grid { grid-template-columns: 26fr 48fr 26fr 0fr; }
+          .hub-leaderboard { display: none; }
+        }
+        @media (max-height: 700px) {
+          .hub-spacer { height: 14%; }
+          .hub-img { height: calc((100dvh - 14dvh) / 4); }
+        }
+        @media (max-height: 600px) {
+          .hub-spacer { height: 10%; }
+          .hub-img { height: calc((100dvh - 10dvh) / 4); }
+        }
+      `}</style>
 
-      {/* Vignette overlay — darkens edges, lifts centre */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: "radial-gradient(ellipse 80% 70% at 50% 40%, transparent 30%, rgba(4,2,14,0.55) 100%)",
-      }}/>
-      {/* Bottom gradient so desk area reads cleanly */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: "linear-gradient(to top, rgba(4,2,14,0.75) 0%, transparent 45%)",
-      }}/>
+      {/* Background */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/panels/background.png" alt="" aria-hidden draggable={false}
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        style={{ zIndex: 0 }} />
 
-      {/* ── Top-row panels (rendered BEFORE avatar — sit behind it) ── */}
-      {PANELS.filter(p => p.zIndex < 20).map(panel => (
-        <PanelCard
-          key={panel.src ?? panel.arenaId}
-          panel={panel}
-          arena={ARENAS.find(a => a.id === panel.arenaId)!}
-          hovered={hoveredArena === panel.arenaId}
-          onHover={setHoveredArena}
-          onClick={handleArenaClick}
-        />
-      ))}
-
-      ── Avatar ──
-      <img
-        src="/panels/avatar.png"
-        alt="Hub character"
-        draggable={false}
-        className="absolute pointer-events-none"
-        style={{
-          bottom: "clamp(60px, 17vh, 200px)",
-          left: "50%",
-          transform: "translateX(-50%)",
-          height: "clamp(180px, 80vh, 600px)",
-          width: "auto",
-          objectFit: "contain",
-          zIndex: 11,
-        }}
-      />
-
-      {/* ── Table / desk ── */}
-      <img
-        src="/panels/table.png"
-        alt=""
-        aria-hidden
-        draggable={false}
-        className="absolute pointer-events-none"
-        style={{
-          bottom: 0,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "clamp(300px, 72%, 1100px)",
-          height: "auto",
-          objectFit: "contain",
-          zIndex: 12,
-        }}
-      />
-
-      {/* ── Front panels (rendered AFTER desk — float in front of it) ── */}
-      {PANELS.filter(p => p.zIndex >= 20).map(panel => (
-        <PanelCard
-          key={panel.src ?? panel.arenaId}
-          panel={panel}
-          arena={ARENAS.find(a => a.id === panel.arenaId)!}
-          hovered={hoveredArena === panel.arenaId}
-          onHover={setHoveredArena}
-          onClick={handleArenaClick}
-        />
-      ))}
-
-      {/* ── Greeting ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute left-0 right-0 flex flex-col items-center text-center pointer-events-none px-4"
-        style={{
-          zIndex: 60,
-          // respects iPhone home-indicator / Android nav bar
-          bottom: "max(2.5rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))",
-        }}
-      >
-        <p className="text-xs font-mono text-white/30 uppercase tracking-widest mb-1">
-          Welcome back
-        </p>
-        <h1
-          className="font-display font-black text-white text-xl sm:text-2xl md:text-3xl tracking-tight whitespace-nowrap"
-          style={{ textShadow: "0 0 40px rgba(0,180,255,0.5)" }}
-        >
-          {profile?.display_name ?? "Explorer"}
-          <span style={{ color: "#00D4FF" }}>.</span>
-        </h1>
-        {/* "tap" on touch devices, "click" on pointer devices */}
-        <p className="text-xs text-white/35 mt-1 hidden sm:block">
-          Choose your world — click a panel to enter
-        </p>
-        <p className="text-xs text-white/35 mt-1 sm:hidden">
-          Tap a panel to enter
-        </p>
-      </motion.div>
-
-      {/* ── Mobile notice (screens narrower than 480 px) ── */}
-      <div
-        className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center xs:hidden"
-        style={{
-          zIndex: 70,
-          background: "rgba(6,4,18,0.88)",
-          backdropFilter: "blur(12px)",
-          display: "none",   // hidden by default; overridden below via media query
-        }}
-      >
-        <style>{`
-          @media (max-width: 479px) {
-            .hub-mobile-notice { display: flex !important; }
-          }
-        `}</style>
-      </div>
-      <div
-        className="hub-mobile-notice absolute inset-0 flex-col items-center justify-center px-6 text-center"
-        style={{
-          zIndex: 70,
-          background: "rgba(6,4,18,0.92)",
-          backdropFilter: "blur(12px)",
-          display: "none",
-        }}
-      >
-        <div className="text-5xl mb-4">🚀</div>
-        <h2 className="font-display font-black text-white text-xl mb-2">Open on a bigger screen</h2>
-        <p className="text-sm text-white/50 leading-relaxed mb-6">
-          The AI Decoder Academy Hub looks best on a tablet or laptop.
-        </p>
-        <button
-          onClick={() => router.push("/dashboard/playground")}
-          className="px-6 py-3 rounded-xl font-display font-extrabold text-sm"
-          style={{ background: "#7C3AED", color: "#fff", boxShadow: "0 0 20px rgba(124,58,237,0.5)" }}
-        >
-          Go to Playground →
-        </button>
-      </div>
-
-      {/* ── Hover tooltip ── */}
-      <AnimatePresence>
-        {hoveredArena && (() => {
-          const a = ARENAS.find(x => x.id === hoveredArena)!;
-          const unlocked = isArenaUnlocked(a.id);
-          return (
-            <motion.div
-              key={hoveredArena}
-              initial={{ opacity: 0, y: 8, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{    opacity: 0, y: 4, scale: 0.95 }}
-              transition={{ duration: 0.18 }}
-              className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
-              style={{ bottom: "14%", zIndex: 200 }}
-            >
-              <div
-                className="px-4 py-2.5 rounded-2xl backdrop-blur-xl text-center"
-                style={{
-                  background: "rgba(10,6,28,0.92)",
-                  border: `1px solid ${a.accent}45`,
-                  boxShadow: `0 0 28px ${a.accentGlow}`,
-                }}
-              >
-                <p className="font-display font-extrabold text-sm tracking-tight" style={{ color: a.accent }}>
-                  {a.emoji} {a.name}
-                </p>
-                <p className="text-xs text-white/50 mt-0.5">{a.tagline}</p>
-                {!unlocked && (
-                  <p className="text-[10px] mt-1" style={{ color: a.accent }}>
-                    🔒 Complete Arena {a.id - 1} to unlock
-                  </p>
-                )}
-                {unlocked && (
-                  <p className="text-[10px] text-white/40 mt-1">Click to enter →</p>
-                )}
-              </div>
-            </motion.div>
-          );
-        })()}
-      </AnimatePresence>
-
-      {/* ── Locked arena toast ── */}
-      <AnimatePresence>
-        {lockedToast && (() => {
-          const a = ARENAS.find(x => x.id === lockedToast.arenaId)!;
-          return (
-            <motion.div
-              key="locked-toast"
-              initial={{ opacity: 0, scale: 0.85, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{    opacity: 0, scale: 0.85, y: 10 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed pointer-events-none"
-              style={{
-                left: Math.min(lockedToast.x, window.innerWidth - 260),
-                top:  Math.max(lockedToast.y - 80, 20),
-                zIndex: 9000,
-              }}
-            >
-              <div
-                className="px-4 py-3 rounded-2xl backdrop-blur-2xl"
-                style={{
-                  background: "rgba(8,4,22,0.95)",
-                  border: `1px solid ${a.accent}50`,
-                  boxShadow: `0 0 32px ${a.accentGlow}, 0 8px 32px rgba(0,0,0,0.6)`,
-                  minWidth: "220px",
-                }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-base">🔒</span>
-                  <p className="font-display font-extrabold text-sm text-white tracking-tight">
-                    {a.name} is locked
-                  </p>
+      {/* Title spacer + stats bar */}
+      <div className="hub-spacer relative flex-shrink-0" style={{ zIndex: 10 }}>
+        <div className="absolute bottom-[-24px]" style={{ left: "44%", transform: "translateX(-50%)" }}>
+          <div className="flex items-center px-4 py-2 rounded-2xl"
+            style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(16px)",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.08)", border: "1px solid rgba(255,255,255,0.7)",
+              whiteSpace: "nowrap" }}>
+            {[
+              { icon: "📄", label: "Projects",   value: "24"  },
+              { icon: "⭐", label: "Creations",  value: "156" },
+              { icon: "⏱",  label: "Time Saved", value: "82h" },
+              { icon: "✨", label: "AI Credits", value: "450" },
+            ].map((s, i) => (
+              <div key={s.label} className="flex items-center">
+                {i > 0 && <div className="w-px h-6 mx-3" style={{ background: "rgba(0,0,0,0.08)" }} />}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm">{s.icon}</span>
+                  <div>
+                    <div className="font-black text-[13px] leading-none" style={{ color: "#1a1a2e" }}>{s.value}</div>
+                    <div className="text-[10px] leading-none mt-0.5" style={{ color: "#aaa" }}>{s.label}</div>
+                  </div>
                 </div>
-                <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
-                  Complete all missions in{" "}
-                  <span style={{ color: a.accent, fontWeight: 700 }}>
-                    Arena {a.id - 1}
-                  </span>{" "}
-                  first to unlock this world.
-                </p>
               </div>
-            </motion.div>
-          );
-        })()}
+            ))}
+            <div className="w-px h-6 mx-3" style={{ background: "rgba(0,0,0,0.08)" }} />
+            <div className="text-[12px] font-medium" style={{ color: "#666" }}>
+              Welcome back, <span className="font-black" style={{ color: "#7C3AED" }}>{firstName}!</span> 👋
+            </div>
+            <div className="ml-3 w-8 h-8 rounded-full flex items-center justify-center text-base flex-shrink-0"
+              style={{ background: "linear-gradient(135deg,rgba(124,58,237,0.15),rgba(124,58,237,0.3))",
+                border: "2px solid rgba(124,58,237,0.3)" }}>
+              {profile?.avatar_emoji ?? "🧑‍💻"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 4-column panel grid */}
+      <div className="hub-grid relative flex-1 min-h-0"
+        style={{ display: "grid", gridTemplateRows: "100%", gap: "0", overflow: "hidden", zIndex: 10 }}>
+
+        {/* Left — 4 images */}
+        <div className="hub-col-left" style={{ alignSelf: "start" }}>
+          {LEFT_PANELS.map(p => (
+            <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick} />
+          ))}
+        </div>
+
+        {/* Center — transparent */}
+        <div />
+
+        {/* Right — 3 images */}
+        <div className="hub-col-right" style={{ alignSelf: "start" }}>
+          {RIGHT_PANELS.map(p => (
+            <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick} />
+          ))}
+        </div>
+
+        {/* Far right — leaderboard */}
+        <div className="hub-leaderboard">
+          <LeaderboardPanel />
+        </div>
+      </div>
+
+      {/* Locked toast */}
+      <AnimatePresence>
+        {lockedToast !== null && (
+          <motion.div key="locked"
+            initial={{ opacity: 0, y: 12, scale: 0.92 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.92 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed left-1/2 -translate-x-1/2 z-[9000] px-5 py-3 rounded-2xl"
+            style={{ bottom: 80, background: "rgba(255,255,255,0.97)",
+              border: "1px solid rgba(239,68,68,0.3)", boxShadow: "0 8px 32px rgba(0,0,0,0.14)" }}>
+            <p className="text-sm font-bold text-center" style={{ color: "#1a1a2e" }}>
+              🔒 Complete the previous module first
+            </p>
+          </motion.div>
+        )}
       </AnimatePresence>
 
-      {/* ── Video transition overlay ── */}
+      {/* Video transition overlay */}
       <AnimatePresence>
         {transitioning !== null && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{    opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="fixed inset-0 bg-black"
-            style={{ zIndex: 9999 }}
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }} className="fixed inset-0 bg-black" style={{ zIndex: 9999 }}>
             {!videoError ? (
-              <video
-                key={transitioning}
-                src={`/transitions/arena-${transitioning}.mp4`}
-                autoPlay
-                playsInline
-                className="absolute inset-0 w-full h-full object-cover"
-                onEnded={goToWorld}
-                onError={() => setVideoError(true)}
-              />
+              <video key={transitioning} src={`/transitions/arena-${transitioning}.mp4`}
+                autoPlay playsInline className="absolute inset-0 w-full h-full object-cover"
+                onEnded={goToWorld} onError={() => setVideoError(true)} />
             ) : (
-              <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{
-                  background: `radial-gradient(ellipse at center, ${ARENAS.find(a => a.id === transitioning)?.accent}33 0%, #000 70%)`,
-                  animation: "pulse 1s ease-in-out infinite",
-                }}
-              >
+              <div className="absolute inset-0 flex items-center justify-center"
+                style={{ background: `radial-gradient(ellipse at center, ${ARENAS.find(a => a.id === transitioning)?.accent ?? "#7C3AED"}33 0%, #000 70%)` }}>
                 <div className="text-center">
-                  <div className="text-6xl mb-4 animate-bounce">
-                    {ARENAS.find(a => a.id === transitioning)?.emoji}
-                  </div>
-                  <p className="font-display font-black text-white text-xl tracking-tight">
-                    Entering {ARENAS.find(a => a.id === transitioning)?.name}…
+                  <div className="text-6xl mb-4 animate-bounce">{ARENAS.find(a => a.id === transitioning)?.emoji ?? "🚀"}</div>
+                  <p className="font-black text-white text-xl tracking-tight">
+                    Entering {ARENAS.find(a => a.id === transitioning)?.name ?? "module"}…
                   </p>
                 </div>
               </div>
             )}
-            <button
-              onClick={goToWorld}
-              className="absolute top-5 right-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-display font-bold text-white/60 hover:text-white border border-white/20 hover:border-white/40 transition-all"
-              style={{ backdropFilter: "blur(8px)", background: "rgba(0,0,0,0.4)" }}
-            >
-              Skip <span className="text-white/40">→</span>
+            <button onClick={goToWorld}
+              className="absolute top-5 right-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white/60 hover:text-white border border-white/20 hover:border-white/40 transition-all"
+              style={{ backdropFilter: "blur(8px)", background: "rgba(0,0,0,0.4)" }}>
+              Skip →
             </button>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-// ── PanelCard component ────────────────────────────────────────────────────
-interface PanelDef {
-  arenaId:    number;
-  src:        string | null;
-  left:       string;
-  top:        string;
-  width:      string;
-  aspect:     string;
-  rotateZ:    number;
-  rotateY:    number;
-  rotateX:    number;
-  floatDelay: number;
-  floatRange: number;
-  zIndex:     number;
-}
-
-function PanelCard({
-  panel, arena, hovered, onHover, onClick,
-}: {
-  panel:   PanelDef;
-  arena:   (typeof ARENAS)[0];
-  hovered: boolean;
-  onHover: (id: number | null) => void;
-  onClick: (id: number, e: React.MouseEvent) => void;
-}) {
-  const unlocked  = isArenaUnlocked(arena.id);
-  const completed = typeof window !== "undefined" && isArenaComplete(arena.id);
-
-  return (
-    // Outer wrapper: position + 3D perspective container
-    // transformPerspective is Framer Motion's per-element perspective — composes with y/rotateY/rotateZ
-    <motion.div
-      animate={{ y: [0, -panel.floatRange, 0] }}
-      transition={{
-        duration:  3.2 + panel.floatDelay * 0.3,
-        repeat:    Infinity,
-        ease:      "easeInOut",
-        delay:     panel.floatDelay,
-      }}
-      style={{
-        position:          "absolute",
-        left:              panel.left,
-        top:               panel.top,
-        width:             panel.width,
-        zIndex:            panel.zIndex,
-        rotateY:           panel.rotateY,
-        rotateZ:           panel.rotateZ,
-        rotateX:           panel.rotateX,
-        // perspective scales with viewport so the 3D lean looks natural on all screen sizes
-        transformPerspective: "clamp(500px, 70vw, 1100px)" as unknown as number,
-        willChange:        "transform",
-      }}
-      onMouseEnter={() => onHover(arena.id)}
-      onMouseLeave={() => onHover(null)}
-      onClick={(e) => onClick(arena.id, e)}
-    >
-      <motion.div
-        whileHover={{ scale: 1.07 }}
-        whileTap={{ scale: 0.96 }}
-        style={{ cursor: "pointer" }}
-        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      >
-        {/*
-          Uniform panel box — all images rendered at the same aspect ratio so they
-          line up perfectly regardless of their natural pixel dimensions.
-          object-fit: cover fills the box; object-position: top keeps the header
-          visible if vertical content is trimmed.
-        */}
-        <div
-          className="relative w-full overflow-hidden rounded-xl"
-          style={{ aspectRatio: panel.aspect }}
-        >
-          {/* Panel image */}
-          {panel.src && (
-            <img
-              src={panel.src}
-              alt={arena.name}
-              draggable={false}
-              className="absolute inset-0 w-full h-full rounded-xl"
-              style={{
-                objectFit:     "cover",
-                objectPosition: "top center",
-                filter: hovered
-                  ? `brightness(1.25) drop-shadow(0 0 16px ${arena.accent})`
-                  : `brightness(1.05) drop-shadow(0 0 8px ${arena.accentGlow})`,
-                transition: "filter 0.3s ease",
-              }}
-            />
-          )}
-
-          {/* Glow halo — sits on top of the image, pointer-events off */}
-          <div
-            className="absolute inset-0 rounded-xl pointer-events-none transition-all duration-300"
-            style={{
-              boxShadow: hovered && unlocked
-                ? `0 0 40px ${arena.accentGlow}, 0 0 80px ${arena.accentGlow}`
-                : "none",
-            }}
-          />
-
-
-          {/* Completed badge */}
-          {completed && unlocked && (
-            <div
-              className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ background: "#00FF94", color: "#08080F", boxShadow: "0 0 12px rgba(0,255,148,0.7)", zIndex: 10 }}
-            >
-              ✓
-            </div>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }

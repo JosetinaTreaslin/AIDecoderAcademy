@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#08080F] text-white relative overflow-hidden flex flex-col">
+    <div className="min-h-screen relative overflow-hidden flex flex-col" style={{ background: "linear-gradient(145deg, #F3F0FF 0%, #EDE9FE 35%, #F8F6FF 65%, #EEF2FF 100%)" }}>
 
       {/* ── Ambient background ─────────────────────────────────────────── */}
       <div aria-hidden className="absolute inset-0 pointer-events-none">
@@ -46,18 +46,20 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <span style={{ color: "#C8FF00" }}>AI</span>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="font-display font-black text-white text-base leading-none">AI</span>
+            <span className="font-display font-black text-base leading-none" style={{ color: "#1a1a2e" }}>AI</span>
             <span className="font-display font-black text-base leading-none" style={{ color: "#7C3AED" }}>Decoder</span>
-            <span className="font-display font-black text-white text-base leading-none">Academy</span>
+            <span className="font-display font-black text-base leading-none" style={{ color: "#1a1a2e" }}>Academy</span>
           </div>
         </Link>
         <div className="flex items-center gap-2">
           <Link href="/auth/sign-in"
-            className="text-sm font-semibold text-white/50 hover:text-white transition-colors px-4 py-2 rounded-xl hover:bg-white/[0.06]">
+            className="text-sm font-semibold transition-colors px-4 py-2 rounded-xl hover:bg-black/[0.06]"
+            style={{ color: "rgba(26,26,46,0.6)" }}>
             Log in
           </Link>
           <Link href="/auth/sign-up"
-            className="text-sm font-bold px-4 py-2 rounded-xl border border-white/[0.12] text-white/70 hover:text-white hover:border-white/25 transition-all">
+            className="text-sm font-bold px-4 py-2 rounded-xl border transition-all"
+            style={{ borderColor: "rgba(26,26,46,0.18)", color: "rgba(26,26,46,0.75)" }}>
             Sign up
           </Link>
         </div>
@@ -69,7 +71,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="relative z-10 text-center py-5 border-t border-white/[0.05] text-[11px] text-white/25">
+      <footer className="relative z-10 text-center py-5 border-t text-[11px]" style={{ borderColor: "rgba(0,0,0,0.08)", color: "rgba(26,26,46,0.4)" }}>
         © 2026 AI Decoder Academy · Safe for students aged 11–16 · Teacher accounts available
       </footer>
     </div>

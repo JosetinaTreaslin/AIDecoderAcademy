@@ -93,8 +93,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header
         className="fixed top-0 left-0 right-0 z-40 border-b"
         style={{
-          background:       "rgba(15,15,26,0.97)",
-          borderColor:      "rgba(255,255,255,0.07)",
+          background:       "rgba(255,255,255,0.92)",
+          borderColor:      "rgba(0,0,0,0.07)",
           backdropFilter:   "blur(20px)",
           transform:        navVisible ? "translateY(0)" : "translateY(-100%)",
           transition:       "transform 0.3s cubic-bezier(0.16,1,0.3,1)",
@@ -112,7 +112,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <path d="M8 2L14 6V10L8 14L2 10V6L8 2Z" fill="#08080F"/>
               </svg>
             </div>
-            <span className="font-display font-black text-white text-base tracking-tight hidden sm:block">
+            <span className="font-display font-black text-base tracking-tight hidden sm:block" style={{ color: "#1a1a2e" }}>
               AI<span style={{ color: arena.accent }}>Decoder</span>
             </span>
           </Link>
@@ -136,10 +136,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* XP bar */}
                 <div className="w-24 space-y-0.5">
                   <div className="flex justify-between">
-                    <span className="text-[9px] text-white/30 font-mono">{xp} XP</span>
-                    {!isMaxed && <span className="text-[9px] text-white/20 font-mono">{nextThreshold}</span>}
+                    <span className="text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.35)" }}>{xp} XP</span>
+                    {!isMaxed && <span className="text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.25)" }}>{nextThreshold}</span>}
                   </div>
-                  <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.10)" }}>
                     <div className="h-full rounded-full transition-all duration-1000"
                       style={{
                         width:      `${progress}%`,

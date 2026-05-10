@@ -141,7 +141,7 @@ export const OBJECTIVES: Objective[] = [
     xpReward: 40,
   },
 
-  // ── BOTTOM-RIGHT WALL (14–18) ────────────────────────────────────────────
+  // ── BOTTOM-RIGHT WALL (14–15) ────────────────────────────────────────────
   {
     id: "a1-14", arenaId: 1, order: 14,
     emoji: "🎬",
@@ -160,34 +160,6 @@ export const OBJECTIVES: Objective[] = [
     starterPrompt: "I'm learning prompt engineering. Start with the word 'ocean'. Round 1: use it as-is. Round 2: add a role (e.g. 'Act as a marine biologist'). Round 3: add context (who it's for). Round 4: add an output format. Round 5: add a tone. Show me all 5 prompts and outputs so I can see how detail transforms results.",
     xpReward: 30,
   },
-  {
-    id: "a1-16", arenaId: 1, order: 16,
-    emoji: "🔀",
-    title: "Image Variation Lift — Same Prompt, Vary Results",
-    description: "Generate the same core image 4 times, changing only ONE variable each time: style, lighting, camera angle, then colour palette. Submit all 4 and annotate what changed.",
-    outputType: "image",
-    starterPrompt: "Generate: a futuristic city skyline at dusk. Then generate it again with ONLY the style changed to watercolour painting. Then again with ONLY dramatic rim lighting added. Then again with ONLY a low-angle worm's-eye view. Submit all four with a caption for each change.",
-    xpReward: 35,
-  },
-  {
-    id: "a1-17", arenaId: 1, order: 17,
-    emoji: "🗣️",
-    title: "Text to Voice — Short Story Narration",
-    description: "Write a 5-sentence micro-story in ChatGPT, then narrate it in ElevenLabs with a voice that matches the story's mood. Submit both the text and the audio.",
-    outputType: "audio",
-    starterPrompt: "Write a 5-sentence micro-story about a young inventor who builds a robot from broken classroom parts. The tone should be hopeful and adventurous. I'll then narrate it in ElevenLabs using a voice that matches the mood — energetic and warm. Generate the story now.",
-    xpReward: 35,
-  },
-  {
-    id: "a1-18", arenaId: 1, order: 18,
-    emoji: "🎧",
-    title: "Audio + Image Pair — Match the Mood",
-    description: "Create an image and a music track that share the SAME mood. The image goes into Canva AI; the music goes into Suno.ai. Both must feel like they belong together.",
-    outputType: "audio",
-    starterPrompt: "I'm pairing an AI image with an AI music track that share the same mood. Mood I'm choosing: [pick your own — e.g. 'mysterious midnight forest']. First give me an image prompt for Canva AI that captures this mood in rich visual detail. Then give me a music-style prompt for Suno.ai that creates a matching sonic atmosphere. Make them feel like they belong in the same world.",
-    xpReward: 40,
-  },
-
   // ── Arena 2 — Prompt Lab ────────────────────────────────
   {
     id: "a2-1", arenaId: 2, order: 1,
