@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { ArenaEnvironment } from "@/components/dashboard/ArenaEnvironment";
 import { AidaAssistant } from "@/components/aida/AidaAssistant";
@@ -49,6 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [profile?.active_arena, arenaOverride]);
 
+  const pathname = usePathname();
   const effectiveArenaId = arenaOverride ?? profile?.active_arena ?? 1;
   const arena = getArena(effectiveArenaId);
 
@@ -117,8 +119,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </span>
           </Link>
 
-          {/* Centre spacer */}
-          <div className="flex-1" />
+          {/* Centre nav links */}
+          <div className="flex-1 flex items-center justify-center gap-1">
+            {([
+              { href: "/dashboard",          label: "Hub"           },
+              { href: "/dashboard/playground", label: "Playground"  },
+              { href: "/dashboard/progress",   label: "My Creations" },
+              { href: "/dashboard/profile",    label: "Creators Room" },
+            ] as const).map(({ href, label }) => {
+              const active = href === "/dashboard"
+                ? pathname === "/dashboard"
+                : pathname.startsWith(href);
+              return (
+                <Link key={href} href={href}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                  style={{
+                    color:      active ? arena.accent : "rgba(26,26,46,0.5)",
+                    background: active ? arena.accentDim : "transparent",
+                    border:     `1px solid ${active ? arena.accent + "30" : "transparent"}`,
+                  }}>
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
 
           {/* Right — XP + level + avatar */}
           <div className="flex items-center gap-3 flex-shrink-0">
