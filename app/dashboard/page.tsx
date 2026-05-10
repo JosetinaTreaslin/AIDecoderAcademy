@@ -273,9 +273,9 @@ export default function HubPage() {
       <style>{`
         .hub-grid { grid-template-columns: 23fr 34fr 23fr 20fr; }
         .hub-spacer { height: 18%; }
-        .hub-col-left  { padding-left: 48px; padding-top: 80px; transform: translateX(48px); }
-        .hub-col-right { padding-right: 20px; padding-top: 80px; }
-        .hub-img { display: block; width: 100%; height: calc((100dvh - 18dvh) / 4); }
+        .hub-col-left  { padding-left: 12px; padding-top: 0; }
+        .hub-col-right { padding-right: 12px; padding-top: 0; }
+        .hub-img { display: block; width: 100%; height: calc((100dvh - 18dvh) / 4); margin: 0; padding: 0; }
         @media (max-width: 1280px) {
           .hub-grid { grid-template-columns: 25fr 30fr 25fr 20fr; }
         }
@@ -341,7 +341,7 @@ export default function HubPage() {
         style={{ display: "grid", gridTemplateRows: "100%", gap: "0", overflow: "hidden", zIndex: 10 }}>
 
         {/* Left — 4 images */}
-        <div className="hub-col-left" style={{ alignSelf: "start" }}>
+        <div className="hub-col-left">
           {LEFT_PANELS.map(p => (
             <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick} />
           ))}
@@ -351,7 +351,7 @@ export default function HubPage() {
         <div />
 
         {/* Right — 3 images */}
-        <div className="hub-col-right" style={{ alignSelf: "start" }}>
+        <div className="hub-col-right">
           {RIGHT_PANELS.map(p => (
             <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick} />
           ))}
