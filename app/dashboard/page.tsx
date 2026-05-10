@@ -220,7 +220,7 @@ function PanelImage({ arenaId, src, alt, onClick }: {
       aria-label={alt}
       className="hub-img"
       style={{ width: "100%", backgroundImage: `url(${src})`, backgroundSize: "cover",
-        backgroundPosition: "center center", cursor: "pointer", flexShrink: 0 }}
+        backgroundPosition: "center center", cursor: "pointer" }}
       whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       onClick={() => onClick(arenaId)}
@@ -287,13 +287,13 @@ export default function HubPage() {
           .hub-spacer { height: 14%; }
           .hub-col-left  { padding-top: 36px; }
           .hub-col-right { padding-top: 36px; }
-          .hub-img { height: calc((100dvh - 18dvh - 60px) / 4); }
+          .hub-img { height: calc((100dvh - 14dvh - 36px) / 4); }
         }
         @media (max-height: 600px) {
-          .hub-spacer { height: 14%; }
+          .hub-spacer { height: 10%; }
           .hub-col-left  { padding-top: 16px; }
           .hub-col-right { padding-top: 16px; }
-          .hub-img { height: calc((100dvh - 18dvh - 60px) / 4); }
+          .hub-img { height: calc((100dvh - 10dvh - 16px) / 4); }
         }
       `}</style>
 
