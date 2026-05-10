@@ -23,12 +23,12 @@ const SHELF_HOTSPOTS: {
   glowColor: string; glowRgb: string;
   top: string; height: string; left: string; width: string;
 }[] = [
-  { id:"audio",  label:"AUDIO",  glowColor:"#00aaff", glowRgb:"0,170,255",   top:"7%",  height:"18%", left:"0.5%", width:"9.5%" },
-  { id:"image",  label:"IMAGE",  glowColor:"#ff4488", glowRgb:"255,68,136",  top:"7%",  height:"18%", left:"11%",  width:"9.5%" },
-  { id:"video",  label:"VIDEO",  glowColor:"#ff7800", glowRgb:"255,120,0",   top:"28%", height:"17%", left:"0.5%", width:"9.5%" },
-  { id:"json",   label:"SCRIPT", glowColor:"#00ff64", glowRgb:"0,255,100",   top:"28%", height:"17%", left:"11%",  width:"9.5%" },
-  { id:"text",   label:"TEXT",   glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"48%", height:"17%", left:"0.5%", width:"9.5%" },
-  { id:"slides", label:"SLIDE",  glowColor:"#ffb400", glowRgb:"255,180,0",   top:"48%", height:"17%", left:"11%",  width:"9.5%" },
+  { id:"audio",  label:"AUDIO",  glowColor:"#00aaff", glowRgb:"0,170,255",   top:"48%",  height:"7%", left:"2%", width:"3%" },
+  { id:"image",  label:"IMAGE",  glowColor:"#ff4488", glowRgb:"255,68,136",  top:"26%",  height:"6%", left:"11%",  width:"3%" },
+  { id:"video",  label:"VIDEO",  glowColor:"#ff7800", glowRgb:"255,120,0",   top:"47%", height:"6%", left:"11%", width:"3%" },
+  { id:"json",   label:"SCRIPT", glowColor:"#00ff64", glowRgb:"0,255,100",   top:"25%", height:"6%", left:"2.5%",  width:"3%" },
+  { id:"text",   label:"TEXT",   glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"16%", height:"7%", left:"6.4%", width:"4%" },
+  { id:"slides", label:"SLIDE",  glowColor:"#ffb400", glowRgb:"255,180,0",   top:"58%", height:"6%", left:"6%",  width:"4%" },
 ];
 
 // ── Bottom tray hotspot zones — visible for calibration, will be made invisible after ──
@@ -38,23 +38,23 @@ const BOTTOM_TRAY_HOTSPOTS: {
   glowColor: string; glowRgb: string;
   top: string; height: string; left: string; width: string;
 }[] = [
-  { id:"audio",  label:"Headphones", glowColor:"#00aaff", glowRgb:"0,170,255",   top:"79%", height:"14%", left:"47%", width:"7%" },
-  { id:"text",   label:"Book",       glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"79%", height:"14%", left:"55%", width:"7%" },
-  { id:"image",  label:"Camera",     glowColor:"#ff4488", glowRgb:"255,68,136",  top:"79%", height:"14%", left:"63%", width:"7%" },
-  { id:"json",   label:"JS File",    glowColor:"#00ff64", glowRgb:"0,255,100",   top:"79%", height:"14%", left:"71%", width:"7%" },
-  { id:"video",  label:"Clapper",    glowColor:"#ff7800", glowRgb:"255,120,0",   top:"79%", height:"14%", left:"79%", width:"7%" },
-  { id:"slides", label:"Slide Deck", glowColor:"#ffb400", glowRgb:"255,180,0",   top:"79%", height:"14%", left:"87%", width:"7%" },
+  { id:"audio",  label:"", glowColor:"#00aaff", glowRgb:"0,170,255",   top:"76%", height:"14%", left:"49.5%", width:"7%" },
+  { id:"text",   label:"",       glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"76%", height:"14%", left:"57%", width:"7%" },
+  { id:"image",  label:"",     glowColor:"#ff4488", glowRgb:"255,68,136",  top:"76%", height:"14%", left:"65%", width:"7%" },
+  { id:"json",   label:"",    glowColor:"#00ff64", glowRgb:"0,255,100",   top:"76%", height:"14%", left:"73%", width:"7%" },
+  { id:"video",  label:"",    glowColor:"#ff7800", glowRgb:"255,120,0",   top:"76%", height:"14%", left:"81%", width:"7%" },
+  { id:"slides", label:"", glowColor:"#ffb400", glowRgb:"255,180,0",   top:"76%", height:"14%", left:"89%", width:"8%" },
 ];
 
 // ── Center shelf rows — empty shelves in the right column of the bookcase ────
 // Creations from the selected hotspot type are displayed here (2 per row × 6 rows = 12 slots)
 const CENTER_SHELF_ROWS: { top: string; height: string }[] = [
-  { top: "8%",  height: "13%" },
+  { top: "8%", height: "13%" },
   { top: "20%", height: "13%" },
   { top: "32%", height: "13%" },
   { top: "44%", height: "13%" },
   { top: "56%", height: "13%" },
-  { top: "68%", height: "13%" },
+  
 ];
 
 // ── Floor objects (left → right across the floor) ────────────────────────────
@@ -779,7 +779,7 @@ export function CreationsRoom({
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none" }}
       />
 
-      {/* ── Left panel hotspot zones (desktop only) — VISIBLE FOR CALIBRATION ── */}
+      {/* ── Left panel hotspot zones (desktop only) ── */}
       <div className="hidden lg:block" style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none" }}>
         {SHELF_HOTSPOTS.map(hz => (
           <button
@@ -789,17 +789,13 @@ export function CreationsRoom({
             style={{
               position: "absolute",
               top: hz.top, left: hz.left, width: hz.width, height: hz.height,
-              background: `rgba(${hz.glowRgb},0.25)`,
-              border: `2px solid rgba(${hz.glowRgb},0.85)`,
+              background: "transparent",
+              border: "none",
               borderRadius: 8,
               cursor: "pointer",
               pointerEvents: "auto",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: hz.glowColor, fontSize: 9, fontWeight: 700, fontFamily: "monospace",
             }}
-          >
-            {hz.label}
-          </button>
+          />
         ))}
       </div>
 
@@ -836,7 +832,7 @@ export function CreationsRoom({
         return (
           <div
             className="hidden lg:block"
-            style={{ position: "absolute", left: "14%", top: "4%", width: "17%", height: "72%", zIndex: 13 }}
+            style={{ position: "absolute", left: "15%", top: "9%", width: "17%", height: "72%", zIndex: 13 }}
           >
             {CENTER_SHELF_ROWS.map((row, rowIdx) => {
               const pair = filtered.slice(rowIdx * 2, rowIdx * 2 + 2);
