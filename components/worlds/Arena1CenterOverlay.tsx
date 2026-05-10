@@ -50,10 +50,10 @@ export default function Arena1CenterOverlay({
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
       style={{
         position:  "absolute",
-        left:      "21%",
-        top:       "45%",
+        left:      "41%",
+        top:       "29%",
         transform: "translate(-50%, -50%)",
-        width:     "clamp(220px, 18vw, 290px)",
+        width:     "clamp(260px, 22vw, 340px)",
         zIndex:    35,
         pointerEvents: "none",
       }}
