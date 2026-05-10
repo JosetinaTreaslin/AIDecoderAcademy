@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Zap } from "lucide-react";
 import type { Objective } from "@/lib/objectives";
 
-// Percentage positions [left%, top%] — top-left corner of each invisible card hit-area
+// Percentage positions [left%, top%] — top-left corner of each hit-area
 const HOTSPOT_POSITIONS: Record<number, [number, number]> = {
-  // ── LEFT WALL — col 1 (01,03,05,07) and col 2 (02,04,06,08) ──
+  // ── LEFT WALL — hexagonal node panels (01–08) ──
   1:  [8,  10],   // col 1, row 1
   2:  [25, 12],   // col 2, row 1
   3:  [8,  28],   // col 1, row 2
@@ -17,14 +17,16 @@ const HOTSPOT_POSITIONS: Record<number, [number, number]> = {
   7:  [8,  63],   // col 1, row 4
   8:  [25, 61],   // col 2, row 4
 
-  // ── RIGHT WALL — col 1 (09,11,13,15) and col 2 (10,12,14) ──
-  9:  [72, 12],   // col 1, row 1
-  10: [87, 10],   // col 2, row 1
-  11: [72, 30],   // col 1, row 2
-  12: [88, 29],   // col 2, row 2
-  13: [72, 46],   // col 1, row 3
-  14: [88, 46],   // col 2, row 3
-  15: [72, 62],   // col 1, row 4 (no col 2)
+  // ── BOTTOM TOOL TRAY — 6 icons (09–14) ──
+  9:  [44, 80],   // Headphones  (Audio)
+  10: [52, 80],   // Book        (Text)
+  11: [60, 80],   // Camera      (Image)
+  12: [68, 80],   // JS File     (JSON)
+  13: [76, 80],   // Clapper     (Slides)
+  14: [84, 80],   // Slide Deck  (Slides)
+
+  // ── REMAINING (15) ──
+  15: [36, 80],   // extra bottom-left slot
 };
 
 const OUTPUT_COLORS: Record<string, string> = {
@@ -104,6 +106,9 @@ export default function Arena1HotspotMap({ objectives, completed, onObjectiveCli
         const accent     = OUTPUT_COLORS[obj.outputType] ?? "#7C3AED";
         const isVisible  = hoveredId === obj.id;
 
+        // Bottom tray zone (orders 9+) vs left-wall zone (orders 1–8)
+        const isBottomZone = obj.order >= 9;
+
         return (
           <div
             key={obj.id}
@@ -114,22 +119,31 @@ export default function Arena1HotspotMap({ objectives, completed, onObjectiveCli
               zIndex:   isVisible ? 40 : 30,
             }}
           >
-            {/* Invisible card-sized hit area */}
+            {/* Visible hit area — make invisible after calibration */}
             <button
               onMouseEnter={() => setHoveredId(obj.id)}
               onMouseLeave={() => setHoveredId(null)}
               onClick={() => onObjectiveClick(obj)}
               aria-label={obj.title}
               style={{
-                width:      "clamp(56px, 5.5vw, 90px)",
-                height:     "clamp(64px, 12vh, 110px)",
-                background: "transparent",
-                border:     "none",
-                borderRadius: 6,
-                cursor:     "pointer",
-                padding:    0,
+                width:        isBottomZone ? "clamp(48px, 4.5vw, 70px)"  : "clamp(56px, 5.5vw, 90px)",
+                height:       isBottomZone ? "clamp(48px, 7vh,  70px)"   : "clamp(64px, 12vh, 110px)",
+                background:   isBottomZone ? "rgba(0,180,255,0.28)"      : "rgba(255,100,0,0.28)",
+                border:       isBottomZone ? "2px solid rgba(0,200,255,0.85)" : "2px solid rgba(255,140,0,0.85)",
+                borderRadius: 8,
+                cursor:       "pointer",
+                display:      "flex",
+                alignItems:   "center",
+                justifyContent: "center",
+                padding:      0,
+                color:        isBottomZone ? "rgba(0,220,255,0.95)"      : "rgba(255,200,0,0.95)",
+                fontSize:     11,
+                fontWeight:   700,
+                fontFamily:   "monospace",
               }}
-            />
+            >
+              {obj.order}
+            </button>
 
             {/* Tooltip popup */}
             <AnimatePresence>
