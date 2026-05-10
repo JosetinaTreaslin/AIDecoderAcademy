@@ -275,7 +275,7 @@ export default function HubPage() {
         .hub-spacer { height: 18%; }
         .hub-col-left  { padding-left: 12px; padding-top: 60px; transform: translateX(120px); overflow: hidden; }
         .hub-col-right { padding-right: 12px; padding-top: 60px; transform: translateY(40px); overflow: hidden; }
-        .hub-img { display: block; width: 100%; height: calc((100dvh - 18dvh - 68px) / 4); margin: 0; padding: 0; }
+        .hub-img { display: block; width: 100%; height: calc((100dvh - 38dvh - 68px) / 4); margin: 0; padding: 0; }
         @media (max-width: 1280px) {
           .hub-grid { grid-template-columns: 25fr 30fr 25fr 20fr; }
         }
@@ -287,13 +287,13 @@ export default function HubPage() {
           .hub-spacer { height: 14%; }
           .hub-col-left  { padding-top: 32px; }
           .hub-col-right { padding-top: 32px; }
-          .hub-img { height: calc((100dvh - 14dvh - 40px) / 4); }
+          .hub-img { height: calc((100dvh - 20dvh - 60px) / 4); }
         }
         @media (max-height: 600px) {
           .hub-spacer { height: 10%; }
           .hub-col-left  { padding-top: 16px; }
           .hub-col-right { padding-top: 16px; }
-          .hub-img { height: calc((100dvh - 10dvh - 24px) / 4); }
+          .hub-img { height: calc((100dvh - 20dvh - 60px) / 4); }
         }
       `}</style>
 
