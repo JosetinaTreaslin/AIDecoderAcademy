@@ -208,8 +208,8 @@ const LEFT_PANELS = [
 
 const RIGHT_PANELS = [
   { arenaId: 5, src: "/panels/audio_fusion.png", alt: "Sound Booth"    },
-  { arenaId: 6, src: "/panels/slide_skate.png",  alt: "Director Suite" },
-  { arenaId: 7, src: "/panels/video_vision.png", alt: "Script Module"  },
+  { arenaId: 6, src: "/panels/video_vision.png", alt: "Script Module"  },
+  { arenaId: 7, src: "/panels/slide_skate.png",  alt: "Director Suite" },
 ] as const;
 
 function PanelImage({ arenaId, src, alt, onClick }: {
@@ -273,9 +273,9 @@ export default function HubPage() {
       <style>{`
         .hub-grid { grid-template-columns: 23fr 34fr 23fr 20fr; }
         .hub-spacer { height: 18%; }
-        .hub-col-left  { padding-left: 12px; padding-top: 0; }
-        .hub-col-right { padding-right: 12px; padding-top: 0; }
-        .hub-img { display: block; width: 100%; height: calc((100dvh - 18dvh) / 4); margin: 0; padding: 0; }
+        .hub-col-left  { padding-left: 25px; padding-top: 60px; }
+        .hub-col-right { padding-right: 12px; padding-top: 60px; }
+        .hub-img { display: block; width: 100%; height: calc((100dvh - 40dvh) / 4); }
         @media (max-width: 1280px) {
           .hub-grid { grid-template-columns: 25fr 30fr 25fr 20fr; }
         }
