@@ -126,7 +126,7 @@ export default function ProgressPage() {
   ];
 
   return (
-    <div className="relative flex min-h-0 flex-1" style={{ height: "100dvh", minHeight: 0, background: "linear-gradient(145deg, #F3F0FF 0%, #EDE9FE 35%, #F8F6FF 65%, #EEF2FF 100%)" }}>
+    <div className="relative flex min-h-0 flex-1" style={{ height: "100dvh", minHeight: 0, background: "linear-gradient(145deg, #F3F0FF 0%, #EDE9FE 35%, #F8F6FF 65%, #EEF2FF 100%)", fontFamily: "var(--font-inter, 'Inter', system-ui, sans-serif)" }}>
 
       {/* ── Left sidebar ── */}
       <aside
@@ -138,11 +138,11 @@ export default function ProgressPage() {
         }}
       >
         <div className="px-4 mb-5">
-          <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(26,26,46,0.4)" }}>Library</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(26,26,46,0.4)", fontFamily: "var(--font-inter)" }}>Library</p>
           <nav className="flex flex-col gap-1">
             {navItems.map(item => (
               <button key={item.id} onClick={() => setActiveFilter(item.id)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-display font-bold transition-all text-left"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all text-left"
                 style={activeFilter === item.id ? {
                   background: arena.accent,
                   color: "#fff",
@@ -184,7 +184,7 @@ export default function ProgressPage() {
           <div className="flex flex-col gap-1">
             {projects.map((p) => (
               <button key={p.id} onClick={() => setActiveFilter(`project:${p.id}`)}
-                className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-display font-bold transition-all"
+                className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-bold transition-all"
                 style={activeFilter === `project:${p.id}` ? {
                   background: arena.accent, color: "#fff",
                   boxShadow: `0 0 12px ${arena.accentGlow}`,
@@ -230,14 +230,14 @@ export default function ProgressPage() {
           </div>
 
           <button onClick={() => setAddingProject(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-display font-bold text-sm transition-all flex-shrink-0"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm transition-all flex-shrink-0"
             style={{ border: "1px solid rgba(0,0,0,0.10)", color: "rgba(26,26,46,0.55)", background: "rgba(0,0,0,0.03)" }}>
             <Plus size={14}/> New Project
           </button>
 
           <div className="ml-auto">
             <select value={sort} onChange={e => setSort(e.target.value as "recent" | "oldest")}
-              className="text-xs font-display font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer"
+              className="text-xs font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer"
               style={{ border: "1px solid rgba(0,0,0,0.10)", background: "rgba(0,0,0,0.03)", color: "rgba(26,26,46,0.6)" }}>
               <option value="recent">Recent First</option>
               <option value="oldest">Oldest First</option>
@@ -247,7 +247,7 @@ export default function ProgressPage() {
 
         {/* Heading */}
         <div className="px-6 pt-5 pb-3 flex-shrink-0">
-          <h1 className="font-display font-black text-2xl" style={{ color: "#1a1a2e" }}>My Creations</h1>
+          <h1 className="font-black text-2xl" style={{ color: "#1a1a2e", fontFamily: "var(--font-nunito, 'Nunito', sans-serif)" }}>My Creations</h1>
           <p className="text-sm mt-0.5" style={{ color: "rgba(26,26,46,0.45)" }}>
             {loading ? "Loading…" : `${creations.length} creation${creations.length !== 1 ? "s" : ""} in your library`}
           </p>
@@ -265,10 +265,10 @@ export default function ProgressPage() {
           ) : creations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="text-6xl mb-4 animate-float">🎨</div>
-              <h3 className="font-display font-black text-lg mb-1" style={{ color: "#1a1a2e" }}>Nothing here yet!</h3>
+              <h3 className="font-black text-lg mb-1" style={{ color: "#1a1a2e" }}>Nothing here yet!</h3>
               <p className="text-sm max-w-sm" style={{ color: "rgba(26,26,46,0.5)" }}>Save AI responses from the playground to build your library.</p>
               <Link href="/dashboard/playground"
-                className="mt-6 inline-flex items-center justify-center font-display font-extrabold text-sm px-6 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]"
+                className="mt-6 inline-flex items-center justify-center font-extrabold text-sm px-6 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]"
                 style={{ background: arena.accent, color: "#fff", boxShadow: `0 0 24px ${arena.accentGlow}` }}>
                 Open Creators Room
               </Link>
@@ -481,7 +481,7 @@ function CreationCard({
       {/* Footer */}
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-display font-bold text-sm leading-snug truncate" style={{ color: "#1a1a2e" }}>{creation.title}</h3>
+          <h3 className="font-bold text-sm leading-snug truncate" style={{ color: "#1a1a2e", fontFamily: "var(--font-nunito)" }}>{creation.title}</h3>
           <button onClick={onToggleFav}
             className={cn("flex-shrink-0 transition-all mt-0.5",
               creation.is_favourite ? "text-red-400" : "hover:text-red-400")}
