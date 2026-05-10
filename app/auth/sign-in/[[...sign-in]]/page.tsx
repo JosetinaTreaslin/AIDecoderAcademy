@@ -71,26 +71,27 @@ export default function SignInPage() {
 
   return (
     <div className="w-full max-w-md">
-      {/* Glass card */}
-      <div className="rounded-3xl overflow-hidden border backdrop-blur-xl"
+      {/* Light glass card — matches hub leaderboard panel style */}
+      <div className="rounded-3xl overflow-hidden"
         style={{
-          background: "linear-gradient(160deg, rgba(124,58,237,0.12) 0%, rgba(15,15,26,0.92) 50%)",
-          borderColor: `${ACCENT}30`,
-          boxShadow: `0 32px 80px -20px ${ACCENT_GLOW}, inset 0 1px 0 rgba(255,255,255,0.05)`,
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,0.75)",
+          boxShadow: "0 8px 48px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
         }}>
         {/* Accent stripe */}
-        <div className="h-px w-full" style={{ background: `linear-gradient(90deg, transparent, ${ACCENT}, transparent)` }}/>
+        <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, transparent, ${ACCENT}, transparent)` }}/>
 
-        <div className="px-8 pt-8 pb-8">
+        <div className="px-8 pt-7 pb-8">
           {/* Header */}
           <div className="mb-7">
-            <div className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-white/35 mb-2">
+            <div className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] mb-2" style={{ color: "rgba(26,26,46,0.4)" }}>
               AI Decoder Academy
             </div>
-            <h1 className="font-display font-black text-2xl text-white mb-1.5">
+            <h1 className="font-display font-black text-2xl mb-1.5" style={{ color: "#1a1a2e" }}>
               Welcome back! 🚀
             </h1>
-            <p className="text-sm text-white/45">
+            <p className="text-sm" style={{ color: "rgba(26,26,46,0.5)" }}>
               Your arenas are waiting. Ready for your next session?
             </p>
           </div>
@@ -98,11 +99,11 @@ export default function SignInPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
-              <label className="block text-[10px] font-bold text-white/40 mb-2 uppercase tracking-widest">
+              <label className="block text-[10px] font-bold mb-2 uppercase tracking-widest" style={{ color: "rgba(26,26,46,0.45)" }}>
                 Email
               </label>
               <div className="relative">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "rgba(26,26,46,0.35)" }}>
                   <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                     <rect x="1" y="3" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/>
                     <path d="M1 6l7 4 7-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -114,12 +115,12 @@ export default function SignInPage() {
                   placeholder="you@school.com"
                   required autoComplete="email"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "rgba(255,255,255,0.9)",
+                    background: "rgba(0,0,0,0.04)",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    color: "#1a1a2e",
                   }}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl text-sm transition-all outline-none placeholder:text-white/25
-                    focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)]"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl text-sm transition-all outline-none placeholder:text-black/25
+                    focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
                 />
               </div>
             </div>
@@ -127,7 +128,7 @@ export default function SignInPage() {
             {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                <label className="block text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgba(26,26,46,0.45)" }}>
                   Password
                 </label>
                 <Link href="#" className="text-[10px] font-semibold hover:underline" style={{ color: ACCENT }}>
@@ -135,7 +136,7 @@ export default function SignInPage() {
                 </Link>
               </div>
               <div className="relative">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "rgba(26,26,46,0.35)" }}>
                   <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                     <rect x="3" y="7" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
                     <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -147,15 +148,16 @@ export default function SignInPage() {
                   placeholder="••••••••"
                   required autoComplete="current-password"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "rgba(255,255,255,0.9)",
+                    background: "rgba(0,0,0,0.04)",
+                    border: "1px solid rgba(0,0,0,0.12)",
+                    color: "#1a1a2e",
                   }}
-                  className="w-full pl-10 pr-10 py-3 rounded-xl text-sm transition-all outline-none placeholder:text-white/25
-                    focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)]"
+                  className="w-full pl-10 pr-10 py-3 rounded-xl text-sm transition-all outline-none placeholder:text-black/25
+                    focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.15)]"
                 />
                 <button type="button" onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
+                  style={{ color: "rgba(26,26,46,0.35)" }}>
                   <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                     <path d="M2 8s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z" stroke="currentColor" strokeWidth="1.5"/>
                     <circle cx="8" cy="8" r="1.5" stroke="currentColor" strokeWidth="1.5"/>
@@ -166,7 +168,7 @@ export default function SignInPage() {
 
             {error && (
               <p className="text-xs px-3 py-2.5 rounded-xl"
-                style={{ background: "rgba(255,45,120,0.12)", border: "1px solid rgba(255,45,120,0.25)", color: "#FF2D78" }}>
+                style={{ background: "rgba(255,45,120,0.08)", border: "1px solid rgba(255,45,120,0.2)", color: "#e0185a" }}>
                 {error}
               </p>
             )}
@@ -180,17 +182,17 @@ export default function SignInPage() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-white/[0.08]"/>
-            <span className="text-[10px] font-mono text-white/30 uppercase tracking-wider">or continue with</span>
-            <div className="flex-1 h-px bg-white/[0.08]"/>
+            <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }}/>
+            <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "rgba(26,26,46,0.35)" }}>or continue with</span>
+            <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }}/>
           </div>
 
           {/* Google */}
           <button onClick={handleGoogle}
-            className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-semibold text-white/70 hover:text-white transition-all"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.09)"}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"}>
+            className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-semibold transition-all"
+            style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.10)", color: "rgba(26,26,46,0.65)" }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.07)"}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)"}>
             <svg width="18" height="18" viewBox="0 0 18 18">
               <path d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z" fill="#4285F4"/>
               <path d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.01c-.72.48-1.63.76-2.7.76-2.08 0-3.84-1.4-4.47-3.29H1.87v2.07A8 8 0 008.98 17z" fill="#34A853"/>
@@ -200,7 +202,7 @@ export default function SignInPage() {
             Continue with Google
           </button>
 
-          <p className="text-center text-sm text-white/35 mt-6">
+          <p className="text-center text-sm mt-6" style={{ color: "rgba(26,26,46,0.45)" }}>
             New to the Academy?{" "}
             <Link href="/auth/sign-up" className="font-bold hover:underline" style={{ color: ACCENT }}>
               Create your account

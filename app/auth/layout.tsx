@@ -2,41 +2,16 @@ import Link from "next/link";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col" style={{ background: "linear-gradient(145deg, #F3F0FF 0%, #EDE9FE 35%, #F8F6FF 65%, #EEF2FF 100%)" }}>
+    <div className="min-h-screen relative overflow-hidden flex flex-col">
 
-      {/* ── Ambient background ─────────────────────────────────────────── */}
-      <div aria-hidden className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(124,58,237,0.2) 0%, transparent 65%)", filter: "blur(60px)" }}/>
-        <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(0,212,255,0.12) 0%, transparent 65%)", filter: "blur(80px)" }}/>
-        {/* Grid */}
-        <div className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}/>
-        {/* Constellation dots */}
-        {[
-          [5,10],[92,8],[15,50],[88,45],[50,90],[25,78],[78,70],[40,20],[65,35],
-        ].map(([x, y], i) => (
-          <div key={i} className="absolute rounded-full bg-white"
-            style={{ left: `${x}%`, top: `${y}%`, width: i % 3 === 0 ? 2 : 1, height: i % 3 === 0 ? 2 : 1, opacity: 0.2 + (i % 3) * 0.1 }}/>
-        ))}
-        {/* Decorative orbit rings */}
-        <div className="absolute top-16 right-16 opacity-[0.07]">
-          <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
-            <circle cx="60" cy="60" r="55" stroke="#7C3AED" strokeWidth="1.5" strokeDasharray="8 5"/>
-            <circle cx="60" cy="60" r="35" stroke="#7C3AED" strokeWidth="1" strokeDasharray="5 4"/>
-          </svg>
-        </div>
-        <div className="absolute bottom-24 left-10 opacity-[0.06]">
-          <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-            <path d="M40 5 L55 25 L75 30 L60 50 L65 70 L40 60 L15 70 L20 50 L5 30 L25 25 Z"
-              stroke="#00D4FF" strokeWidth="1.5" fill="none"/>
-          </svg>
-        </div>
-      </div>
+      {/* ── Background image (matches hub page) ────────────────────────── */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/panels/background.png" alt="" aria-hidden draggable={false}
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        style={{ zIndex: 0 }} />
+
+      {/* ── Overlay to soften background for readability ─────────────── */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ zIndex: 1, background: "rgba(255,255,255,0.18)" }} />
 
       {/* ── Nav ───────────────────────────────────────────────────────── */}
       <nav className="relative z-10 flex items-center justify-between px-6 sm:px-10 py-5 max-w-6xl mx-auto w-full">
@@ -53,13 +28,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </Link>
         <div className="flex items-center gap-2">
           <Link href="/auth/sign-in"
-            className="text-sm font-semibold transition-colors px-4 py-2 rounded-xl hover:bg-black/[0.06]"
-            style={{ color: "rgba(26,26,46,0.6)" }}>
+            className="text-sm font-semibold transition-colors px-4 py-2 rounded-xl"
+            style={{ color: "rgba(26,26,46,0.7)", background: "rgba(255,255,255,0.6)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.6)" }}>
             Log in
           </Link>
           <Link href="/auth/sign-up"
-            className="text-sm font-bold px-4 py-2 rounded-xl border transition-all"
-            style={{ borderColor: "rgba(26,26,46,0.18)", color: "rgba(26,26,46,0.75)" }}>
+            className="text-sm font-bold px-4 py-2 rounded-xl transition-all"
+            style={{ background: "#7C3AED", color: "#fff", boxShadow: "0 0 16px rgba(124,58,237,0.35)" }}>
             Sign up
           </Link>
         </div>
@@ -71,7 +46,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="relative z-10 text-center py-5 border-t text-[11px]" style={{ borderColor: "rgba(0,0,0,0.08)", color: "rgba(26,26,46,0.4)" }}>
+      <footer className="relative z-10 text-center py-5 text-[11px]"
+        style={{ color: "rgba(26,26,46,0.5)", borderTop: "1px solid rgba(255,255,255,0.4)" }}>
         © 2026 AI Decoder Academy · Safe for students aged 11–16 · Teacher accounts available
       </footer>
     </div>

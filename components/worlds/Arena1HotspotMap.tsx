@@ -123,22 +123,13 @@ export default function Arena1HotspotMap({ objectives, completed, onObjectiveCli
               style={{
                 width:      "clamp(56px, 5.5vw, 90px)",
                 height:     "clamp(64px, 12vh, 110px)",
-                background: "rgba(255,100,0,0.25)",
-                border:     "2px solid rgba(255,140,0,0.8)",
+                background: "transparent",
+                border:     "none",
                 borderRadius: 6,
                 cursor:     "pointer",
-                display:    "flex",
-                alignItems: "center",
-                justifyContent: "center",
                 padding:    0,
-                color:      "rgba(255,200,0,0.9)",
-                fontSize:   11,
-                fontWeight: 700,
-                fontFamily: "monospace",
               }}
-            >
-              {obj.order}
-            </button>
+            />
 
             {/* Tooltip popup */}
             <AnimatePresence>
