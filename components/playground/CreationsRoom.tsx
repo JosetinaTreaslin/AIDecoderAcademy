@@ -799,28 +799,43 @@ export function CreationsRoom({
         ))}
       </div>
 
-      {/* ── Bottom tray hotspot zones (desktop only) — VISIBLE FOR CALIBRATION ── */}
+      {/* ── Bottom tray hotspot zones — traffic light indicator ── */}
       <div className="hidden lg:block" style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none" }}>
-        {BOTTOM_TRAY_HOTSPOTS.map(hz => (
-          <button
-            key={`tray-${hz.id}`}
-            onClick={() => setSelected(hz.id)}
-            title={hz.label}
-            style={{
-              position: "absolute",
-              top: hz.top, left: hz.left, width: hz.width, height: hz.height,
-              background: `rgba(${hz.glowRgb},0.28)`,
-              border: `2px solid rgba(${hz.glowRgb},0.9)`,
-              borderRadius: 8,
-              cursor: "pointer",
-              pointerEvents: "auto",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: hz.glowColor, fontSize: 8, fontWeight: 700, fontFamily: "monospace",
-            }}
-          >
-            {hz.label}
-          </button>
-        ))}
+        {BOTTOM_TRAY_HOTSPOTS.map(hz => {
+          const isActive = selected === hz.id;
+          return (
+            <button
+              key={`tray-${hz.id}`}
+              onClick={() => setSelected(hz.id)}
+              title={hz.label}
+              style={{
+                position: "absolute",
+                top: hz.top, left: hz.left, width: hz.width, height: hz.height,
+                background: "transparent",
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+                pointerEvents: "auto",
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "center",
+                paddingBottom: "6%",
+              }}
+            >
+              {/* Traffic light dot */}
+              <span style={{
+                display: "block",
+                width: 10, height: 10,
+                borderRadius: "50%",
+                background: isActive ? "#22c55e" : "#ef4444",
+                boxShadow: isActive
+                  ? "0 0 6px rgba(34,197,94,0.9), 0 0 14px rgba(34,197,94,0.5)"
+                  : "0 0 4px rgba(239,68,68,0.7), 0 0 10px rgba(239,68,68,0.3)",
+                transition: "background 0.2s, box-shadow 0.2s",
+              }} />
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Center shelf creations (desktop only) ────────────────────────── */}
