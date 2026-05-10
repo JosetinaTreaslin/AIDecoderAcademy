@@ -255,12 +255,15 @@ function PlaygroundInner() {
 
   // Loading state
   if (!profile) return (
-    <div className="flex items-center justify-center" style={{ height: "100vh", background: "#080814" }}>
+    <div className="flex flex-col items-center justify-center gap-4" style={{ height: "100vh", background: "linear-gradient(145deg, #F3F0FF 0%, #EDE9FE 35%, #F8F6FF 65%, #EEF2FF 100%)" }}>
       <div className="flex gap-2">
         {[0,1,2].map(i => (
           <div key={i} className="dot w-3 h-3 rounded-full" style={{ background: ARENA_ACCENT, boxShadow: `0 0 12px ${ARENA_ACCENT_GLOW}` }}/>
         ))}
       </div>
+      <p style={{ fontSize: 12, fontWeight: 600, color: "rgba(26,26,46,0.4)", fontFamily: "'DM Sans', sans-serif", letterSpacing: "0.04em" }}>
+        Loading Creators Room…
+      </p>
     </div>
   );
 
