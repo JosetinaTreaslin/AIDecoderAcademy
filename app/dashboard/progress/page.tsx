@@ -10,12 +10,12 @@ import { getArena } from "@/lib/arenas";
 import type { Creation, Project, OutputType, Profile } from "@/types";
 
 const TYPE_META: Record<OutputType, { label: string; icon: string; color: string }> = {
-  text:   { label: "Text",   icon: "T",   color: "border-white/[0.12] bg-white/[0.08] text-[#00D4FF]"  },
-  json:   { label: "JSON",   icon: "{}",  color: "border-white/[0.12] bg-white/[0.08] text-[#FF6B2B]"  },
-  image:  { label: "Image",  icon: "Img", color: "border-[#00D4FF]/35 bg-[#00D4FF]/12 text-[#7AEFFF]"  },
-  audio:  { label: "Audio",  icon: "♪",   color: "border-[#FF2D78]/35 bg-[#FF2D78]/12 text-[#FF8FB8]"  },
-  slides: { label: "Slides", icon: "▦",   color: "border-[#7C3AED]/40 bg-[#7C3AED]/18 text-[#C4B5FD]"  },
-  video:  { label: "Video",  icon: "▶",   color: "border-white/[0.1] bg-white/[0.05] text-white/40"    },
+  text:   { label: "Text",   icon: "T",   color: "border-blue-200 bg-blue-50 text-blue-600"       },
+  json:   { label: "JSON",   icon: "{}",  color: "border-orange-200 bg-orange-50 text-orange-600" },
+  image:  { label: "Image",  icon: "Img", color: "border-cyan-200 bg-cyan-50 text-cyan-600"       },
+  audio:  { label: "Audio",  icon: "♪",   color: "border-pink-200 bg-pink-50 text-pink-600"       },
+  slides: { label: "Slides", icon: "▦",   color: "border-purple-200 bg-purple-50 text-purple-600" },
+  video:  { label: "Video",  icon: "▶",   color: "border-gray-200 bg-gray-50 text-gray-500"       },
 };
 
 export default function ProgressPage() {
@@ -126,30 +126,31 @@ export default function ProgressPage() {
   ];
 
   return (
-    <div className="relative flex min-h-0 flex-1 text-white" style={{ height: "100dvh", minHeight: 0 }}>
+    <div className="relative flex min-h-0 flex-1" style={{ height: "100dvh", minHeight: 0, background: "linear-gradient(145deg, #F3F0FF 0%, #EDE9FE 35%, #F8F6FF 65%, #EEF2FF 100%)" }}>
 
       {/* ── Left sidebar ── */}
       <aside
         className="relative z-10 hidden md:flex w-56 border-r flex-col py-5 flex-shrink-0"
         style={{
-          background:   "rgba(8,8,15,0.55)",
+          background:     "rgba(255,255,255,0.85)",
           backdropFilter: "blur(24px)",
-          borderColor:  "rgba(255,255,255,0.07)",
+          borderColor:    "rgba(0,0,0,0.07)",
         }}
       >
         <div className="px-4 mb-5">
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Library</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(26,26,46,0.4)" }}>Library</p>
           <nav className="flex flex-col gap-1">
             {navItems.map(item => (
               <button key={item.id} onClick={() => setActiveFilter(item.id)}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-display font-bold transition-all text-left",
-                  activeFilter === item.id ? "text-[#08080F]" : "text-white/40 hover:text-white hover:bg-white/[0.06]"
-                )}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-display font-bold transition-all text-left"
                 style={activeFilter === item.id ? {
                   background: arena.accent,
-                  boxShadow:  `0 0 16px ${arena.accentGlow}`,
-                } : {}}>
+                  color: "#fff",
+                  boxShadow: `0 0 14px ${arena.accentGlow}`,
+                } : { color: "rgba(26,26,46,0.5)" }}
+                onMouseEnter={e => { if (activeFilter !== item.id) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.05)"; }}
+                onMouseLeave={e => { if (activeFilter !== item.id) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              >
                 {item.icon} {item.label}
               </button>
             ))}
@@ -158,9 +159,10 @@ export default function ProgressPage() {
 
         <div className="px-4 flex-1 overflow-y-auto">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">My Projects</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgba(26,26,46,0.4)" }}>My Projects</p>
             <button onClick={() => setAddingProject(true)}
-              className="w-5 h-5 rounded flex items-center justify-center text-white/30 hover:text-white transition-all">
+              className="w-5 h-5 rounded flex items-center justify-center transition-all"
+              style={{ color: "rgba(26,26,46,0.4)" }}>
               <Plus size={12}/>
             </button>
           </div>
@@ -174,36 +176,36 @@ export default function ProgressPage() {
               }}
               onBlur={createProject}
               placeholder="Project name…"
-              className="w-full px-3 py-1.5 rounded-lg text-xs focus:outline-none mb-2 bg-white/[0.06] border border-white/10 text-white placeholder:text-white/25"
-              style={{ borderColor: arena.accent + "60" }}
+              className="w-full px-3 py-1.5 rounded-lg text-xs focus:outline-none mb-2"
+              style={{ background: "rgba(0,0,0,0.04)", border: `1px solid ${arena.accent}50`, color: "#1a1a2e" }}
             />
           )}
 
           <div className="flex flex-col gap-1">
-            {projects.map((p, pi) => (
+            {projects.map((p) => (
               <button key={p.id} onClick={() => setActiveFilter(`project:${p.id}`)}
-                className={cn(
-                  "flex items-center justify-between px-3 py-2 rounded-xl text-sm font-display font-bold transition-all",
-                  activeFilter === `project:${p.id}` ? "text-[#08080F]" : "text-white/40 hover:text-white hover:bg-white/[0.06]"
-                )}
+                className="flex items-center justify-between px-3 py-2 rounded-xl text-sm font-display font-bold transition-all"
                 style={activeFilter === `project:${p.id}` ? {
-                  background: arena.accent,
-                  boxShadow:  `0 0 14px ${arena.accentGlow}`,
-                } : {}}>
+                  background: arena.accent, color: "#fff",
+                  boxShadow: `0 0 12px ${arena.accentGlow}`,
+                } : { color: "rgba(26,26,46,0.5)" }}
+                onMouseEnter={e => { if (activeFilter !== `project:${p.id}`) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.05)"; }}
+                onMouseLeave={e => { if (activeFilter !== `project:${p.id}`) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              >
                 <span className="flex items-center gap-2 truncate">
                   <Folder size={13} className="flex-shrink-0"/>
                   <span className="truncate">{p.name}</span>
                 </span>
-                <span className={cn(
-                  "text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ml-1",
-                  activeFilter === `project:${p.id}` ? "bg-black/20 text-[#08080F]" : "bg-white/10 text-white/40"
-                )}>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ml-1"
+                  style={activeFilter === `project:${p.id}`
+                    ? { background: "rgba(255,255,255,0.25)", color: "#fff" }
+                    : { background: "rgba(0,0,0,0.08)", color: "rgba(26,26,46,0.45)" }}>
                   {p.creation_count ?? 0}
                 </span>
               </button>
             ))}
             {projects.length === 0 && !addingProject && (
-              <p className="text-xs text-white/25 px-1 py-1">No projects yet</p>
+              <p className="text-xs px-1 py-1" style={{ color: "rgba(26,26,46,0.3)" }}>No projects yet</p>
             )}
           </div>
         </div>
@@ -213,31 +215,30 @@ export default function ProgressPage() {
       <div className="relative z-10 flex-1 flex flex-col min-w-0">
 
         {/* Top bar */}
-        <div
-          className="border-b px-6 py-3 flex items-center gap-3 flex-shrink-0"
-          style={{
-            background:    "rgba(8,8,15,0.50)",
-            backdropFilter: "blur(20px)",
-            borderColor:   "rgba(255,255,255,0.07)",
-          }}
-        >
+        <div className="border-b px-6 py-3 flex items-center gap-3 flex-shrink-0"
+          style={{ background: "rgba(255,255,255,0.80)", backdropFilter: "blur(20px)", borderColor: "rgba(0,0,0,0.07)" }}>
           <div className="relative max-w-xs w-full">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"/>
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "rgba(26,26,46,0.35)" }}/>
             <input value={search} onChange={e => handleSearch(e.target.value)}
               placeholder="Search your library..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none bg-white/[0.06] border border-white/[0.09] text-white placeholder:text-white/25 transition-all"
-              style={{ borderColor: search ? arena.accent + "60" : undefined }}
+              className="w-full pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none transition-all"
+              style={{
+                background: "rgba(0,0,0,0.04)", border: `1px solid ${search ? arena.accent + "60" : "rgba(0,0,0,0.10)"}`,
+                color: "#1a1a2e",
+              }}
             />
           </div>
 
           <button onClick={() => setAddingProject(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-display font-bold text-sm border border-white/[0.09] text-white/50 hover:text-white hover:bg-white/[0.06] transition-all flex-shrink-0">
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-display font-bold text-sm transition-all flex-shrink-0"
+            style={{ border: "1px solid rgba(0,0,0,0.10)", color: "rgba(26,26,46,0.55)", background: "rgba(0,0,0,0.03)" }}>
             <Plus size={14}/> New Project
           </button>
 
           <div className="ml-auto">
             <select value={sort} onChange={e => setSort(e.target.value as "recent" | "oldest")}
-              className="text-xs font-display font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer border border-white/[0.09] bg-white/[0.06] text-white/60">
+              className="text-xs font-display font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer"
+              style={{ border: "1px solid rgba(0,0,0,0.10)", background: "rgba(0,0,0,0.03)", color: "rgba(26,26,46,0.6)" }}>
               <option value="recent">Recent First</option>
               <option value="oldest">Oldest First</option>
             </select>
@@ -246,8 +247,8 @@ export default function ProgressPage() {
 
         {/* Heading */}
         <div className="px-6 pt-5 pb-3 flex-shrink-0">
-          <h1 className="font-display font-black text-2xl text-white">My Creations</h1>
-          <p className="text-sm text-white/40 mt-0.5">
+          <h1 className="font-display font-black text-2xl" style={{ color: "#1a1a2e" }}>My Creations</h1>
+          <p className="text-sm mt-0.5" style={{ color: "rgba(26,26,46,0.45)" }}>
             {loading ? "Loading…" : `${creations.length} creation${creations.length !== 1 ? "s" : ""} in your library`}
           </p>
         </div>
@@ -257,23 +258,19 @@ export default function ProgressPage() {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1,2,3,4,5,6].map(i => (
-                <div key={i} className="rounded-2xl border border-white/[0.06] h-52 animate-pulse"
-                  style={{ background: "rgba(255,255,255,0.03)" }}/>
+                <div key={i} className="rounded-2xl h-52 animate-pulse"
+                  style={{ background: "rgba(255,255,255,0.6)", border: "1px solid rgba(0,0,0,0.07)" }}/>
               ))}
             </div>
           ) : creations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="text-6xl mb-4 animate-float">🎨</div>
-              <h3 className="font-display font-black text-lg text-white mb-1">Nothing here yet!</h3>
-              <p className="text-white/45 text-sm max-w-sm">Save AI responses from the playground to build your library.</p>
+              <h3 className="font-display font-black text-lg mb-1" style={{ color: "#1a1a2e" }}>Nothing here yet!</h3>
+              <p className="text-sm max-w-sm" style={{ color: "rgba(26,26,46,0.5)" }}>Save AI responses from the playground to build your library.</p>
               <Link href="/dashboard/playground"
                 className="mt-6 inline-flex items-center justify-center font-display font-extrabold text-sm px-6 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]"
-                style={{
-                  background: arena.accent,
-                  color: "#08080F",
-                  boxShadow: `0 0 28px ${arena.accentGlow}`,
-                }}>
-                Open Playground
+                style={{ background: arena.accent, color: "#fff", boxShadow: `0 0 24px ${arena.accentGlow}` }}>
+                Open Creators Room
               </Link>
             </div>
           ) : (
@@ -290,10 +287,8 @@ export default function ProgressPage() {
           )}
         </div>
 
-        <div
-          className="text-center py-3 text-xs text-white/20 border-t"
-          style={{ background: "rgba(8,8,15,0.50)", borderColor: "rgba(255,255,255,0.06)" }}
-        >
+        <div className="text-center py-3 text-xs border-t"
+          style={{ background: "rgba(255,255,255,0.70)", borderColor: "rgba(0,0,0,0.07)", color: "rgba(26,26,46,0.35)" }}>
           Keep creating! Every interaction is a step toward mastering AI.
         </div>
       </div>
@@ -332,7 +327,7 @@ function CreationPreview({ creation }: { creation: Creation }) {
     } catch { /* fall through */ }
   }
   return (
-    <p className="text-xs text-white/35 leading-relaxed line-clamp-3 p-1">
+    <p className="text-xs leading-relaxed line-clamp-3 p-1" style={{ color: "rgba(26,26,46,0.45)" }}>
       {truncate(content.replace(/[#*`]/g, ""), 140)}
     </p>
   );
@@ -371,30 +366,29 @@ function CreationCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.3) }}
-      className={cn(
-        "rounded-2xl border border-white/[0.08] backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group relative",
-        creation.output_type === "image"
-          ? "hover:-translate-y-0.5 hover:border-[#00D4FF]/45 hover:shadow-[0_16px_48px_-12px_rgba(0,212,255,0.28)]"
-          : creation.output_type === "audio"
-            ? "hover:-translate-y-0.5 hover:border-[#FF2D78]/40 hover:shadow-[0_16px_48px_-12px_rgba(255,45,120,0.22)]"
-            : creation.output_type === "slides"
-              ? "hover:-translate-y-0.5 hover:border-[#7C3AED]/50 hover:shadow-[0_16px_48px_-12px_rgba(124,58,237,0.28)]"
-              : "hover:-translate-y-0.5 hover:border-[rgba(124,58,237,0.35)] hover:shadow-[0_12px_40px_-12px_rgba(124,58,237,0.15)]"
-      )}
-      style={{ background: "rgba(255,255,255,0.04)" }}
+      className="rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group relative hover:-translate-y-0.5"
+      style={{
+        background:     "rgba(255,255,255,0.92)",
+        border:         "1px solid rgba(0,0,0,0.07)",
+        backdropFilter: "blur(16px)",
+        boxShadow:      "0 2px 12px rgba(0,0,0,0.07)",
+      }}
+      onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px rgba(0,0,0,0.12)"}
+      onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.07)"}
     >
       {/* Preview area */}
-      <div className="min-h-36 border-b border-white/[0.08] p-3 flex flex-col gap-2 relative"
-        style={{ background: "rgba(8,8,15,0.45)" }}>
+      <div className="min-h-36 border-b p-3 flex flex-col gap-2 relative rounded-t-2xl overflow-hidden"
+        style={{ background: "rgba(0,0,0,0.02)", borderColor: "rgba(0,0,0,0.07)" }}>
         {/* Type badge + menu */}
-        <div className="flex items-center justify-between p-3 flex-shrink-0">
-          <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border backdrop-blur-md", meta.color)}>
+        <div className="flex items-center justify-between p-1 flex-shrink-0">
+          <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border", meta.color)}>
             <span className="font-mono">{meta.icon}</span> {meta.label}
           </span>
 
           <div className="relative" ref={menuRef}>
             <button onClick={() => { setMenuOpen(!menuOpen); setMoveOpen(false); }}
-              className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/[0.08] bg-black/30 text-white/50 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-md">
+              className="w-7 h-7 flex items-center justify-center rounded-lg transition-all opacity-0 group-hover:opacity-100"
+              style={{ border: "1px solid rgba(0,0,0,0.10)", background: "rgba(0,0,0,0.04)", color: "rgba(26,26,46,0.5)" }}>
               <MoreHorizontal size={14}/>
             </button>
 
@@ -405,19 +399,22 @@ function CreationCard({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.92, y: -4 }}
                   transition={{ duration: 0.12 }}
-                  className="absolute right-0 top-full mt-1 bg-[#161625]/95 rounded-xl shadow-[0_16px_48px_-8px_rgba(0,0,0,0.6)] border border-white/[0.1] py-1 z-50 w-48 backdrop-blur-xl">
+                  className="absolute right-0 top-full mt-1 rounded-xl py-1 z-50 w-48"
+                  style={{ background: "rgba(255,255,255,0.97)", border: "1px solid rgba(0,0,0,0.10)", boxShadow: "0 8px 32px rgba(0,0,0,0.14)", backdropFilter: "blur(16px)" }}>
                   <button onClick={() => { navigator.clipboard.writeText(creation.content); setMenuOpen(false); }}
-                    className="w-full text-left px-3 py-2 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors">
+                    className="w-full text-left px-3 py-2 text-xs font-semibold transition-colors hover:bg-black/[0.04]"
+                    style={{ color: "rgba(26,26,46,0.65)" }}>
                     Copy content
                   </button>
                   <button onClick={() => setMoveOpen(true)}
-                    className="w-full text-left px-3 py-2 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors flex items-center justify-between">
+                    className="w-full text-left px-3 py-2 text-xs font-semibold transition-colors hover:bg-black/[0.04] flex items-center justify-between"
+                    style={{ color: "rgba(26,26,46,0.65)" }}>
                     <span className="flex items-center gap-2"><Folder size={12}/> Move to project</span>
-                    <span className="text-white/20">›</span>
+                    <span style={{ color: "rgba(26,26,46,0.25)" }}>›</span>
                   </button>
-                  <div className="border-t border-white/[0.07] mt-1 pt-1">
+                  <div className="border-t mt-1 pt-1" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
                     <button onClick={() => { onDelete(); setMenuOpen(false); }}
-                      className="w-full text-left px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors">
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors">
                       Delete
                     </button>
                   </div>
@@ -430,27 +427,30 @@ function CreationCard({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.92, y: -4 }}
                   transition={{ duration: 0.12 }}
-                  className="absolute right-0 top-full mt-1 bg-[#161625]/95 rounded-xl shadow-[0_16px_48px_-8px_rgba(0,0,0,0.6)] border border-white/[0.1] z-50 w-56 backdrop-blur-xl">
-                  <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/[0.07]">
-                    <button onClick={() => setMoveOpen(false)} className="text-white/30 hover:text-white">
+                  className="absolute right-0 top-full mt-1 rounded-xl z-50 w-56"
+                  style={{ background: "rgba(255,255,255,0.97)", border: "1px solid rgba(0,0,0,0.10)", boxShadow: "0 8px 32px rgba(0,0,0,0.14)", backdropFilter: "blur(16px)" }}>
+                  <div className="flex items-center gap-2 px-3 py-2.5 border-b" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
+                    <button onClick={() => setMoveOpen(false)} style={{ color: "rgba(26,26,46,0.35)" }}>
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                         <path d="M8 2L4 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                       </svg>
                     </button>
-                    <span className="text-xs font-bold text-white/60">Move to project</span>
+                    <span className="text-xs font-bold" style={{ color: "rgba(26,26,46,0.6)" }}>Move to project</span>
                   </div>
-                  <div className="px-3 py-2 border-b border-white/[0.07]">
+                  <div className="px-3 py-2 border-b" style={{ borderColor: "rgba(0,0,0,0.07)" }}>
                     <div className="relative">
-                      <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30"/>
+                      <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2" style={{ color: "rgba(26,26,46,0.35)" }}/>
                       <input autoFocus value={projSearch} onChange={e => setProjSearch(e.target.value)}
                         placeholder="Search projects..."
-                        className="w-full pl-6 pr-2 py-1.5 text-xs rounded-lg border border-white/10 bg-white/[0.06] text-white placeholder:text-white/25 focus:outline-none"/>
+                        className="w-full pl-6 pr-2 py-1.5 text-xs rounded-lg focus:outline-none"
+                        style={{ border: "1px solid rgba(0,0,0,0.10)", background: "rgba(0,0,0,0.03)", color: "#1a1a2e" }}/>
                     </div>
                   </div>
                   <div className="py-1 max-h-40 overflow-y-auto">
                     <button onClick={() => { onMoveToProject(""); setMenuOpen(false); setMoveOpen(false); setProjSearch(""); }}
-                      className="w-full text-left px-3 py-2 text-xs font-semibold text-white/50 hover:text-white hover:bg-white/[0.06] transition-colors flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-md bg-white/10 flex items-center justify-center">
+                      className="w-full text-left px-3 py-2 text-xs font-semibold transition-colors hover:bg-black/[0.04] flex items-center gap-2"
+                      style={{ color: "rgba(26,26,46,0.55)" }}>
+                      <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ background: "rgba(0,0,0,0.07)" }}>
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                           <path d="M5 2v6M2 5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                         </svg>
@@ -459,15 +459,13 @@ function CreationCard({
                     </button>
                     {filteredProjects.map(p => (
                       <button key={p.id} onClick={() => { onMoveToProject(p.id); setMenuOpen(false); setMoveOpen(false); setProjSearch(""); }}
-                        className="w-full text-left px-3 py-2 text-xs font-semibold text-white/50 hover:text-white hover:bg-white/[0.06] transition-colors flex items-center gap-2">
-                        <div className={cn(
-                          "w-5 h-5 rounded-md flex items-center justify-center",
-                          ["bg-[#7C3AED]/25","bg-[#00D4FF]/15","bg-[#FF6B2B]/20","bg-[#00FF94]/12","bg-[#FF2D78]/15"][projects.indexOf(p) % 5]
-                        )}>
-                          <Folder size={10} className={["text-[#C4B5FD]","text-[#7AEFFF]","text-[#FFB38A]","text-[#7BFFC4]","text-[#FF8FB8]"][projects.indexOf(p) % 5]}/>
+                        className="w-full text-left px-3 py-2 text-xs font-semibold transition-colors hover:bg-black/[0.04] flex items-center gap-2"
+                        style={{ color: "rgba(26,26,46,0.55)" }}>
+                        <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ background: "rgba(124,58,237,0.1)" }}>
+                          <Folder size={10} style={{ color: "#7C3AED" }}/>
                         </div>
                         {p.name}
-                        <span className="ml-auto text-[10px] text-white/30">{p.creation_count ?? 0}</span>
+                        <span className="ml-auto text-[10px]" style={{ color: "rgba(26,26,46,0.3)" }}>{p.creation_count ?? 0}</span>
                       </button>
                     ))}
                   </div>
@@ -483,19 +481,19 @@ function CreationCard({
       {/* Footer */}
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-display font-bold text-sm text-white leading-snug truncate">{creation.title}</h3>
+          <h3 className="font-display font-bold text-sm leading-snug truncate" style={{ color: "#1a1a2e" }}>{creation.title}</h3>
           <button onClick={onToggleFav}
             className={cn("flex-shrink-0 transition-all mt-0.5",
-              creation.is_favourite ? "text-red-400" : "text-white/20 hover:text-red-400")}>
+              creation.is_favourite ? "text-red-400" : "hover:text-red-400")}
+            style={{ color: creation.is_favourite ? undefined : "rgba(26,26,46,0.2)" }}>
             <Heart size={14} fill={creation.is_favourite ? "currentColor" : "none"}/>
           </button>
         </div>
-        <p className="text-[10px] text-white/30 mb-2">{formatDate(creation.created_at)}</p>
+        <p className="text-[10px] mb-2" style={{ color: "rgba(26,26,46,0.35)" }}>{formatDate(creation.created_at)}</p>
         {creation.prompt_used && (
-          <div className="rounded-lg p-2 border border-white/[0.06]"
-            style={{ background: "rgba(255,255,255,0.02)" }}>
-            <p className="text-[10px] font-bold text-white/25 uppercase tracking-wide mb-0.5">Prompt</p>
-            <p className="text-[11px] text-white/35 leading-relaxed line-clamp-2">
+          <div className="rounded-lg p-2" style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.07)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: "rgba(26,26,46,0.3)" }}>Prompt</p>
+            <p className="text-[11px] leading-relaxed line-clamp-2" style={{ color: "rgba(26,26,46,0.45)" }}>
               {truncate(creation.prompt_used, 80)}
             </p>
           </div>
