@@ -16,9 +16,8 @@ const OUTPUT_META: Record<string, { glowColor: string; glowRgb: string }> = {
   json:   { glowColor: "#00ff64", glowRgb: "0,255,100"   },
 };
 
-// ── Left-shelf hotspot zones — transparent click areas over the type labels ──
-// Positioned to match the AUDIO/IMAGE/VIDEO/SCRIPT/TEXT/SLIDE lit zones
-// in empty_room.png (left bookcase, 2 cols × 3 rows)
+// ── Left-panel hotspot zones — visible for calibration, will be made invisible after ──
+// Positioned over the hexagonal node cluster on the left wall of the new room background
 const SHELF_HOTSPOTS: {
   id: OutputType; label: string;
   glowColor: string; glowRgb: string;
@@ -30,6 +29,21 @@ const SHELF_HOTSPOTS: {
   { id:"json",   label:"SCRIPT", glowColor:"#00ff64", glowRgb:"0,255,100",   top:"28%", height:"17%", left:"11%",  width:"9.5%" },
   { id:"text",   label:"TEXT",   glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"48%", height:"17%", left:"0.5%", width:"9.5%" },
   { id:"slides", label:"SLIDE",  glowColor:"#ffb400", glowRgb:"255,180,0",   top:"48%", height:"17%", left:"11%",  width:"9.5%" },
+];
+
+// ── Bottom tray hotspot zones — visible for calibration, will be made invisible after ──
+// Positioned over the 6 tool icons in the bottom tray of the new room background
+const BOTTOM_TRAY_HOTSPOTS: {
+  id: OutputType; label: string;
+  glowColor: string; glowRgb: string;
+  top: string; height: string; left: string; width: string;
+}[] = [
+  { id:"audio",  label:"Headphones", glowColor:"#00aaff", glowRgb:"0,170,255",   top:"79%", height:"14%", left:"47%", width:"7%" },
+  { id:"text",   label:"Book",       glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"79%", height:"14%", left:"55%", width:"7%" },
+  { id:"image",  label:"Camera",     glowColor:"#ff4488", glowRgb:"255,68,136",  top:"79%", height:"14%", left:"63%", width:"7%" },
+  { id:"json",   label:"JS File",    glowColor:"#00ff64", glowRgb:"0,255,100",   top:"79%", height:"14%", left:"71%", width:"7%" },
+  { id:"video",  label:"Clapper",    glowColor:"#ff7800", glowRgb:"255,120,0",   top:"79%", height:"14%", left:"79%", width:"7%" },
+  { id:"slides", label:"Slide Deck", glowColor:"#ffb400", glowRgb:"255,180,0",   top:"79%", height:"14%", left:"87%", width:"7%" },
 ];
 
 // ── Center shelf rows — empty shelves in the right column of the bookcase ────
@@ -765,9 +779,7 @@ export function CreationsRoom({
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none" }}
       />
 
-      {/* ── Left shelf hotspot zones (desktop only) ──────────────────────── */}
-      {/*   Transparent buttons overlaid on the AUDIO/IMAGE/VIDEO/SCRIPT/    */}
-      {/*   TEXT/SLIDE lit areas in the bookcase background                   */}
+      {/* ── Left panel hotspot zones (desktop only) — VISIBLE FOR CALIBRATION ── */}
       <div className="hidden lg:block" style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none" }}>
         {SHELF_HOTSPOTS.map(hz => (
           <button
@@ -777,13 +789,41 @@ export function CreationsRoom({
             style={{
               position: "absolute",
               top: hz.top, left: hz.left, width: hz.width, height: hz.height,
-              background: "transparent",
-              border: "none",
+              background: `rgba(${hz.glowRgb},0.25)`,
+              border: `2px solid rgba(${hz.glowRgb},0.85)`,
               borderRadius: 8,
               cursor: "pointer",
               pointerEvents: "auto",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: hz.glowColor, fontSize: 9, fontWeight: 700, fontFamily: "monospace",
             }}
-          />
+          >
+            {hz.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Bottom tray hotspot zones (desktop only) — VISIBLE FOR CALIBRATION ── */}
+      <div className="hidden lg:block" style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none" }}>
+        {BOTTOM_TRAY_HOTSPOTS.map(hz => (
+          <button
+            key={`tray-${hz.id}`}
+            onClick={() => setSelected(hz.id)}
+            title={hz.label}
+            style={{
+              position: "absolute",
+              top: hz.top, left: hz.left, width: hz.width, height: hz.height,
+              background: `rgba(${hz.glowRgb},0.28)`,
+              border: `2px solid rgba(${hz.glowRgb},0.9)`,
+              borderRadius: 8,
+              cursor: "pointer",
+              pointerEvents: "auto",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: hz.glowColor, fontSize: 8, fontWeight: 700, fontFamily: "monospace",
+            }}
+          >
+            {hz.label}
+          </button>
         ))}
       </div>
 
@@ -796,7 +836,7 @@ export function CreationsRoom({
         return (
           <div
             className="hidden lg:block"
-            style={{ position: "absolute", left: "22%", top: 0, width: "16%", height: "92%", zIndex: 13 }}
+            style={{ position: "absolute", left: "14%", top: "4%", width: "17%", height: "72%", zIndex: 13 }}
           >
             {CENTER_SHELF_ROWS.map((row, rowIdx) => {
               const pair = filtered.slice(rowIdx * 2, rowIdx * 2 + 2);
@@ -877,60 +917,6 @@ export function CreationsRoom({
         );
       })()}
 
-      {/* ── Brush stand — absolutely pinned to visible floor gap (left of whiteboard) ── */}
-      <div className="hidden lg:block" style={{
-        position: "absolute", bottom: "5%", left: "20%",
-        width: "25vw", zIndex: 10, pointerEvents: "none",
-      }}>
-        <img src="/shelf/brush_stand.png" alt="" aria-hidden draggable={false}
-          style={{ width: "100%", height: "auto", objectFit: "contain", display: "block", filter: "brightness(0.85)" }}
-        />
-      </div>
-
-      {/* ── Spilled paint — absolutely pinned next to brush stand ── */}
-      <div className="hidden lg:block" style={{
-        position: "absolute", bottom: "7%", left: "15%",
-        width: "30vw", zIndex: 10, pointerEvents: "none",
-      }}>
-        <img src="/shelf/spilled_paint.png" alt="" aria-hidden draggable={false}
-          style={{ width: "100%", height: "auto", objectFit: "contain", display: "block", filter: "brightness(0.85)" }}
-        />
-      </div>
-
-      {/* ── Interactive floor objects — flex row below the whiteboard ── */}
-      <div className="hidden lg:flex"
-        style={{
-          position: "absolute", bottom: "7%", left: "35%", right: "2%",
-          height: "30%", alignItems: "flex-end", justifyContent: "space-evenly",
-          zIndex: 10, paddingBottom: "0.5%",
-        }}
-      >
-        {FLOOR_OBJECTS.map(obj => {
-          const isActive = selected === obj.id;
-          // Slides monitor sits slightly high due to image padding — nudge it down
-          const baseTransform = obj.key === "slide" ? "translateY(30%)" : "scale(1)";
-          return (
-            <button key={obj.key} onClick={() => setSelected(obj.id)} title={obj.label}
-              style={{
-                flex: "0 0 auto", width: obj.vw,
-                background: "none", border: "none", padding: 0, cursor: "pointer",
-                transition: "transform 0.25s ease",
-                transform: isActive ? `scale(1.14) translateY(-5%)` : baseTransform,
-              }}>
-              <img src={obj.src} alt={obj.label} draggable={false}
-                style={{
-                  width: "100%", height: "auto", objectFit: "contain",
-                  mixBlendMode: obj.blend, display: "block",
-                  filter: isActive
-                    ? `brightness(1.5) drop-shadow(0 0 10px rgba(${obj.glowRgb},0.9)) drop-shadow(0 0 24px rgba(${obj.glowRgb},0.6))`
-                    : "brightness(0.7) saturate(0.8)",
-                  transition: "filter 0.3s ease",
-                }}
-              />
-            </button>
-          );
-        })}
-      </div>
 
       {/* ── Trash bin — drop a shelf card here to delete the creation ────── */}
       <div
@@ -947,8 +933,8 @@ export function CreationsRoom({
         }}
         style={{
           position: "absolute",
-          bottom: "5%", left: "2.5%",
-          width: "23vw", zIndex: 15,
+          bottom: "2%", left: "14%",
+          width: "14vw", zIndex: 15,
           alignItems: "flex-end", justifyContent: "center",
           cursor: "copy",
           transition: "transform 0.2s ease",
@@ -992,11 +978,11 @@ export function CreationsRoom({
         )}
       </div>
 
-      {/* ── Desktop chat panel — overlaid on the whiteboard ─────────────── */}
+      {/* ── Desktop chat panel — overlaid on the large blue screen ───────── */}
       <div className="hidden lg:flex flex-col"
         style={{
           position: "absolute",
-          left: "42%", top: "10%", right: "2%", bottom: "24%",
+          left: "33%", top: "8%", right: "3%", bottom: "28%",
           zIndex: 20,
           background: "transparent",
         }}
