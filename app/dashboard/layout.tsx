@@ -122,14 +122,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Centre nav links */}
           <div className="flex-1 flex items-center justify-center gap-1">
             {([
-              { href: "/dashboard",          label: "Hub"           },
-              { href: "/dashboard/playground", label: "Playground"  },
-              { href: "/dashboard/progress",   label: "My Creations" },
-              { href: "/dashboard/profile",    label: "Creators Room" },
+              { href: "/dashboard/progress",   label: "My Creations"  },
+              { href: "/dashboard/playground", label: "Creators Room" },
             ] as const).map(({ href, label }) => {
-              const active = href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(href);
+              const active = pathname.startsWith(href);
               return (
                 <Link key={href} href={href}
                   className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
