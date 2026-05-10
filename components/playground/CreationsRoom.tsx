@@ -359,12 +359,20 @@ export function CreationsRoom({
       .catch(() => {});
   };
 
+  // Load once on mount — no polling.
   useEffect(() => {
     refreshCreations();
-    const interval = setInterval(refreshCreations, 5000);
-    return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Wrap onSave to refresh the shelf after a save completes.
+  const handleSave = onSave
+    ? (content: string, type: OutputType) => {
+        onSave(content, type);
+        // Refresh after 1.5s to give the DB write time to complete
+        setTimeout(refreshCreations, 1500);
+      }
+    : undefined;
 
   // Scroll both message containers (desktop + mobile) to the bottom after every update.
   // renderMessageList() is called twice in the JSX, so we need two separate refs.
@@ -559,7 +567,7 @@ export function CreationsRoom({
           key={msg.id} message={msg} avatarEmoji={profile.avatar_emoji}
           isStreaming={isStreaming && msg === messages[messages.length - 1]}
           arenaAccent={arenaAccent} arenaAccentGlow={arenaAccentGlow} arenaId={arenaId}
-          onSave={onSave}
+          onSave={handleSave}
         />
       ))}
       {isStreaming && (
@@ -813,13 +821,13 @@ export function CreationsRoom({
                 top: hz.top, left: hz.left, width: hz.width, height: hz.height,
                 background: "transparent",
                 border: "none",
-                borderRadius: 8,
+                borderRadius: 12,
                 cursor: "pointer",
                 pointerEvents: "auto",
                 display: "flex",
                 alignItems: "flex-end",
                 justifyContent: "center",
-                paddingBottom: "6%",
+                paddingBottom: "0%",
               }}
             >
               {/* Traffic light dot */}
@@ -993,7 +1001,7 @@ export function CreationsRoom({
       <div className="hidden lg:flex flex-col"
         style={{
           position: "absolute",
-          left: "33%", top: "8%", right: "3%", bottom: "28%",
+          left: "35%", top: "10.5%", right: "5%", bottom: "29%",
           zIndex: 20,
           background: "transparent",
         }}
