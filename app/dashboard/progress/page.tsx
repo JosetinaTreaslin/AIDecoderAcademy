@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MoreHorizontal, Search, Plus, Folder, Star, Grid, Flame, Trophy } from "lucide-react";
+import { Heart, MoreHorizontal, Search, Plus, Folder, Star, Grid } from "lucide-react";
 import Link from "next/link";
 import { cn, formatDate, truncate } from "@/lib/utils";
 import { AudioPlayer, type AudioData } from "@/components/playground/AudioPlayer";
@@ -9,7 +9,6 @@ import { SlideCarousel, type SlideData } from "@/components/playground/SlideCaro
 import { getArena } from "@/lib/arenas";
 import type { Creation, Project, OutputType, Profile } from "@/types";
 
-// Per-type accent colors for dark theme (Cursor's refined styling)
 const TYPE_META: Record<OutputType, { label: string; icon: string; color: string }> = {
   text:   { label: "Text",   icon: "T",   color: "border-white/[0.12] bg-white/[0.08] text-[#00D4FF]"  },
   json:   { label: "JSON",   icon: "{}",  color: "border-white/[0.12] bg-white/[0.08] text-[#FF6B2B]"  },
@@ -20,15 +19,15 @@ const TYPE_META: Record<OutputType, { label: string; icon: string; color: string
 };
 
 export default function ProgressPage() {
-  const [creations,     setCreations]     = useState<Creation[]>([]);
-  const [projects,      setProjects]      = useState<Project[]>([]);
-  const [activeFilter,  setActiveFilter]  = useState<string>("all");
-  const [search,        setSearch]        = useState("");
-  const [loading,       setLoading]       = useState(true);
-  const [sort,          setSort]          = useState<"recent" | "oldest">("recent");
+  const [creations,      setCreations]      = useState<Creation[]>([]);
+  const [projects,       setProjects]       = useState<Project[]>([]);
+  const [activeFilter,   setActiveFilter]   = useState<string>("all");
+  const [search,         setSearch]         = useState("");
+  const [loading,        setLoading]        = useState(true);
+  const [sort,           setSort]           = useState<"recent" | "oldest">("recent");
   const [newProjectName, setNewProjectName] = useState("");
-  const [addingProject, setAddingProject] = useState(false);
-  const [profile,       setProfile]       = useState<Profile | null>(null);
+  const [addingProject,  setAddingProject]  = useState(false);
+  const [profile,        setProfile]        = useState<Profile | null>(null);
 
   useEffect(() => {
     fetch("/api/profile").then(r => r.ok ? r.json() : { profile: null })
@@ -39,8 +38,8 @@ export default function ProgressPage() {
 
   const fetchCreations = useCallback((filter = activeFilter, q = search, s = sort) => {
     const params = new URLSearchParams();
-    if (filter === "unorganized")            params.set("project_id", "unorganized");
-    else if (filter.startsWith("project:"))  params.set("project_id", filter.replace("project:", ""));
+    if (filter === "unorganized")           params.set("project_id", "unorganized");
+    else if (filter.startsWith("project:")) params.set("project_id", filter.replace("project:", ""));
     else if (filter !== "all" && filter !== "favourites") params.set("output_type", filter);
     if (q) params.set("search", q);
 
@@ -127,10 +126,17 @@ export default function ProgressPage() {
   ];
 
   return (
-    <div className="relative flex min-h-0 flex-1 bg-transparent text-white" style={{ height: "100vh", minHeight: 0 }}>
+    <div className="relative flex min-h-0 flex-1 text-white" style={{ height: "100dvh", minHeight: 0 }}>
+
       {/* ── Left sidebar ── */}
-      <aside className="relative z-10 hidden md:flex w-56 border-r border-white/[0.07] flex-col py-5 flex-shrink-0"
-        style={{ background: "#0F0F1A" }}>
+      <aside
+        className="relative z-10 hidden md:flex w-56 border-r flex-col py-5 flex-shrink-0"
+        style={{
+          background:   "rgba(8,8,15,0.55)",
+          backdropFilter: "blur(24px)",
+          borderColor:  "rgba(255,255,255,0.07)",
+        }}
+      >
         <div className="px-4 mb-5">
           <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Library</p>
           <nav className="flex flex-col gap-1">
@@ -138,7 +144,7 @@ export default function ProgressPage() {
               <button key={item.id} onClick={() => setActiveFilter(item.id)}
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-display font-bold transition-all text-left",
-                  activeFilter === item.id ? "text-[#08080F]" : "text-white/40 hover:text-white hover:bg-white/[0.04]"
+                  activeFilter === item.id ? "text-[#08080F]" : "text-white/40 hover:text-white hover:bg-white/[0.06]"
                 )}
                 style={activeFilter === item.id ? {
                   background: arena.accent,
@@ -178,7 +184,7 @@ export default function ProgressPage() {
               <button key={p.id} onClick={() => setActiveFilter(`project:${p.id}`)}
                 className={cn(
                   "flex items-center justify-between px-3 py-2 rounded-xl text-sm font-display font-bold transition-all",
-                  activeFilter === `project:${p.id}` ? "text-[#08080F]" : "text-white/40 hover:text-white hover:bg-white/[0.04]"
+                  activeFilter === `project:${p.id}` ? "text-[#08080F]" : "text-white/40 hover:text-white hover:bg-white/[0.06]"
                 )}
                 style={activeFilter === `project:${p.id}` ? {
                   background: arena.accent,
@@ -206,50 +212,32 @@ export default function ProgressPage() {
       {/* ── Main content ── */}
       <div className="relative z-10 flex-1 flex flex-col min-w-0">
 
-        {profile && (
-          <div
-            className="flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-white/[0.06] px-6 py-2 text-xs"
-            style={{ background: "rgba(15,15,26,0.65)" }}>
-            <Link
-              href="/dashboard/playground"
-              className="flex items-center gap-1.5 font-display font-bold text-white/70 transition-colors hover:text-white">
-              <Flame size={14} className={(profile.streak_days ?? 0) >= 3 ? "text-orange-400" : "text-white/35"} />
-              <span>{profile.streak_days ?? 0} day streak</span>
-            </Link>
-            <span className="text-white/15" aria-hidden>
-              ·
-            </span>
-            <Link
-              href="/dashboard/profile"
-              className="flex items-center gap-1.5 font-display font-bold text-white/70 transition-colors hover:text-white">
-              <Trophy size={14} style={{ color: arena.accent }} />
-              <span>
-                Level {profile.level ?? 1} · view badges
-              </span>
-            </Link>
-          </div>
-        )}
-
         {/* Top bar */}
-        <div className="border-b border-white/[0.07] px-6 py-3 flex items-center gap-3 flex-shrink-0"
-          style={{ background: "rgba(15,15,26,0.8)", backdropFilter: "blur(20px)" }}>
+        <div
+          className="border-b px-6 py-3 flex items-center gap-3 flex-shrink-0"
+          style={{
+            background:    "rgba(8,8,15,0.50)",
+            backdropFilter: "blur(20px)",
+            borderColor:   "rgba(255,255,255,0.07)",
+          }}
+        >
           <div className="relative max-w-xs w-full">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"/>
             <input value={search} onChange={e => handleSearch(e.target.value)}
               placeholder="Search your library..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none bg-white/[0.06] border border-white/10 text-white placeholder:text-white/25 transition-all"
+              className="w-full pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none bg-white/[0.06] border border-white/[0.09] text-white placeholder:text-white/25 transition-all"
               style={{ borderColor: search ? arena.accent + "60" : undefined }}
             />
           </div>
 
           <button onClick={() => setAddingProject(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-display font-bold text-sm border border-white/10 text-white/50 hover:text-white hover:bg-white/[0.06] transition-all flex-shrink-0">
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-display font-bold text-sm border border-white/[0.09] text-white/50 hover:text-white hover:bg-white/[0.06] transition-all flex-shrink-0">
             <Plus size={14}/> New Project
           </button>
 
           <div className="ml-auto">
             <select value={sort} onChange={e => setSort(e.target.value as "recent" | "oldest")}
-              className="text-xs font-display font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer border border-white/10 bg-white/[0.06] text-white/60">
+              className="text-xs font-display font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer border border-white/[0.09] bg-white/[0.06] text-white/60">
               <option value="recent">Recent First</option>
               <option value="oldest">Oldest First</option>
             </select>
@@ -279,7 +267,12 @@ export default function ProgressPage() {
               <h3 className="font-display font-black text-lg text-white mb-1">Nothing here yet!</h3>
               <p className="text-white/45 text-sm max-w-sm">Save AI responses from the playground to build your library.</p>
               <Link href="/dashboard/playground"
-                className="mt-6 inline-flex items-center justify-center bg-[#C8FF00] text-[#08080F] font-display font-extrabold text-sm px-6 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_28px_rgba(200,255,0,0.4)] active:scale-[0.97]">
+                className="mt-6 inline-flex items-center justify-center font-display font-extrabold text-sm px-6 py-3 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]"
+                style={{
+                  background: arena.accent,
+                  color: "#08080F",
+                  boxShadow: `0 0 28px ${arena.accentGlow}`,
+                }}>
                 Open Playground
               </Link>
             </div>
@@ -297,8 +290,10 @@ export default function ProgressPage() {
           )}
         </div>
 
-        <div className="text-center py-3 text-xs text-white/20 border-t border-white/[0.06]"
-          style={{ background: "rgba(15,15,26,0.8)" }}>
+        <div
+          className="text-center py-3 text-xs text-white/20 border-t"
+          style={{ background: "rgba(8,8,15,0.50)", borderColor: "rgba(255,255,255,0.06)" }}
+        >
           Keep creating! Every interaction is a step toward mastering AI.
         </div>
       </div>
@@ -377,7 +372,7 @@ function CreationCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.3) }}
       className={cn(
-        "bg-white/[0.04] rounded-2xl border border-white/[0.08] backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group relative",
+        "rounded-2xl border border-white/[0.08] backdrop-blur-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group relative",
         creation.output_type === "image"
           ? "hover:-translate-y-0.5 hover:border-[#00D4FF]/45 hover:shadow-[0_16px_48px_-12px_rgba(0,212,255,0.28)]"
           : creation.output_type === "audio"
@@ -386,9 +381,11 @@ function CreationCard({
               ? "hover:-translate-y-0.5 hover:border-[#7C3AED]/50 hover:shadow-[0_16px_48px_-12px_rgba(124,58,237,0.28)]"
               : "hover:-translate-y-0.5 hover:border-[rgba(124,58,237,0.35)] hover:shadow-[0_12px_40px_-12px_rgba(124,58,237,0.15)]"
       )}
+      style={{ background: "rgba(255,255,255,0.04)" }}
     >
       {/* Preview area */}
-      <div className="min-h-36 bg-[#12121C] border-b border-white/[0.08] p-3 flex flex-col gap-2 relative">
+      <div className="min-h-36 border-b border-white/[0.08] p-3 flex flex-col gap-2 relative"
+        style={{ background: "rgba(8,8,15,0.45)" }}>
         {/* Type badge + menu */}
         <div className="flex items-center justify-between p-3 flex-shrink-0">
           <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border backdrop-blur-md", meta.color)}>
