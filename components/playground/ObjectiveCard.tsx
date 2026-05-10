@@ -47,33 +47,30 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
 
   return (
     <>
-      {/* Keyframe styles injected once */}
       <style>{`
-        @keyframes obj-pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
-        @keyframes obj-scan  { 0%{background-position:0 -100%} 100%{background-position:0 200%} }
+        @keyframes obj-pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
         .obj-dot { animation: obj-pulse 2s ease-in-out infinite; }
       `}</style>
 
       <div style={{
-        flexShrink: 0, marginBottom: 8, borderRadius: expanded ? 12 : 40,
-        background: expanded
-          ? "linear-gradient(160deg, rgba(5,3,22,0.97) 0%, rgba(10,6,32,0.97) 100%)"
-          : `rgba(${aRgb},0.08)`,
-        border: `1px solid rgba(${aRgb},${expanded ? "0.55" : "0.35"})`,
+        flexShrink: 0, marginBottom: 8,
+        borderRadius: expanded ? 14 : 40,
+        background: "rgba(255,255,255,0.92)",
+        border: `1px solid rgba(${aRgb},${expanded ? "0.35" : "0.25"})`,
         boxShadow: expanded
-          ? `0 0 0 1px rgba(${aRgb},0.12), 0 8px 40px rgba(${aRgb},0.18), inset 0 1px 0 rgba(255,255,255,0.04)`
-          : `0 0 14px rgba(${aRgb},0.14)`,
+          ? `0 4px 24px rgba(${aRgb},0.12), 0 1px 0 rgba(255,255,255,0.9) inset`
+          : `0 2px 12px rgba(${aRgb},0.10)`,
         backdropFilter: "blur(20px)",
         overflow: "hidden",
         transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
       }}>
 
-        {/* ── Header ───────────────────────────────────────────────── */}
+        {/* ── Header ── */}
         <button onClick={() => setExpanded(v => !v)} style={{
           width: "100%", display: "flex", alignItems: "center", gap: 8,
-          padding: expanded ? "11px 14px" : "8px 14px",
+          padding: expanded ? "10px 14px" : "7px 14px",
           background: "none", border: "none", cursor: "pointer",
-          borderBottom: expanded ? `1px solid rgba(${aRgb},0.18)` : "none",
+          borderBottom: expanded ? "1px solid rgba(0,0,0,0.07)" : "none",
         }}>
 
           {/* Pulsing dot + label */}
@@ -91,13 +88,12 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
             </span>
           </div>
 
-          {/* Divider */}
-          <div style={{ width: 1, height: 12, background: `rgba(${aRgb},0.3)`, flexShrink: 0 }}/>
+          <div style={{ width: 1, height: 12, background: "rgba(0,0,0,0.12)", flexShrink: 0 }}/>
 
           {/* Title */}
           <span style={{
             flex: 1, fontSize: 11, fontWeight: 700, textAlign: "left",
-            color: "rgba(255,255,255,0.88)",
+            color: "#0a0a2e",
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
             fontFamily: "'DM Sans', sans-serif",
           }}>
@@ -108,22 +104,18 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
           <span style={{
             fontSize: 8, fontWeight: 800, letterSpacing: "0.08em",
             padding: "3px 8px", borderRadius: 20, flexShrink: 0,
-            background: `rgba(${tier.rgb},0.15)`,
+            background: `rgba(${tier.rgb},0.12)`,
             color: tier.color,
-            border: `1px solid rgba(${tier.rgb},0.35)`,
-            boxShadow: `0 0 8px rgba(${tier.rgb},0.2)`,
+            border: `1px solid rgba(${tier.rgb},0.3)`,
             fontFamily: "'Syne', sans-serif",
           }}>
             {tier.label}
           </span>
 
           {/* Stars */}
-          <span style={{
-            flexShrink: 0, fontSize: 10, letterSpacing: "0px",
-            color: arenaAccent, opacity: 0.9,
-          }}>
+          <span style={{ flexShrink: 0, fontSize: 10, color: arenaAccent }}>
             {"★".repeat(rubric.difficulty)}
-            <span style={{ opacity: 0.25 }}>{"★".repeat(6 - rubric.difficulty)}</span>
+            <span style={{ opacity: 0.2, color: "#000" }}>{"★".repeat(6 - rubric.difficulty)}</span>
           </span>
 
           {/* Chevron */}
@@ -132,45 +124,43 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
             transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
           }}>
             <path d="M2.5 4.5l3.5 3.5 3.5-3.5"
-              stroke={`rgba(${aRgb},0.7)`} strokeWidth="1.5"
+              stroke={`rgba(${aRgb},0.6)`} strokeWidth="1.5"
               strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
 
-        {/* ── Expanded body ─────────────────────────────────────────── */}
+        {/* ── Expanded body ── */}
         {expanded && (
           <div style={{ display: "flex", flexDirection: "column" }}>
 
             {/* Meta row: ID + tools */}
             <div style={{
               display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
-              padding: "10px 14px 10px",
-              borderBottom: `1px solid rgba(${aRgb},0.1)`,
+              padding: "9px 14px",
+              borderBottom: "1px solid rgba(0,0,0,0.06)",
             }}>
-              {/* LMS ID */}
               <span style={{
                 fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                color: `rgba(${aRgb},0.7)`,
+                color: `rgba(${aRgb},0.8)`,
                 fontFamily: "'JetBrains Mono', monospace",
-                background: `rgba(${aRgb},0.1)`,
+                background: `rgba(${aRgb},0.08)`,
                 padding: "2px 7px", borderRadius: 4,
-                border: `1px solid rgba(${aRgb},0.25)`,
+                border: `1px solid rgba(${aRgb},0.2)`,
               }}>
                 {lmsId.toUpperCase()}
               </span>
 
-              <div style={{ width: 1, height: 10, background: "rgba(255,255,255,0.1)" }}/>
+              <div style={{ width: 1, height: 10, background: "rgba(0,0,0,0.1)" }}/>
 
-              {/* Tools label */}
-              <span style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)", letterSpacing: "0.06em" }}>
+              <span style={{ fontSize: 9, fontWeight: 600, color: "rgba(0,0,0,0.35)", letterSpacing: "0.06em" }}>
                 TOOLS
               </span>
               {rubric.tools.map(t => (
                 <span key={t} style={{
                   fontSize: 9, fontWeight: 700, padding: "2px 9px", borderRadius: 20,
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.75)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(0,0,0,0.05)",
+                  color: "rgba(0,0,0,0.6)",
+                  border: "1px solid rgba(0,0,0,0.1)",
                 }}>
                   {t}
                 </span>
@@ -180,25 +170,24 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
             {/* Mission brief */}
             <div style={{ padding: "10px 14px 0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
-                <div style={{ flex: 1, height: 1, background: `rgba(${aRgb},0.15)` }}/>
+                <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }}/>
                 <span style={{
                   fontSize: 8, fontWeight: 800, letterSpacing: "0.12em",
-                  color: `rgba(${aRgb},0.6)`, textTransform: "uppercase",
+                  color: `rgba(${aRgb},0.7)`, textTransform: "uppercase",
                   fontFamily: "'Syne', sans-serif",
                 }}>
                   MISSION BRIEF
                 </span>
-                <div style={{ flex: 1, height: 1, background: `rgba(${aRgb},0.15)` }}/>
+                <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }}/>
               </div>
               <div style={{
-                fontSize: 11, color: "rgba(255,255,255,0.72)", lineHeight: 1.65,
-                background: `rgba(${aRgb},0.05)`,
-                border: `1px solid rgba(${aRgb},0.15)`,
+                fontSize: 11, color: "rgba(0,0,0,0.65)", lineHeight: 1.65,
+                background: `rgba(${aRgb},0.04)`,
+                border: `1px solid rgba(${aRgb},0.12)`,
                 borderRadius: 8, padding: "10px 12px",
                 maxHeight: 88, overflowY: "auto",
                 scrollbarWidth: "none",
                 fontFamily: "'DM Sans', sans-serif",
-                position: "relative",
               }}>
                 {rubric.labTask}
               </div>
@@ -207,43 +196,39 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
             {/* Grading rubric */}
             <div style={{ padding: "10px 14px 14px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                <div style={{ flex: 1, height: 1, background: `rgba(${aRgb},0.15)` }}/>
+                <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }}/>
                 <span style={{
                   fontSize: 8, fontWeight: 800, letterSpacing: "0.12em",
-                  color: `rgba(${aRgb},0.6)`, textTransform: "uppercase",
+                  color: `rgba(${aRgb},0.7)`, textTransform: "uppercase",
                   fontFamily: "'Syne', sans-serif",
                 }}>
                   GRADING RUBRIC
                 </span>
-                <div style={{ flex: 1, height: 1, background: `rgba(${aRgb},0.15)` }}/>
+                <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }}/>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 {CRITERIA.map((lvl, i) => (
                   <div key={lvl.key} style={{
                     display: "flex", gap: 10, alignItems: "flex-start",
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    background: `rgba(${lvl.rgb},0.05)`,
-                    border: `1px solid rgba(${lvl.rgb},0.2)`,
-                    borderLeft: `3px solid rgba(${lvl.rgb},0.8)`,
+                    padding: "8px 10px", borderRadius: 8,
+                    background: `rgba(${lvl.rgb},0.06)`,
+                    border: `1px solid rgba(${lvl.rgb},0.18)`,
+                    borderLeft: `3px solid rgba(${lvl.rgb},0.7)`,
                   }}>
-                    {/* Label column */}
                     <div style={{ flexShrink: 0, width: 68, display: "flex", flexDirection: "column", gap: 2, paddingTop: 1 }}>
                       <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: "0.1em", color: lvl.color, fontFamily: "'Syne', sans-serif" }}>
                         {lvl.icon} {lvl.label}
                       </span>
                       <div style={{ display: "flex", gap: 2 }}>
                         {Array.from({ length: i + 1 }).map((_, s) => (
-                          <div key={s} style={{ width: 14, height: 2, borderRadius: 2, background: lvl.color, opacity: 0.7 }}/>
+                          <div key={s} style={{ width: 14, height: 2, borderRadius: 2, background: lvl.color, opacity: 0.6 }}/>
                         ))}
                       </div>
                     </div>
-                    {/* Divider */}
-                    <div style={{ width: 1, alignSelf: "stretch", background: `rgba(${lvl.rgb},0.2)`, flexShrink: 0 }}/>
-                    {/* Text */}
+                    <div style={{ width: 1, alignSelf: "stretch", background: `rgba(${lvl.rgb},0.18)`, flexShrink: 0 }}/>
                     <p style={{
-                      margin: 0, fontSize: 10, color: "rgba(255,255,255,0.65)",
+                      margin: 0, fontSize: 10, color: "rgba(0,0,0,0.6)",
                       lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif",
                     }}>
                       {criteriaText[lvl.key]}
