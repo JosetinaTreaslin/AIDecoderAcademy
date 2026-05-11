@@ -114,7 +114,8 @@ export default function SignUpPage() {
     try {
       const result = await signUp.attemptEmailAddressVerification({ code });
       if (result.status === "complete") {
-        fetch("/api/profile", {
+        // Await profile creation so the hub never sees a null profile on first load.
+        await fetch("/api/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -144,7 +145,7 @@ export default function SignUpPage() {
       await signUp.authenticateWithRedirect({
         strategy:            "oauth_google",
         redirectUrl:         "/auth/sso-callback",
-        redirectUrlComplete: "/dashboard",
+        redirectUrlComplete: "/dashboard/profile",
       });
     } catch (err: unknown) {
       const clerkError = (err as { errors?: { message: string }[] })?.errors?.[0];

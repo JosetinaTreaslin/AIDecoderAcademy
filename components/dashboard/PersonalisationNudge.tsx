@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const STORAGE_KEY = "aida-personalisation-nudge-dismissed";
+const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
 // One-time gentle nudge for existing users (created before personalisation
 // fields existed) to fill in the new fields. Dismissible and remembered.
-export function PersonalisationNudge({ profile }: { profile: { learning_style?: string | null } | null }) {
+// Not shown to brand-new users (profile < 3 days old) — they're still onboarding.
+export function PersonalisationNudge({ profile }: { profile: { learning_style?: string | null; created_at?: string | null } | null }) {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -15,6 +17,7 @@ export function PersonalisationNudge({ profile }: { profile: { learning_style?: 
     if (profile.learning_style) return;
     if (typeof window === "undefined") return;
     if (localStorage.getItem(STORAGE_KEY) === "1") return;
+    if (profile.created_at && Date.now() - new Date(profile.created_at).getTime() < THREE_DAYS_MS) return;
     setShow(true);
   }, [profile]);
 

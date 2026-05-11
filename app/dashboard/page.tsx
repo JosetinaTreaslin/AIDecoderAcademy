@@ -238,9 +238,15 @@ export default function HubPage() {
   useEffect(() => {
     fetch("/api/profile")
       .then(r => r.ok ? r.json() : { profile: null })
-      .then(({ profile }) => setProfile(profile))
+      .then(({ profile }) => {
+        if (!profile || !(profile.display_name && profile.age_group)) {
+          router.replace("/dashboard/profile");
+          return;
+        }
+        setProfile(profile);
+      })
       .catch(() => {});
-  }, []);
+  }, [router]);
 
   const handleClick = useCallback((arenaId: number) => {
     if (!isArenaUnlocked(arenaId)) {
