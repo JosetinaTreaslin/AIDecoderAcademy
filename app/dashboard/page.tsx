@@ -483,16 +483,16 @@ function PanelImage({ arenaId, src, alt, onClick, locked }: {
     >
       {locked && (
         <>
-          {/* Full-panel frost — lighter blur and tint so the panel art is
-              still clearly visible underneath (kid sees "powered down" not
-              "covered up"). */}
+          {/* Minimal frost — just enough to soften the panel art so the
+              lock medallion has a clean focal point. Text in the panel art
+              stays readable. */}
           <div
             aria-hidden
             className="absolute inset-0"
             style={{
-              backdropFilter:       "blur(2.5px) saturate(85%)",
-              WebkitBackdropFilter: "blur(2.5px) saturate(85%)" as unknown as string,
-              background:           "rgba(8,16,32,0.12)",
+              backdropFilter:       "blur(1px) saturate(90%)",
+              WebkitBackdropFilter: "blur(1px) saturate(90%)" as unknown as string,
+              background:           "rgba(8,16,32,0.05)",
               pointerEvents:        "none",
             }}
           />
