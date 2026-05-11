@@ -247,6 +247,77 @@ function isImageUrl(c: string): boolean {
     || /^https?:\/\/.+supabase\.co.+images\/.+$/i.test(c.trim());
 }
 
+// ── JSON pretty-print block ─────────────────────────────────────────────────
+// When the assistant returns JSON output (outputType === "json"), render it
+// as a syntax-highlighted code block instead of a wall-of-text paragraph.
+// Falls back gracefully to a <pre> wrap of the raw string if parsing fails
+// (model occasionally returns partial JSON mid-stream).
+function JsonBlock({ raw, accent }: { raw: string; accent: string }) {
+  // Try to extract JSON: model may wrap in ```json … ``` or include preamble.
+  const extracted = (() => {
+    const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const body   = fenced ? fenced[1] : raw;
+    const start  = body.search(/[\[{]/);
+    if (start === -1) return null;
+    return body.slice(start).trim();
+  })();
+
+  let parsed: unknown = null;
+  let pretty = extracted ?? raw;
+  if (extracted) {
+    try {
+      parsed = JSON.parse(extracted);
+      pretty = JSON.stringify(parsed, null, 2);
+    } catch {
+      pretty = extracted;
+    }
+  }
+
+  // Lightweight token colouring — strings, numbers, booleans, keys, punctuation.
+  const tokens = pretty.split(/("(?:\\.|[^"\\])*"\s*:|"(?:\\.|[^"\\])*"|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\],])/g);
+
+  const COLORS = {
+    key:    accent,
+    string: "#9DEFC4",
+    number: "#FFB86C",
+    bool:   "#FF79C6",
+    punct:  "rgba(255,255,255,0.55)",
+    plain:  "rgba(255,255,255,0.88)",
+  };
+
+  return (
+    <pre
+      className="font-mono text-[11px] leading-relaxed rounded-2xl overflow-x-auto p-4 my-1 border border-white/[0.08]"
+      style={{
+        background: "#0B0F1A",
+        whiteSpace: "pre",
+        maxWidth:   "100%",
+        scrollbarWidth: "thin" as const,
+      }}
+    >
+      {tokens.map((t, i) => {
+        if (!t) return null;
+        if (/^"(?:\\.|[^"\\])*"\s*:$/.test(t)) {
+          return <span key={i} style={{ color: COLORS.key, fontWeight: 600 }}>{t}</span>;
+        }
+        if (/^"(?:\\.|[^"\\])*"$/.test(t)) {
+          return <span key={i} style={{ color: COLORS.string }}>{t}</span>;
+        }
+        if (/^-?\d/.test(t)) {
+          return <span key={i} style={{ color: COLORS.number }}>{t}</span>;
+        }
+        if (t === "true" || t === "false" || t === "null") {
+          return <span key={i} style={{ color: COLORS.bool }}>{t}</span>;
+        }
+        if (/^[{}[\],]$/.test(t)) {
+          return <span key={i} style={{ color: COLORS.punct }}>{t}</span>;
+        }
+        return <span key={i} style={{ color: COLORS.plain }}>{t}</span>;
+      })}
+    </pre>
+  );
+}
+
 export function MessageBubble({
   message, avatarEmoji, isStreaming, onSave,
   arenaAccent     = "#7C3AED",
@@ -259,6 +330,7 @@ export function MessageBubble({
   const audioData = !isUser && !isLoading ? tryParseAudio(message.content)  : null;
   const slideData = !isUser && !isLoading ? tryParseSlides(message.content) : null;
   const isImage   = !isUser && !isLoading && isImageUrl(message.content);
+  const isJson    = !isUser && !isLoading && message.outputType === "json";
   const isEmpty   = message.content === "" && isStreaming && !isLoading;
   // Show action footer for text/json/image; audio and slides handle their own actions internally
   const showActions = !isUser && !isLoading && !isEmpty && !!onSave && !!message.content
@@ -352,8 +424,13 @@ export function MessageBubble({
             />
           )}
 
+          {/* JSON output — pretty-printed, syntax-highlighted block (assistant only) */}
+          {!isEmpty && !isLoading && !isImage && !audioData && !slideData && !isUser && isJson && (
+            <JsonBlock raw={message.content} accent={arenaAccent} />
+          )}
+
           {/* Plain text */}
-          {!isEmpty && !isLoading && !isImage && !audioData && !slideData && (
+          {!isEmpty && !isLoading && !isImage && !audioData && !slideData && !(isJson && !isUser) && (
             isUser ? (
               <div>
                 <p className="whitespace-pre-wrap">{message.content}</p>

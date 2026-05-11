@@ -14,7 +14,41 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 const OUTPUT_INSTRUCTIONS: Record<string, string> = {
   text: "Respond in clear, readable text. Only use markdown formatting (headers, bullet lists) if the child is aged 8 or older and it genuinely helps clarity — never use markdown for simple conversational replies.",
-  json: "Respond ONLY with valid JSON. No explanation, no backticks — just the raw JSON.",
+
+  // JSON output — must be RICHLY STRUCTURED with many small fields, not one
+  // giant text blob under a single key. The frontend renders this with
+  // syntax highlighting and proper indentation, so structure carries meaning.
+  json: `Respond ONLY with valid JSON. No explanation, no backticks, no preamble — just the raw JSON.
+
+CRITICAL — RICH STRUCTURE RULES (the user is asking for JSON specifically because they want to SEE the structure):
+- Break the answer into MANY meaningful keys. Never dump a wall of text into one field.
+- Use nested objects + arrays of objects wherever there's repetition (characters, scenes, panels, steps, items, etc.).
+- Keep individual string values SHORT — a sentence or two each — not paragraphs.
+- Schema picks itself from the user's request. Examples of the kind of structure expected (illustrative — adapt to the actual question):
+
+  For a story request:
+  {
+    "title": "...",
+    "genre": "...",
+    "setting": { "location": "...", "time": "...", "mood": "..." },
+    "characters": [
+      { "name": "...", "role": "...", "description": "..." }
+    ],
+    "plot": { "setup": "...", "conflict": "...", "climax": "...", "resolution": "..." },
+    "dialogues": [ { "speaker": "...", "line": "..." } ],
+    "themes": ["...", "..."]
+  }
+
+  For a how-to / steps request:
+  { "topic": "...", "summary": "...", "steps": [ { "n": 1, "title": "...", "what": "...", "tip": "..." } ], "watch_out_for": ["..."] }
+
+  For a list / comparison:
+  { "topic": "...", "items": [ { "name": "...", "pros": ["..."], "cons": ["..."], "best_for": "..." } ] }
+
+  For trivia / fact:
+  { "subject": "...", "headline": "...", "facts": [ { "claim": "...", "why_it_matters": "..." } ], "fun_extra": "..." }
+
+DO NOT just wrap a paragraph under a single key like { "response": "..." } or { "answer": "..." }. That is the FAILURE mode. Pick real semantic keys for the content.`,
 };
 
 function generateTitleLocally(msg: string): string {
@@ -154,6 +188,11 @@ export async function POST(req: Request) {
       stream:      true,
       max_tokens:  outputType === "json" ? 2048 : 1024,
       temperature: outputType === "json" ? 0.3 : 0.8,
+      // Guarantee parseable JSON when the kid picked the JSON output type so
+      // the frontend's syntax-highlighted block always renders cleanly.
+      ...(outputType === "json"
+        ? { response_format: { type: "json_object" as const } }
+        : {}),
     });
 
     // Save user message — encode attachment types as marker suffix for reload
