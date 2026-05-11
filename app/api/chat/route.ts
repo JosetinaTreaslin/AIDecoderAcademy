@@ -165,20 +165,72 @@ export async function POST(req: Request) {
         })),
     ];
 
-    // Add current message (with attachments if any)
-    if (attachments.length > 0) {
+    // ── Extract injected creation markers from the user message ────────────
+    // The Creations Room prepends markers like `[Image titled "X": URL]\n\n`
+    // or `[Document titled "X": URL]\n\n` when the kid drags/uploads a file
+    // through the "+" menu. Without this extraction GPT would just see the
+    // URL as plain text and confabulate — it would NOT actually fetch the
+    // image. We pull the URLs out and pass them as proper vision parts;
+    // documents (.pdf/.docx) get fetched + extracted and inlined as text.
+    const imgMarkerRe = /\[Image titled "[^"]*":\s*(https?:\/\/[^\s\]]+)\s*\]\s*\n*/g;
+    const docMarkerRe = /\[Document titled "([^"]*)":\s*(https?:\/\/[^\s\]]+)\s*\]\s*\n*/g;
+
+    const injectedImageUrls: string[] = [];
+    for (const m of message.matchAll(imgMarkerRe)) injectedImageUrls.push(m[1]);
+
+    const injectedDocs: { filename: string; url: string }[] = [];
+    for (const m of message.matchAll(docMarkerRe)) injectedDocs.push({ filename: m[1], url: m[2] });
+
+    // Strip the markers from the visible text so GPT doesn't echo them back
+    let cleanedMessage = message.replace(imgMarkerRe, "").replace(docMarkerRe, "").trim();
+
+    // Fetch + extract any documents — mammoth for .docx, raw fetch for .pdf
+    // (server-side, so CORS + Supabase ACLs both fine).
+    for (const doc of injectedDocs) {
+      try {
+        const lower = (doc.url + " " + doc.filename).toLowerCase();
+        if (lower.includes(".docx")) {
+          const mammoth = (await import("mammoth")).default;
+          const buf = Buffer.from(await (await fetch(doc.url)).arrayBuffer());
+          const { value: text } = await mammoth.extractRawText({ buffer: buf });
+          cleanedMessage = `[The kid uploaded a document titled "${doc.filename}". Full extracted content:]\n${text.slice(0, 8000)}\n[End of document.]\n\n${cleanedMessage}`;
+        } else if (lower.includes(".pdf")) {
+          // Pass URL through — GPT-4o-mini can't ingest PDFs directly here,
+          // but at least surfaces the filename + the kid's question intact.
+          cleanedMessage = `[The kid uploaded a PDF titled "${doc.filename}" at ${doc.url}. Treat it as relevant context.]\n\n${cleanedMessage}`;
+        }
+      } catch (err) {
+        console.warn("[chat] doc extract failed:", err);
+        cleanedMessage = `[The kid uploaded a document titled "${doc.filename}" but I couldn't read it just now. Ask them to paste the key parts.]\n\n${cleanedMessage}`;
+      }
+    }
+
+    // Add current message. Three ways an image can arrive:
+    //   1. Direct `attachments[]` array (file input → upload menu) — base64
+    //   2. Injected creation marker `[Image titled "X": URL]` in the text
+    //   3. Both (rare)
+    const directImageAttachments = attachments
+      .filter((a: { mimeType: string }) => a.mimeType.startsWith("image/"))
+      .map((a: { mimeType: string; data: string }) => ({
+        type: "image_url" as const,
+        image_url: { url: `data:${a.mimeType};base64,${a.data}` },
+      }));
+
+    const markerImageAttachments = injectedImageUrls.map((url) => ({
+      type: "image_url" as const,
+      image_url: { url, detail: "high" as const },
+    }));
+
+    const allImageParts = [...directImageAttachments, ...markerImageAttachments];
+
+    if (allImageParts.length > 0) {
       const parts: OpenAI.Chat.ChatCompletionContentPart[] = [
-        { type: "text", text: message },
-        ...attachments
-          .filter(a => a.mimeType.startsWith("image/"))
-          .map(a => ({
-            type: "image_url" as const,
-            image_url: { url: `data:${a.mimeType};base64,${a.data}` },
-          })),
+        { type: "text", text: cleanedMessage || "Please look at the image(s) I just shared." },
+        ...allImageParts,
       ];
       openaiMessages.push({ role: "user", content: parts });
     } else {
-      openaiMessages.push({ role: "user", content: message });
+      openaiMessages.push({ role: "user", content: cleanedMessage || message });
     }
 
     // Stream from OpenAI

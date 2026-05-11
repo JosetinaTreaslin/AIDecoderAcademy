@@ -366,11 +366,11 @@ export const OBJ6_SCHEMA: WorksheetSchema = {
           kind: "longtext", id: "personalityTraits",
           label: "Section 3 — Personality traits (3 traits + behavioural descriptions)",
           description:
-            "Write 3 personality traits. For each trait, write one sentence explaining HOW it shows up in the way your avatar speaks or moves. A list of adjectives is not enough — the behaviour description is what makes the avatar real.",
-          placeholder:
-            "Trait 1: Curious — leans in slightly before speaking, as if hearing something for the first time.\n" +
-            "Trait 2: Confident — speaks with pace and certainty, never trailing off or hedging.\n" +
-            "Trait 3: Warm — makes eye contact with the camera, speaks as if addressing one specific person.",
+            "Write 3 personality traits. For each trait, write one sentence explaining HOW it shows up in the way your avatar speaks or moves. A list of adjectives is not enough — the behaviour description is what makes the avatar real.\n\n" +
+            "Examples (don't copy — adapt):\n" +
+            "  • Trait 1: Curious — leans in slightly before speaking, as if hearing something for the first time.\n" +
+            "  • Trait 2: Confident — speaks with pace and certainty, never trailing off or hedging.\n" +
+            "  • Trait 3: Warm — makes eye contact with the camera, speaks as if addressing one specific person.",
           rows: 5, minWords: 30,
         },
 
