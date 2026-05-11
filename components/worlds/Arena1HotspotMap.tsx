@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap } from "lucide-react";
-import type { Objective } from "@/lib/objectives";
+import { isObjectiveEnabled, type Objective } from "@/lib/objectives";
 
 // Percentage positions [left%, top%] — top-left corner of each invisible card hit-area
 const HOTSPOT_POSITIONS: Record<number, [number, number]> = {
@@ -101,6 +101,7 @@ export default function Arena1HotspotMap({ objectives, completed, onObjectiveCli
 
         const [left, top] = pos;
         const done       = completed.has(obj.id);
+        const enabled    = isObjectiveEnabled(obj.id);
         const accent     = OUTPUT_COLORS[obj.outputType] ?? "#7C3AED";
         const isVisible  = hoveredId === obj.id;
 
@@ -118,18 +119,24 @@ export default function Arena1HotspotMap({ objectives, completed, onObjectiveCli
             <button
               onMouseEnter={() => setHoveredId(obj.id)}
               onMouseLeave={() => setHoveredId(null)}
-              onClick={() => onObjectiveClick(obj)}
+              onClick={() => enabled && onObjectiveClick(obj)}
+              disabled={!enabled}
               aria-label={obj.title}
+              aria-disabled={!enabled}
               style={{
                 width:      "clamp(56px, 5.5vw, 90px)",
                 height:     "clamp(64px, 12vh, 110px)",
                 background: "transparent",
                 border:     "none",
                 borderRadius: 6,
-                cursor:     "pointer",
+                cursor:     enabled ? "pointer" : "not-allowed",
                 padding:    0,
               }}
             />
+
+            {/* Locked tiles stay click-blocked (button disabled above) and
+                the tooltip says "coming soon" — but no visual veil over the
+                background art, per design decision. */}
 
             {/* Tooltip popup */}
             <AnimatePresence>
@@ -170,7 +177,7 @@ export default function Arena1HotspotMap({ objectives, completed, onObjectiveCli
                         </span>
                       )}
                       <span className="text-[8px] font-mono text-white/30 ml-auto">
-                        click to enter
+                        {enabled ? "click to enter" : "coming soon"}
                       </span>
                     </div>
 

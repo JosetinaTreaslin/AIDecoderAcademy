@@ -165,6 +165,24 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   const [validatorPanelOpen, setValidatorPanelOpen] = useState(false);
   const [worksheetPopupOpen, setWorksheetPopupOpen] = useState(false);
 
+  // Whether AIDA voices her thought-bubble nudges. Persisted in localStorage
+  // so the kid's preference survives reloads. Default: ON.
+  const [nudgeAudioEnabled, setNudgeAudioEnabled] = useState<boolean>(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem("aida:nudgeAudio");
+    if (stored === "off") setNudgeAudioEnabled(false);
+  }, []);
+  const toggleNudgeAudio = () => {
+    setNudgeAudioEnabled(v => {
+      const next = !v;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("aida:nudgeAudio", next ? "on" : "off");
+      }
+      return next;
+    });
+  };
+
   useEffect(() => {
     const onValidatorOpen  = () => setValidatorPanelOpen(true);
     const onValidatorClose = () => setValidatorPanelOpen(false);
@@ -286,6 +304,16 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
           ...prev,
           { role: "assistant", content: data.text, kind: "nudge", nudgeKind: data.kind },
         ]);
+        // Speak the nudge unless the kid has muted thought-bubble audio.
+        // Re-read the localStorage flag so a toggle between renders is
+        // respected without waiting for state to flow back here.
+        const audioOn = typeof window !== "undefined"
+          ? localStorage.getItem("aida:nudgeAudio") !== "off"
+          : true;
+        if (audioOn) {
+          // Fire and forget — failures shouldn't block the bubble appearing.
+          speakTextRef.current(data.text).catch(() => {});
+        }
       } catch (err) {
         console.warn("[AIDA nudge] failed:", err);
       } finally {
@@ -1115,15 +1143,51 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                                              "rgba(255,255,255,0.25)";
             return (
               <div key={i} className="flex gap-2 justify-start opacity-90">
-                <div className="max-w-[85%] px-3 py-1.5 rounded-2xl text-[11px] leading-relaxed italic"
+                <div className="max-w-[85%] px-3 py-1.5 rounded-2xl text-[11px] leading-relaxed italic relative"
                   style={{
                     background:   "linear-gradient(180deg, rgba(20,34,60,0.35) 0%, rgba(8,16,32,0.30) 100%)",
                     border:       `1px dashed ${tint}`,
                     color:        "rgba(232,244,255,0.78)",
                     borderRadius: "14px 14px 14px 4px",
+                    paddingRight: 28,
                   }}
                 >
                   <span className="mr-1.5">💭</span>{msg.content}
+                  {/* Audio toggle — switches future thought-bubble voicing
+                      on/off. Persisted in localStorage. */}
+                  <button
+                    type="button"
+                    onClick={toggleNudgeAudio}
+                    aria-label={nudgeAudioEnabled ? "Mute thought-bubble audio" : "Enable thought-bubble audio"}
+                    title={nudgeAudioEnabled ? "Mute thought-bubble audio" : "Enable thought-bubble audio"}
+                    style={{
+                      position: "absolute",
+                      right: 6,
+                      top: 6,
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "rgba(8,16,32,0.6)",
+                      border: `1px solid ${tint}`,
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  >
+                    {nudgeAudioEnabled ? (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+                        <path d="M3 10v4h4l5 4V6L7 10H3z" stroke="rgba(232,244,255,0.85)" strokeWidth="2" strokeLinejoin="round"/>
+                        <path d="M16 8a5 5 0 010 8" stroke="rgba(232,244,255,0.85)" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    ) : (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+                        <path d="M3 10v4h4l5 4V6L7 10H3z" stroke="rgba(232,244,255,0.6)" strokeWidth="2" strokeLinejoin="round"/>
+                        <path d="M16 9l5 5M21 9l-5 5" stroke="rgba(255,120,120,0.95)" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
             );

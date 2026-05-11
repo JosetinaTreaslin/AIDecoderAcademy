@@ -44,19 +44,20 @@ const INTROS: Record<string, ObjectiveIntro> = {
   "l1-10": {
     beats: [
       { text: "Hey. I'm Sage — I check your work.",                            tone: "casual hello, like a tutor pulling up a chair" },
-      { text: "OBJ 10. Three panels, one punchline. That's the whole job.",    tone: "matter-of-fact, naming the task without selling it" },
+      { text: "Objective 10. Three panels, one punchline. That's the whole job.", tone: "matter-of-fact, naming the task without selling it" },
       { text: "Start with the worksheet. That's where the comic actually gets made.", tone: "dry, knowing — letting them in on the real game" },
       { text: "When you're ready, hit Validate.",                              tone: "warm and brief, an open door not a push" },
     ],
   },
 
-  // OBJ 6 — Build Your AI Academy Avatar
+  // OBJ 6 — Build Your AI Academy Avatar (image deliverable)
   "l1-06": {
     beats: [
       { text: "I'm Sage. I'll grade this one.",                                tone: "calm hello, no theatre" },
-      { text: "OBJ 6. Design your avatar — the face you're using for the next six levels.", tone: "matter-of-fact, naming the stakes once and moving on" },
-      { text: "Plan it on the worksheet first. Then record your three lines on HeyGen.", tone: "practical, like reading the recipe out loud" },
-      { text: "Bring me both when they're ready.",                             tone: "patient, almost waiting" },
+      { text: "Objective 6. Design your avatar — the face you're using for the next six levels.", tone: "matter-of-fact, naming the stakes once and moving on" },
+      { text: "Fill the Identity Card on the worksheet first. That's your image prompt.",  tone: "practical, like reading the recipe out loud" },
+      { text: "Then generate the avatar in Visual Studio — or drop your photo in chat to restyle it.", tone: "even, presenting both routes" },
+      { text: "Bring me the worksheet and the image when they're ready.",      tone: "patient, almost waiting" },
     ],
   },
 };

@@ -382,8 +382,10 @@ function PlaygroundInner() {
         />
       )}
 
-      {/* Worksheet — only when the active objective has a staged schema */}
-      {worksheetSchema && profile && (
+      {/* Worksheet — visible on every objective. For missions without a real
+          schema yet (everything except OBJ 6 / OBJ 10), the popup shows a
+          short "coming soon" placeholder so the floor sprite still feels alive. */}
+      {activeObjectiveId && profile && (
         <>
           <WorksheetIcon
             arenaAccent={ARENA_ACCENT}
@@ -393,17 +395,15 @@ function PlaygroundInner() {
           />
           <WorksheetPopup
             open={worksheetOpen}
-            lmsId={worksheetSchema.lmsId}
+            lmsId={worksheetSchema?.lmsId ?? activeObjectiveId}
             profileId={profile.id}
             arenaAccent={ARENA_ACCENT}
             arenaAccentGlow={ARENA_ACCENT_GLOW}
             onClose={() => setWorksheetOpen(false)}
             onSubmit={async (payload) => {
-              // Hand off the FULL payload (form + worksheet file + media +
-              // notes) to ObjectiveSubmissionPanel via localStorage. The
-              // panel doesn't ask for any of these — it just pulls and
-              // validates on click.
-              if (typeof window !== "undefined") {
+              // Hand off the FULL payload to ObjectiveSubmissionPanel via
+              // localStorage. The panel pulls and validates on click.
+              if (typeof window !== "undefined" && worksheetSchema) {
                 localStorage.setItem(
                   `aida:worksheet:${worksheetSchema.lmsId}:${profile.id}:pending`,
                   JSON.stringify(payload),

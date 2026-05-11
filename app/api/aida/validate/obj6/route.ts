@@ -19,7 +19,8 @@ export const maxDuration = 90;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// Three-stage validator for OBJ 6 (avatar HeyGen MP4).
+// Three-stage validator for Objective 6 (avatar IMAGE — generated in our
+// whiteboard's Visual Studio or restyled from a kid's own photo).
 // Stage 0: extract Canvas + Identity Card (inline-form direct, or LLM from .docx/.pdf)
 // Stage 1: Canvas quality (70% threshold — highest in Level 1)
 // Stage 2: Identity Card structural checks (4 binary)
@@ -29,12 +30,15 @@ interface Body {
   worksheet:
     | { kind: "file"; url: string; format: "pdf" | "docx"; filename: string }
     | { kind: "inline-form"; data: Record<string, string | boolean>; lmsId: string };
-  videoUrl?: string;
-  notes?:    string;
-  profile:   { display_name: string; age_group: string };
+  // New deliverable model: the kid generates an avatar IMAGE (or restyles
+  // their own photo); validator grades it with vision against the Identity
+  // Card. `videoUrl` kept as a deprecated alias for any old client that
+  // hasn't migrated yet — server normalises to `avatarImageUrl`.
+  avatarImageUrl?: string;
+  videoUrl?:       string;
+  notes?:          string;
+  profile:         { display_name: string; age_group: string };
 }
-
-function clamp(n: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, n)); }
 function jsonResponse<T>(data: T) {
   return new Response(JSON.stringify(data), {
     status:  200,
@@ -72,7 +76,7 @@ async function gradeCanvas(
   const r = OBJ6_RUBRIC.canvas;
   const baseSystem = `
 You are the Validator Teacher at AI Decoder Academy — a SKEPTICAL MENTOR.
-The student has filled in the Think It Canvas for OBJ 6 (build your avatar).
+The student has filled in the Think It Canvas for Objective 6 (build your avatar). When you reference the mission in your reply, always say "Objective 6" (never "OBJ 6").
 This avatar persists for 6 levels — the bar is high. Threshold: ${r.minPassPct}%.
 
 Score four fields:
@@ -168,86 +172,133 @@ function gradeIdentityCard(card: Obj6IdentityCard): Obj6IdentityCardStageResult 
   };
 }
 
-async function gradeCreateIt(videoUrl: string, avatarName: string): Promise<Obj6CreateItStageResult> {
-  // 1. Reachability + content-type.
-  let videoReachable = false;
-  try {
-    const head = await fetch(videoUrl, { method: "HEAD" });
-    videoReachable = head.ok && (head.headers.get("content-type") ?? "").startsWith("video/");
-  } catch { videoReachable = false; }
+// ─── Stage 3 — Vision grading on the avatar IMAGE ──────────────────────────
+// The kid either generated the avatar via Visual Studio (image output type) or
+// uploaded a photo restyled into an avatar — either path lands as a chat
+// image marker, picked up by TeacherCharacter and passed in as avatarImageUrl.
 
-  if (!videoReachable) {
+const createItSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    description:         { type: "string" },
+    appearanceMatch:     { type: "boolean" },
+    personalityVisible:  { type: "boolean" },
+    styleConsistent:     { type: "boolean" },
+    audienceAppropriate: { type: "boolean" },
+    score:               { type: "integer", minimum: 0, maximum: 100 },
+    summary:             { type: "string" },
+  },
+  required: ["description", "appearanceMatch", "personalityVisible", "styleConsistent", "audienceAppropriate", "score", "summary"],
+} as const;
+
+async function gradeCreateIt(
+  imageUrl:     string,
+  avatarName:   string,
+  card:         Obj6IdentityCard,
+  canvas:       Obj6CanvasFields,
+  ageGroup:     string,
+): Promise<Obj6CreateItStageResult> {
+  // 1. Reachability — quick HEAD check so we fail fast on dead URLs.
+  let imageReachable = false;
+  try {
+    const head = await fetch(imageUrl, { method: "HEAD" });
+    imageReachable = head.ok && (head.headers.get("content-type") ?? "").startsWith("image/");
+  } catch { imageReachable = false; }
+  if (!imageReachable) {
     return {
       stage: "createIt", score: 0, tier: "fail",
-      videoReachable: false, line1Present: false, line2Present: false, line3Present: false,
-      transcriptExcerpt: "",
-      summary: "Video URL not reachable. Re-upload your HeyGen MP4.",
+      imageReachable: false, appearanceMatch: false, personalityVisible: false,
+      styleConsistent: false, audienceAppropriate: false,
+      description: "", summary: "I can't load the avatar image — drop it in chat again, then come back.",
     };
   }
 
-  // 2. Transcribe (Whisper accepts MP4 audio extraction natively).
-  let transcriptText = "";
-  try {
-    const audioBlob = await fetch(videoUrl).then(r => r.blob());
-    const file      = new File([audioBlob], "avatar.mp4", { type: "video/mp4" });
-    const transcript = await openai.audio.transcriptions.create({
-      model: "whisper-1",
-      file,
-    } as unknown as { model: string; file: File });
-    transcriptText = (transcript as unknown as { text: string }).text || "";
-  } catch (err) {
-    console.error("[validate/obj6] whisper failed:", err);
-    return {
-      stage: "createIt", score: 0, tier: "fail",
-      videoReachable: true, line1Present: false, line2Present: false, line3Present: false,
-      transcriptExcerpt: "",
-      summary: "Couldn't transcribe the video. Make sure the audio is clear and try again.",
-    };
-  }
+  // 2. Vision grade against the Identity Card.
+  const system = `
+You are the Validator Teacher at AI Decoder Academy — a SKEPTICAL MENTOR.
+The student has generated (or restyled) their AI Academy avatar IMAGE. Grade
+the rendered avatar against THEIR Identity Card. The kid's avatar persists
+for 6 levels, so the bar is high.
 
-  // 3. Line presence — fuzzy via GPT (avatar name in line 1 is freeform).
-  const lineCheckPrompt = `
-You judge whether the student's avatar transcript contains all three required script lines.
+Identity Card to grade against:
+- Avatar Name: ${avatarName || "(not specified)"}
+- Appearance brief: ${card.appearance || "(none)"}
+- Personality traits + behaviour: ${card.personalityTraits || "(none)"}
+- Voice character (cue for vibe / expression): ${card.voiceCharacter || "(none)"}
+- Signature element / presentation style: ${card.presentationStyle || "(none)"}
+- Their audience: ${canvas.audience || "(none)"}
+- Success they defined: ${canvas.success || "(none)"}
 
-Required lines (line 1's avatar name may match either the student's typed name "${avatarName}" or any name they speak in line 1):
-1. "Hi. I am [Avatar Name]."
-2. "I am an AI Creator at AI Decoder Academy."
-3. "By Level 6 — I will have built something the world has never seen."
+Step 1 — DESCRIBE what you see in 1-2 sentences (characters, clothing, setting, expression).
+Step 2 — RUN the four checks:
+- appearanceMatch     : does the rendered avatar match the Appearance brief? (age range, clothing style, expression, setting, distinctive visual element)
+- personalityVisible  : is at least ONE of the personality traits visible in posture / expression / framing?
+- styleConsistent     : single coherent illustration / photo style — no glitches, no extra heads, no melted text
+- audienceAppropriate : age-appropriate for ${ageGroup}, nothing scary or sexualised, identifiable as the kid's persona
 
-Be lenient on minor word-order or filler differences, strict on the meaning.
+Step 3 — SCORE 0–100:
+- 80 (PASS)       : appearanceMatch + styleConsistent + audienceAppropriate all true. Personality may be partial.
+- 90 (MERIT)      : all four checks true.
+- 100 (DISTINCTION): all four true AND the avatar visibly achieves the success definition (someone watching for 10s with no sound would react as the kid said).
+- <80 (FAIL)      : any of appearanceMatch / styleConsistent / audienceAppropriate is false.
 
-Transcript:
-"""${transcriptText.slice(0, 4000)}"""
+VOICE — Skeptical Mentor:
+- NEVER use "wrong". Steady, direct, no emojis.
+- Adapt to age group ${ageGroup}.
+- Summary is ONE short line spoken aloud.
+`.trim();
 
-Return strict JSON: { line1Present: boolean, line2Present: boolean, line3Present: boolean }`;
-
-  const lineCheck = await openai.chat.completions.create({
+  const completion = await openai.chat.completions.create({
     model:           "gpt-4o-mini",
-    response_format: { type: "json_object" },
-    temperature:     0,
-    max_tokens:      100,
-    messages: [{ role: "user", content: lineCheckPrompt }],
+    response_format: {
+      type:        "json_schema",
+      json_schema: { name: "obj6_create_grade", schema: createItSchema, strict: true },
+    },
+    temperature: 0.2,
+    max_tokens:  700,
+    messages: [
+      { role: "system", content: system },
+      { role: "user",   content: [
+        { type: "text", text: "Grade the avatar image below. Return only the JSON." },
+        { type: "image_url", image_url: { url: imageUrl, detail: "high" } },
+      ]},
+    ],
   });
-  const lines = JSON.parse(lineCheck.choices[0]?.message?.content ?? "{}");
-  const line1 = !!lines.line1Present;
-  const line2 = !!lines.line2Present;
-  const line3 = !!lines.line3Present;
-  const linesPresent = [line1, line2, line3].filter(Boolean).length;
 
-  const score = Math.round((linesPresent / 3) * 100);
-  const tier: Obj6CreateItStageResult["tier"] = linesPresent === 3 ? "pass" : "fail";
+  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const parsed = JSON.parse(raw) as {
+    description:         string;
+    appearanceMatch:     boolean;
+    personalityVisible:  boolean;
+    styleConsistent:     boolean;
+    audienceAppropriate: boolean;
+    score:               number;
+    summary:             string;
+  };
 
-  const summary = linesPresent === 3
-    ? "All three required script lines present. Avatar identity confirmed."
-    : `Missing ${3 - linesPresent} of 3 required script lines. Re-record.`;
+  const score = clamp(Math.round(parsed.score), 0, 100);
+  const tier: Obj6CreateItStageResult["tier"] =
+    score >= 100 ? "distinction" :
+    score >= 90  ? "merit"        :
+    score >= 80  ? "pass"         :
+    "fail";
 
   return {
-    stage: "createIt", score, tier,
-    videoReachable: true,
-    line1Present: line1, line2Present: line2, line3Present: line3,
-    transcriptExcerpt: transcriptText.slice(0, 400),
-    summary,
+    stage: "createIt",
+    score, tier,
+    imageReachable:      true,
+    appearanceMatch:     parsed.appearanceMatch,
+    personalityVisible:  parsed.personalityVisible,
+    styleConsistent:     parsed.styleConsistent,
+    audienceAppropriate: parsed.audienceAppropriate,
+    description:         parsed.description,
+    summary:             parsed.summary,
   };
+}
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
 }
 
 function pickFeedback(tier: Obj6FinalResult["tier"]): string {
@@ -347,12 +398,12 @@ Return strict JSON only.`;
       const blockedCanvas: Obj6CanvasStageResult = {
         stage: "canvas", passed: false, score: 0, mode: "challenge",
         fieldFeedback: { intent: "", assumptions: "", audience: "", success: "" },
-        summary: "OBJ 5 must be complete before OBJ 6 — confirm in your worksheet, or finish OBJ 5 first.",
+        summary: "Objective 5 must be complete before Objective 6 — confirm in your worksheet, or finish Objective 5 first.",
       };
       const final: Obj6FinalResult = {
         passed: false, composite: 0, tier: "fail",
         canvas: blockedCanvas, identityCard: null, createIt: null,
-        feedbackScript: "OBJ 5 must be complete before OBJ 6.",
+        feedbackScript: "Objective 5 must be complete before Objective 6.",
         blockedAtStage: "canvas",
       };
       return jsonResponse(final);
@@ -406,8 +457,9 @@ Return strict JSON only.`;
       });
     }
 
-    // Stage 3 — Avatar video.
-    if (!body.videoUrl) {
+    // Stage 3 — Avatar IMAGE. Pull from new field, fall back to legacy alias.
+    const avatarImageUrl = body.avatarImageUrl ?? body.videoUrl;
+    if (!avatarImageUrl) {
       return jsonResponse<Obj6FinalResult>({
         passed:         false,
         composite:      Math.round(
@@ -418,10 +470,10 @@ Return strict JSON only.`;
         canvas:         canvasResult,
         identityCard:   cardResult,
         createIt:       null,
-        feedbackScript: "Upload your HeyGen MP4 to finish grading.",
+        feedbackScript: "Drop your avatar image in chat — then I'll grade it.",
       });
     }
-    const createItResult = await gradeCreateIt(body.videoUrl, avatarName);
+    const createItResult = await gradeCreateIt(avatarImageUrl, avatarName, card, canvas, profile.age_group);
 
     const composite = clamp(Math.round(
       canvasResult.score   * OBJ6_RUBRIC.canvas.weight +

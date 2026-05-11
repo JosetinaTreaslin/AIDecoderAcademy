@@ -104,10 +104,15 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
 
   const IMG_MARKER_RE = /\[Image titled "[^"]*":\s*(https?:\/\/[^\s\]]+)\s*\]/g;
   const DOC_MARKER_RE = /\[Document titled "([^"]*)":\s*(https?:\/\/[^\s\]]+)\s*\]/g;
+  const VID_MARKER_RE = /\[Video titled "([^"]*)":\s*(https?:\/\/[^\s\]]+)\s*\]/g;
   const whiteboardImages: { url: string }[] = [];
   // Chat-uploaded worksheet docs — fallback for the validator when the popup
   // is empty. Same `[Document titled "X": URL]` marker the chat uses.
   const whiteboardDocs: { url: string; filename: string; format: "pdf" | "docx" }[] = [];
+  // Chat-uploaded videos — kept for forward-compat; the active OBJ 6 path
+  // now grades an avatar IMAGE (not video) per the GenAlpha spec rewrite.
+  // since the worksheet popup no longer has an upload zone.
+  const whiteboardVideos: { url: string; filename: string }[] = [];
   for (const m of messages) {
     if (m.isLoading || m.role !== "user" || typeof m.content !== "string") continue;
     for (const match of m.content.matchAll(DOC_MARKER_RE)) {
@@ -116,6 +121,11 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
       const lower = (url + " " + filename).toLowerCase();
       const format: "pdf" | "docx" = lower.includes(".pdf") ? "pdf" : "docx";
       whiteboardDocs.push({ url, filename, format });
+    }
+    for (const match of m.content.matchAll(VID_MARKER_RE)) {
+      const url = match[2];
+      const filename = match[1] || url.split("/").pop() || "video";
+      whiteboardVideos.push({ url, filename });
     }
   }
   if (wantsImages) {
@@ -314,6 +324,7 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
           profile={profile}
           whiteboardImages={whiteboardImages}
           whiteboardDocs={whiteboardDocs}
+          whiteboardVideos={whiteboardVideos}
           onClose={() => setOpen(false)}
           onComplete={async () => {
             // Award XP via the existing engine, same as TeacherDialogue's path.

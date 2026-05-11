@@ -290,7 +290,7 @@ async function gradeCanvas(
   const r = OBJ10_RUBRIC.canvas;
   const baseSystem = `
 You are the Validator Teacher at AI Decoder Academy — a SKEPTICAL MENTOR.
-The student has filled in the Think It Canvas for OBJ 10 (3-panel comic).
+The student has filled in the Think It Canvas for Objective 10 (3-panel comic). When you reference the mission in your reply, always say "Objective 10" (never "OBJ 10").
 
 Score the four fields against THIS rubric:
 

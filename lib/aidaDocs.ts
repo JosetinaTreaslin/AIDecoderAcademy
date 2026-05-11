@@ -155,8 +155,9 @@ VALIDATOR TEACHER — SAGE (only appears when arrived via an objective):
 - Bottom-LEFT of the screen: a Teacher sprite with idle bob animation + "💬 Talk to teacher" hint
 - Free-play visits to the playground (no ?objective= in URL) do NOT show SAGE
 - The IN-APP whiteboard does NOT auto-fire the objective's starter prompt anymore — kids type their
-  own work. Starter prompts in objectives.ts are templates to copy into EXTERNAL tools
-  (ChatGPT/Canva/HeyGen), screenshot, and upload.
+  own work. For Objective 6 + Objective 10 (the enabled missions) everything happens IN-APP: kids
+  generate images in the whiteboard's IMAGE output mode, upload reference photos via chat, fill the
+  worksheet popup, and hit Validate. No external tool round-trips.
 - Clicking SAGE opens one of two modals depending on the objective type:
   • SINGLE-PASS objectives (most missions) — TeacherDialogue: typewriter dialogue + voice playback
     + actions: "Show my work" (validates), "What was I doing?" (re-explains task), Close
@@ -222,11 +223,11 @@ THE 14 PANELS ON THE WALLS:
   03. First AI Image — Canva AI Generator (image, 20 XP)
   04. Image Style Switch — Same Subject, Two Styles (image, 25 XP)
   05. AI Speaks — First ElevenLabs Voice Generation (audio, 25 XP)
-  06. Build Your AI Academy Avatar — HeyGen (video, 80 XP — staged worksheet objective)
+  06. Build Your AI Academy Avatar — in-app image generation, 80 XP, staged worksheet objective
   07. Image Variation Lab (image)
   08. Voice Direction Lab (audio)
   09. AI Slide Deck — Auto-Generated Presentation (slides)
-  10. Your First AI Comic Strip — Canva AI (image, staged worksheet objective)
+  10. Your First AI Comic Strip — in-app image generation, staged worksheet objective
   (Plus 4 more in the later half — see lib/objectives.ts for the canonical list)
 
 HOVERING A PANEL:

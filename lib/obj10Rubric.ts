@@ -203,21 +203,22 @@ export const OBJ10_RUBRIC: StagedRubric = {
   title:      "Your First AI Comic Strip",
   tier:       "T4 — EXPERIMENT",
   difficulty: 4,
-  tools:      ["Canva AI"],
+  tools:      ["Whiteboard (image)"],
 
   worksheetTemplateUrl:  "/worksheets/OBJ10_StudentWorksheet.docx",
   worksheetTemplateName: "OBJ10_StudentWorksheet.docx",
 
   objectiveBlurb:
     "Create a 3-panel AI comic strip about anything funny, absurd, or " +
-    "ridiculous you can imagine — using Canva AI. No drawing skills needed. " +
-    "Just your imagination, a plan, and a sense of humour. By the end you " +
-    "will have something that looks like it came from a professional comic " +
-    "artist — because in 2025, it does. There is only one rule: if your " +
-    "comic does not make YOU laugh, fix it before you submit.",
+    "ridiculous you can imagine — generated right here in the whiteboard. " +
+    "No drawing skills needed. Just your imagination, a plan, and a sense of " +
+    "humour. By the end you will have something that looks like it came from " +
+    "a professional comic artist — because in 2026, it does. There is only " +
+    "one rule: if your comic does not make YOU laugh, fix it before you " +
+    "submit.",
 
   thinkItBrief:
-    "Before opening any tool — answer four questions about who this comic " +
+    "Before generating anything — answer four questions about who this comic " +
     "is for and what it needs to make them feel.",
 
   storyItBrief:
@@ -227,8 +228,9 @@ export const OBJ10_RUBRIC: StagedRubric = {
     "you react.",
 
   createItBrief:
-    "Open Canva AI. Generate all three panels using the prompts from your " +
-    "worksheet. Add text, add your Avatar Name, upload as PNG or JPG.",
+    "Switch the whiteboard output to IMAGE. Type your comic prompt — the " +
+    "image generator produces all three panels side by side. Drop the final " +
+    "image in chat and SAGE grades it.",
 
   canvas: {
     weight:     0.25,

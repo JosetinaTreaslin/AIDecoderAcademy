@@ -1,8 +1,10 @@
 // OBJ 6 — Build Your AI Academy Avatar.
 //
-// Mirrors lib/obj10Rubric.ts but the Create-It artefact is a HeyGen MP4 URL,
-// graded by Whisper transcription + GPT script-line presence (not vision).
-// Canvas threshold is 70% — the highest in Level 1.
+// Mirrors lib/obj10Rubric.ts. Create-It artefact is an AVATAR IMAGE — either
+// generated from the kid's prompts (Visual Studio / Image output in our
+// whiteboard) or a photo of themselves restyled into an avatar. Graded with
+// gpt-4o vision against the Identity Card. Canvas threshold is 70% — the
+// highest in Level 1.
 
 import type { WorksheetUpload, CanvasMode, StagedRubric } from "@/lib/obj10Rubric";
 
@@ -42,15 +44,17 @@ export interface Obj6IdentityCardStageResult {
 }
 
 export interface Obj6CreateItStageResult {
-  stage:             "createIt";
-  score:             number;
-  tier:              "distinction" | "merit" | "pass" | "fail";
-  videoReachable:    boolean;
-  line1Present:      boolean;
-  line2Present:      boolean;
-  line3Present:      boolean;
-  transcriptExcerpt: string;
-  summary:           string;
+  stage:                "createIt";
+  score:                number;
+  tier:                 "distinction" | "merit" | "pass" | "fail";
+  imageReachable:       boolean;
+  // Vision-graded checks against the Identity Card
+  appearanceMatch:      boolean;  // does the rendered avatar match the kid's Section 2 appearance?
+  personalityVisible:   boolean;  // do the personality cues show (posture, expression, vibe)?
+  styleConsistent:      boolean;  // single coherent style, no glitches
+  audienceAppropriate:  boolean;  // age-appropriate, safe content
+  description:          string;   // 1-2 sentences describing what the model sees
+  summary:              string;   // SAGE's reaction
 }
 
 export interface Obj6FinalResult {
@@ -66,9 +70,12 @@ export interface Obj6FinalResult {
 
 export interface Obj6SubmissionInput {
   worksheet: WorksheetUpload;
-  videoUrl?: string;            // HeyGen MP4
-  notes?:    string;
-  profile:   { display_name: string; age_group: string };
+  // The kid's final avatar image — either a fresh generation from Visual
+  // Studio or a photo restyled into an avatar (both flow through chat first,
+  // validator pulls the most recent image marker).
+  avatarImageUrl?: string;
+  notes?:          string;
+  profile:         { display_name: string; age_group: string };
 }
 
 export const OBJ6_RUBRIC = {
@@ -93,34 +100,29 @@ export const OBJ6_RUBRIC = {
       appearance40Plus:        { fail: "Your appearance description is too short. Describe age, clothing, expression, and the setting they sit in. Forty words minimum." },
       voiceSpecific:           { fail: "'Clear and professional' could describe anyone. Name the ONE distinct quality — warm authority, quiet intensity, energetic curiosity." },
       personalityBehavioural:  { fail: "List one behavioural cue. Not 'friendly' — show how. 'Tilts head when listening' is a behavioural description." },
-      scriptConfirmed:         { fail: "Confirm you will deliver the three required script lines verbatim before opening HeyGen." },
+      scriptConfirmed:         { fail: "Confirm the three required identity lines from Section 6 — they're the brief, even if you only render the image." },
     },
   },
 
   createIt: {
     weight: 0.50,
-    requiredLines: [
-      "Hi. I am [Avatar Name].",
-      "I am an AI Creator at AI Decoder Academy.",
-      "By Level 6 — I will have built something the world has never seen.",
-    ],
-    passCriteria:        "Avatar exists, video plays, all three required script lines are present in transcript.",
-    meritCriteria:       "Avatar clearly reflects the Identity Card. Voice character matches.",
-    distinctionCriteria: "Avatar achieves the success definition from Think It Field 4.",
+    passCriteria:        "An avatar image exists, the character matches the Identity Card appearance, and the style is single + coherent.",
+    meritCriteria:       "Avatar clearly reflects the Identity Card. Personality cues (posture, expression, signature element) are visible.",
+    distinctionCriteria: "Avatar achieves the success definition from Think It Field 4 — distinctive, audience-appropriate, intentional.",
   },
 
   // Sage's reactions for OBJ 6. Short, in-character. Calls out something
   // specific instead of summarising the whole rubric.
   feedbackScripts: {
     pass:
-      "There's a face on screen and a voice behind it. " +
+      "There's a face on screen and it belongs to your Identity Card. " +
       "It's yours. Carry it forward.",
     merit:
-      "That avatar actually reflects your Identity Card — same energy, same character. " +
-      "Voice matches presentation. Hold this standard.",
+      "That avatar actually reflects your Identity Card — same vibe, same character. " +
+      "Hold this standard.",
     distinction:
       "I don't say this often. " +
-      "You said what your avatar would communicate, and it does. " +
+      "You wrote a brief, and the image landed exactly on it. " +
       "Intent to evidence — that's the skill. Keep it.",
   },
 } as const;
@@ -139,15 +141,15 @@ export const OBJ6_STAGED_RUBRIC: StagedRubric = {
   title:       OBJ6_RUBRIC.title,
   tier:        "T3 — CONSTRUCT",
   difficulty:  3,
-  tools:       ["HeyGen"],
+  tools:       ["Visual Studio (image)", "or upload a photo"],
 
   worksheetTemplateUrl:  "/worksheets/obj6-worksheet.docx",
   worksheetTemplateName: "OBJ6_StudentWorksheet.docx",
 
-  objectiveBlurb: "Design your AI Academy avatar — appearance, voice, presence — using HeyGen. Identity persists for 6 levels.",
-  thinkItBrief:   "Answer the four Canvas fields before opening HeyGen. 70% threshold.",
-  storyItBrief:   "Complete the Avatar Identity Card. All six fields.",
-  createItBrief:  "Record your avatar in HeyGen. Deliver the three required script lines verbatim.",
+  objectiveBlurb: "Design your AI Academy avatar — appearance, vibe, presence — as an IMAGE. Generate one from your Identity Card prompt, or restyle your own photo. Identity persists for 6 levels.",
+  thinkItBrief:   "Answer the four Canvas fields before generating. 70% threshold.",
+  storyItBrief:   "Complete the Avatar Identity Card. All six sections.",
+  createItBrief:  "Generate your avatar image in Visual Studio — or drop in a photo to restyle. Drop the final image in chat.",
 
   canvas: {
     weight:     OBJ6_RUBRIC.canvas.weight,

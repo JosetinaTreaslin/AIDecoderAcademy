@@ -459,19 +459,69 @@ const RIGHT_PANELS = [
   { arenaId: 7, src: "/panels/slide_skate.png",  alt: "Director Suite" },
 ] as const;
 
-function PanelImage({ arenaId, src, alt, onClick }: {
-  arenaId: number; src: string; alt: string; onClick: (id: number) => void;
+function PanelImage({ arenaId, src, alt, onClick, locked }: {
+  arenaId: number; src: string; alt: string; onClick: (id: number) => void; locked: boolean;
 }) {
   return (
     <motion.div
       aria-label={alt}
-      className="hub-img"
-      style={{ width: "100%", backgroundImage: `url(${src})`, backgroundSize: "cover",
-        backgroundPosition: "center center", cursor: "pointer" }}
-      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+      role="button"
+      tabIndex={0}
+      aria-disabled={locked}
+      className="hub-img relative"
+      style={{
+        width:              "100%",
+        backgroundImage:    `url(${src})`,
+        backgroundSize:     "cover",
+        backgroundPosition: "center center",
+        cursor:             locked ? "not-allowed" : "pointer",
+      }}
+      whileHover={locked ? {} : { scale: 1.02 }}
+      whileTap={locked   ? {} : { scale: 0.98 }}
       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
       onClick={() => onClick(arenaId)}
-    />
+    >
+      {locked && (
+        <>
+          {/* Full-panel frost. backdrop-filter blurs whatever's behind this
+              div — which IS the panel's background-image — so the art ends up
+              actually blurry without us touching its size. */}
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              backdropFilter:       "blur(7px) saturate(80%)",
+              WebkitBackdropFilter: "blur(7px) saturate(80%)" as unknown as string,
+              background:           "rgba(8,16,32,0.32)",
+              pointerEvents:        "none",
+            }}
+          />
+
+          {/* Focal lock medallion on top of the frost. */}
+          <div
+            aria-hidden
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          >
+            <div
+              className="flex items-center justify-center rounded-full"
+              style={{
+                width:       46,
+                height:      46,
+                background:  "linear-gradient(180deg, #0B1A2F 0%, #050E1F 100%)",
+                border:      "1.5px solid rgba(125,211,252,0.7)",
+                boxShadow:
+                  "0 0 22px rgba(0,212,255,0.55), inset 0 0 12px rgba(0,212,255,0.22)",
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <rect x="5" y="11" width="14" height="10" rx="2" stroke="#E8F4FF" strokeWidth="1.8"/>
+                <path d="M8 11V8a4 4 0 1 1 8 0v3" stroke="#E8F4FF" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </div>
+          </div>
+        </>
+      )}
+    </motion.div>
   );
 }
 
@@ -616,7 +666,8 @@ export default function HubPage() {
         {/* Left — 4 images */}
         <div className="hub-col-left">
           {LEFT_PANELS.map(p => (
-            <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick} />
+            <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick}
+              locked={!isArenaUnlocked(p.arenaId)} />
           ))}
         </div>
 
@@ -626,7 +677,8 @@ export default function HubPage() {
         {/* Right — 3 images */}
         <div className="hub-col-right">
           {RIGHT_PANELS.map(p => (
-            <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick} />
+            <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick}
+              locked={!isArenaUnlocked(p.arenaId)} />
           ))}
         </div>
 

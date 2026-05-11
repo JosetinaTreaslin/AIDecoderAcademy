@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Zap, Flame, Target, ChevronRight } from "lucide-react";
-import type { Objective } from "@/lib/objectives";
+import { isObjectiveEnabled, type Objective } from "@/lib/objectives";
 
 const TIPS = [
   "Each mission you complete sharpens your AI skills — keep the streak alive!",
@@ -30,8 +30,11 @@ export default function Arena1CenterOverlay({
   const doneCount = objectives.filter(o => completed.has(o.id)).length;
   const pct       = total > 0 ? Math.round((doneCount / total) * 100) : 0;
 
+  // Only point the "Next Mission" CTA at objectives that are actually
+  // playable today (OBJ 6, OBJ 10). Otherwise the kid clicks a locked tile
+  // through the central card.
   const nextObj = useMemo(
-    () => objectives.find(o => !completed.has(o.id)) ?? null,
+    () => objectives.find(o => !completed.has(o.id) && isObjectiveEnabled(o.id)) ?? null,
     [objectives, completed]
   );
 

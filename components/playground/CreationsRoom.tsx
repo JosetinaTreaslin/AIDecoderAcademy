@@ -39,12 +39,12 @@ const BOTTOM_TRAY_HOTSPOTS: {
   glowColor: string; glowRgb: string;
   top: string; height: string; left: string; width: string;
 }[] = [
-  { id:"audio",  label:"", glowColor:"#00aaff", glowRgb:"0,170,255",   top:"77%", height:"15%", left:"37%", width:"8%" },
-  { id:"text",   label:"",       glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"77%", height:"15%", left:"47%", width:"8%" },
-  { id:"image",  label:"",     glowColor:"#ff4488", glowRgb:"255,68,136",  top:"77%", height:"15%", left:"57%", width:"8%" },
-  { id:"json",   label:"",    glowColor:"#00ff64", glowRgb:"0,255,100",   top:"77%", height:"15%", left:"66%", width:"8%" },
-  { id:"video",  label:"",    glowColor:"#ff7800", glowRgb:"255,120,0",   top:"77%", height:"15%", left:"75%", width:"9%" },
-  { id:"slides", label:"", glowColor:"#ffb400", glowRgb:"255,180,0",   top:"77%", height:"15%", left:"86%", width:"9%" },
+  { id:"audio",  label:"Audio",  glowColor:"#00aaff", glowRgb:"0,170,255",   top:"77%", height:"15%", left:"37%", width:"8%" },
+  { id:"text",   label:"Text",   glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"77%", height:"15%", left:"47%", width:"8%" },
+  { id:"image",  label:"Image",  glowColor:"#ff4488", glowRgb:"255,68,136",  top:"77%", height:"15%", left:"57%", width:"8%" },
+  { id:"json",   label:"JSON",   glowColor:"#00ff64", glowRgb:"0,255,100",   top:"77%", height:"15%", left:"66%", width:"8%" },
+  { id:"video",  label:"Video",  glowColor:"#ff7800", glowRgb:"255,120,0",   top:"77%", height:"15%", left:"75%", width:"9%" },
+  { id:"slides", label:"Slides", glowColor:"#ffb400", glowRgb:"255,180,0",   top:"77%", height:"15%", left:"86%", width:"9%" },
 ];
 
 // ── Center shelf rows — empty shelves in the right column of the bookcase ────
@@ -68,7 +68,7 @@ const FLOOR_OBJECTS: {
 }[] = [
   { key:"phones", id:"audio",  label:"Audio",  src:"/arena1/headphones.png",   blend:"screen", glowColor:"#00aaff", glowRgb:"0,170,255",   vw:"10vw"  },
   { key:"slide",  id:"slides", label:"Slides", src:"/arena1/slide.png",         blend:"normal", glowColor:"#ffb400", glowRgb:"255,180,0",   vw:"15vw" },
-  { key:"book",   id:"text",   label:"Text",   src:"/arena1/book.png",          blend:"normal", glowColor:"#c8a0ff", glowRgb:"200,160,255", vw:"8vw" },
+  { key:"text",   id:"text",   label:"Text",   src:"/arena1/book.png",          blend:"normal", glowColor:"#c8a0ff", glowRgb:"200,160,255", vw:"8vw" },
   { key:"camera", id:"image",  label:"Image",  src:"/arena1/camera.png",        blend:"screen", glowColor:"#ff4488", glowRgb:"255,68,136",  vw:"8vw" },
   { key:"clap",   id:"video",  label:"Video",  src:"/arena1/clapperboard.png",  blend:"screen", glowColor:"#ff7800", glowRgb:"255,120,0",   vw:"10vw" },
   { key:"js",     id:"json",   label:"JSON",   src:"/arena1/jscube.png",        blend:"screen", glowColor:"#00ff64", glowRgb:"0,255,100",   vw:"10vw" },
@@ -281,6 +281,9 @@ function buildCreationContext(c: Creation): string {
   // If a server URL exists, it's an uploaded document → send the URL so the API can fetch it
   if (c.output_type === "text" && c.file_url) {
     return `[Document titled "${c.title}": ${c.file_url}]\n\n`;
+  }
+  if (c.output_type === "video" && c.file_url) {
+    return `[Video titled "${c.title}": ${c.file_url}]\n\n`;
   }
   return `[${c.output_type} titled "${c.title}": ${c.content.slice(0, 300)}]\n\n`;
 }
@@ -1005,15 +1008,44 @@ export function CreationsRoom({
                 cursor: "pointer",
                 pointerEvents: "auto",
                 display: "flex",
-                alignItems: "flex-end",
-                justifyContent: "center",
-                paddingBottom: "0%",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                paddingBottom: 4,
+                gap: 3,
               }}
             >
-              {/* Traffic light dot */}
+              {/* Label chip — covers the PNG-baked label underneath with our
+                  canonical output-type name (Headphones→Audio, Book→Text,
+                  Camera→Image, JS File→JSON, Clapper Board→Video, Slide
+                  Deck→Slides). */}
+              <span
+                style={{
+                  display: "inline-block",
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  fontFamily: "var(--font-syne), system-ui, sans-serif",
+                  color: isActive ? "#08080F" : "rgba(255,255,255,0.96)",
+                  background: isActive
+                    ? hz.glowColor
+                    : `linear-gradient(180deg, rgba(6,12,24,0.92) 0%, rgba(2,8,18,0.92) 100%)`,
+                  border: `1px solid ${isActive ? "rgba(255,255,255,0.5)" : `rgba(${hz.glowRgb},0.55)`}`,
+                  boxShadow: isActive
+                    ? `0 0 14px rgba(${hz.glowRgb},0.7)`
+                    : `0 2px 8px rgba(0,0,0,0.6)`,
+                  whiteSpace: "nowrap",
+                  transition: "all 0.2s",
+                }}
+              >
+                {hz.label}
+              </span>
+              {/* Traffic-light dot stays as the selection indicator */}
               <span style={{
                 display: "block",
-                width: 10, height: 10,
+                width: 8, height: 8,
                 borderRadius: "50%",
                 background: isActive ? "#22c55e" : "#ef4444",
                 boxShadow: isActive

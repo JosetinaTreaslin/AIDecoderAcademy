@@ -202,7 +202,7 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
                   color: `rgba(${aRgb},0.7)`, textTransform: "uppercase",
                   fontFamily: "'Syne', sans-serif",
                 }}>
-                  GRADING RUBRIC
+                  HOW IT'S CHECKED
                 </span>
                 <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }}/>
               </div>

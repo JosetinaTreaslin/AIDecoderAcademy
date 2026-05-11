@@ -41,6 +41,8 @@ interface Props {
   whiteboardImages: WhiteboardImageMessage[];   // recent images from whiteboard chat
   // Worksheet docs the kid dropped into chat (priority: popup wins, this is fallback)
   whiteboardDocs?:  { url: string; filename: string; format: "pdf" | "docx" }[];
+  // Videos the kid dropped into chat (sole source for OBJ 6 avatar MP4 now)
+  whiteboardVideos?: { url: string; filename: string }[];
   onClose:          () => void;
   onComplete:       (composite: number, tier: FinalResult["tier"]) => Promise<void>;
 }
@@ -54,6 +56,41 @@ const FUNNY_NO_WORKSHEET = [
   "You came to be graded… without the work. Bold. Now fill the worksheet.",
   "Help me help you. I need either the form filled in or a doc uploaded.",
 ] as const;
+
+// ── Punchy celebration openers ───────────────────────────────────────────────
+// Short one-liners spoken BEFORE the rubric script when the kid hits pass /
+// merit / distinction. Picked at random so demos and replays feel alive — the
+// kid doesn't hear the same line twice. Each line is <12 words, no emojis,
+// matches the Skeptical Mentor voice (warmer when they earn it).
+const CELEBRATION_OPENERS: Record<"pass" | "merit" | "distinction", readonly string[]> = {
+  pass: [
+    "Okay. You did the thing.",
+    "There it is.",
+    "Not bad. Not bad at all.",
+    "That works.",
+    "Look at you actually shipping.",
+  ],
+  merit: [
+    "Now we're cooking.",
+    "Okay — that one had teeth.",
+    "Yeah, that lands.",
+    "Sharp work.",
+    "I felt that one.",
+  ],
+  distinction: [
+    "Wait. Run that back.",
+    "Okay, full stop. That was special.",
+    "That's the bar. Raised.",
+    "Right. I'm taking notes now.",
+    "Top of the class today.",
+  ],
+};
+
+function pickCelebrationOpener(tier: "distinction" | "merit" | "pass" | "fail"): string | null {
+  if (tier === "fail") return null;
+  const pool = CELEBRATION_OPENERS[tier];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 type Phase = "intro" | "ready" | "submitting" | "result";
 
@@ -166,7 +203,7 @@ function clearDraft(lmsId: string, profileId?: string) {
 }
 
 export function ObjectiveSubmissionPanel({
-  open, rubric, profile, whiteboardImages, whiteboardDocs = [], onClose, onComplete,
+  open, rubric, profile, whiteboardImages, whiteboardDocs = [], whiteboardVideos = [], onClose, onComplete,
 }: Props) {
   const isObj6        = rubric.lmsId === "l1-06";
   const validateUrl   = isObj6 ? "/api/aida/validate/obj6" : "/api/aida/validate/obj10";
@@ -273,10 +310,12 @@ export function ObjectiveSubmissionPanel({
     } else {
       // Second+ open: contextual notice line that reflects what's pending.
       setPhase("ready");
+      // Media now comes from chat — count whichever kind the objective needs.
+      const chatMediaCount = isObj6 ? whiteboardVideos.length : whiteboardImages.length;
       const ctx: ReadyContext = {
         hasInlineForm:   !!(fresh?.data && Object.keys(fresh.data).length > 0),
-        hasFile:         !!fresh?.worksheetFile,
-        mediaCount:      fresh?.mediaUrls?.length ?? 0,
+        hasFile:         (whiteboardDocs?.length ?? 0) > 0,
+        mediaCount:      chatMediaCount,
         notesLen:        fresh?.notes?.length ?? 0,
         whiteboardCount: whiteboardImages.length,
         isObj6:          isObj6,
@@ -364,22 +403,23 @@ export function ObjectiveSubmissionPanel({
       return;
     }
 
-    // Media: kid-uploaded (in popup) wins. Otherwise fall back to the most
-    // recent whiteboard output of the matching type.
-    const mediaFromPending = fresh?.mediaUrls ?? [];
-    const fallbackMedia    = !isObj6 && whiteboardImages.length > 0
-      ? [whiteboardImages[whiteboardImages.length - 1].url]
-      : [];
-    const mediaToUse = mediaFromPending.length > 0 ? mediaFromPending : fallbackMedia;
+    // Media is ALWAYS from the whiteboard chat — the worksheet popup no
+    // longer accepts uploads. BOTH objectives now take the most recent IMAGE
+    // (OBJ 6 = avatar image, OBJ 10 = comic image). Videos are no longer the
+    // OBJ 6 deliverable per the GenAlpha spec rewrite.
+    let mediaToUse: string[] = [];
+    if (whiteboardImages.length > 0) {
+      mediaToUse = [whiteboardImages[whiteboardImages.length - 1].url];
+    }
 
     if (isObj6 && mediaToUse.length === 0) {
-      const msg = "I need the HeyGen MP4. Drop it in the worksheet, then come back. I don't grade vibes.";
+      const msg = "I need your avatar image. Generate one in Visual Studio or drop a photo of yourself in chat, then come back.";
       setError(msg);
       speakLine(msg);
       return;
     }
     if (!isObj6 && mediaToUse.length === 0) {
-      const msg = "Worksheet — in. Comic — missing. I can read minds, not blank canvases. Generate the comic or upload it.";
+      const msg = "Worksheet — in. Comic — missing. I can read minds, not blank canvases. Generate the comic or drop it in chat.";
       setError(msg);
       speakLine(msg);
       return;
@@ -394,9 +434,9 @@ export function ObjectiveSubmissionPanel({
     try {
       const body = isObj6
         ? {
-            worksheet: worksheetPayload,
-            videoUrl:  mediaToUse[0],
-            notes:     fresh?.notes ?? "",
+            worksheet:      worksheetPayload,
+            avatarImageUrl: mediaToUse[0],
+            notes:          fresh?.notes ?? "",
             profile: {
               display_name: profile?.display_name ?? "Student",
               age_group:    profile?.age_group    ?? "11-13",
@@ -429,7 +469,18 @@ export function ObjectiveSubmissionPanel({
       validateAbortRef.current = null;
       setResult(final);
       setPhase("result");
-      speakLine(final.feedbackScript);
+      // Punchy opener (random per tier) → tiny pause → core rubric script.
+      // Lands like a coach reacting, then explaining.
+      const opener = pickCelebrationOpener(final.tier);
+      if (opener) {
+        const beats: ObjectiveIntroBeat[] = [
+          { text: opener },
+          { text: final.feedbackScript },
+        ];
+        void speakBeats(beats);
+      } else {
+        speakLine(final.feedbackScript);
+      }
 
       // Publish to validator channel so AIDA can ground its replies.
       let attemptCount = 0;
@@ -505,10 +556,11 @@ export function ObjectiveSubmissionPanel({
     setPhase("ready");
     const fresh = readPending(rubric.lmsId, profile?.id);
     setPending(fresh);
+    const chatMediaCount = isObj6 ? whiteboardVideos.length : whiteboardImages.length;
     const ctx: ReadyContext = {
       hasInlineForm:   !!(fresh?.data && Object.keys(fresh.data).length > 0),
-      hasFile:         !!fresh?.worksheetFile,
-      mediaCount:      fresh?.mediaUrls?.length ?? 0,
+      hasFile:         (whiteboardDocs?.length ?? 0) > 0,
+      mediaCount:      chatMediaCount,
       notesLen:        fresh?.notes?.length ?? 0,
       whiteboardCount: whiteboardImages.length,
       isObj6:          isObj6,

@@ -120,26 +120,16 @@ function allRequiredFilled(schema: WorksheetSchema, data: Record<string, string 
     .every(s => s.fields.every(f => isFieldFilled(f, data[f.id])));
 }
 
-// OBJ 6 = single video upload required (HeyGen MP4, too big for chat upload).
-// OBJ 10 = no in-popup uploads — the kid drops their comic image straight into
-// chat and the validator picks it up from there. Worksheet docs likewise go
-// through chat now.
-function mediaConfig(lmsId: string): {
+// All in-popup uploads removed — comic images (OBJ 10) and avatar videos
+// (OBJ 6) both come from the whiteboard chat now. The validator scans chat
+// messages for the right kind of media and uses the most recent match.
+function mediaConfig(_lmsId: string): {
   kind:     "image" | "video";
   accept:   string;
   multiple: boolean;
   label:    string;
   hint:     string;
 } | null {
-  if (lmsId === "l1-06") {
-    return {
-      kind:     "video",
-      accept:   "video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov",
-      multiple: false,
-      label:    "Avatar video — required",
-      hint:     ".mp4 / .webm / .mov · single file · max 60 MB",
-    };
-  }
   return null;
 }
 
@@ -324,7 +314,50 @@ export function WorksheetPopup({
     URL.revokeObjectURL(url);
   }
 
-  if (!schema) return null;
+  // No schema for this objective yet — render a small "coming soon" sheet so
+  // the kid still gets feedback from clicking the floor sprite.
+  if (!schema) {
+    return (
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.div
+              key="ws-empty-backdrop"
+              className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={onClose}
+            />
+            <motion.div
+              key="ws-empty-shell"
+              className="fixed inset-0 z-[201] flex items-center justify-center p-6 pointer-events-none"
+              initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
+            >
+              <div
+                className="pointer-events-auto w-full max-w-md rounded-3xl border border-white/10 bg-[#0F0F1A] shadow-2xl p-6 text-center"
+                style={{ boxShadow: `0 0 40px ${arenaAccentGlow}` }}
+              >
+                <div className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-mono mb-2">Worksheet</div>
+                <h2 className="text-lg font-display font-bold mb-3" style={{ color: arenaAccent }}>Coming soon</h2>
+                <p className="text-sm text-white/65 leading-relaxed mb-5">
+                  We're still writing the worksheet for this mission. For now,
+                  jump back to <strong>OBJ 6</strong> or <strong>OBJ 10</strong> —
+                  those are fully playable.
+                </p>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-lg text-xs font-display font-bold transition"
+                  style={{ background: arenaAccent, color: "#08080F" }}
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   // Submit allowed when the required inline fields are filled. (The kid can
   // also drop a filled .docx/.pdf into chat — that path is picked up by the
@@ -369,72 +402,101 @@ export function WorksheetPopup({
               <p className="px-5 pt-4 text-sm text-white/70">{schema.intro}</p>
 
               {/* ── Body ─────────────────────────────────────────────── */}
-              <div className="px-5 py-4 space-y-6">
+              <div className="px-5 py-4 space-y-7">
                 {schema.sections.map(section => (
                   <section key={section.id}>
-                    <h3 className="text-sm font-display font-bold text-white">{section.title}</h3>
-                    {section.subtitle && <p className="text-xs text-white/50 mb-3">{section.subtitle}</p>}
-                    <div className="space-y-3 mt-2">
-                      {section.fields.map(f => (
-                        <div key={f.id}>
-                          <label className="block text-xs text-white/70 mb-1">{f.label}</label>
+                    <h3 className="text-base font-display font-bold text-white">{section.title}</h3>
+                    {section.subtitle && (
+                      <p className="text-xs text-white/55 mt-1 leading-relaxed">{section.subtitle}</p>
+                    )}
+                    {section.body && (
+                      <p className="text-xs text-white/65 mt-2 leading-relaxed whitespace-pre-line">
+                        {section.body}
+                      </p>
+                    )}
+                    {section.bullets && section.bullets.length > 0 && (
+                      <ul className="mt-2 space-y-1.5 list-disc pl-5 text-xs text-white/65 leading-relaxed">
+                        {section.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                      </ul>
+                    )}
+                    {section.fields.length > 0 && (
+                      <div className="space-y-4 mt-4">
+                        {section.fields.map(f => (
+                          <div key={f.id}>
+                            <label className="block text-sm font-display font-semibold text-white mb-1">{f.label}</label>
+                            {f.description && (
+                              <p className="text-xs text-white/60 mb-2 leading-relaxed whitespace-pre-line">
+                                {f.description}
+                              </p>
+                            )}
 
-                          {f.kind === "text" && (
-                            <input
-                              type="text"
-                              value={(data[f.id] as string) ?? ""}
-                              onChange={e => update(f.id, e.target.value)}
-                              className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-sm focus:outline-none focus:border-white/30"
-                            />
-                          )}
+                            {f.kind === "text" && (
+                              <input
+                                type="text"
+                                value={(data[f.id] as string) ?? ""}
+                                onChange={e => update(f.id, e.target.value)}
+                                placeholder={f.placeholder}
+                                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-sm focus:outline-none focus:border-white/30"
+                              />
+                            )}
 
-                          {f.kind === "longtext" && (
-                            <textarea
-                              value={(data[f.id] as string) ?? ""}
-                              onChange={e => update(f.id, e.target.value)}
-                              rows={f.rows ?? 3}
-                              className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-sm focus:outline-none focus:border-white/30 resize-y"
-                            />
-                          )}
+                            {f.kind === "longtext" && (
+                              <textarea
+                                value={(data[f.id] as string) ?? ""}
+                                onChange={e => update(f.id, e.target.value)}
+                                placeholder={f.placeholder}
+                                rows={f.rows ?? 3}
+                                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-sm focus:outline-none focus:border-white/30 resize-y leading-relaxed"
+                              />
+                            )}
 
-                          {f.kind === "yesno" && (
-                            <div className="flex gap-2">
-                              {[true, false].map(isYes => {
-                                const active = data[f.id] === isYes;
-                                return (
-                                  <button
-                                    key={String(isYes)}
-                                    type="button"
-                                    onClick={() => update(f.id, isYes)}
-                                    className="px-3 py-1.5 rounded-lg text-xs border transition"
-                                    style={{
-                                      borderColor: active ? arenaAccent : "rgba(255,255,255,0.1)",
-                                      color:       active ? arenaAccent : "rgba(255,255,255,0.7)",
-                                      background:  active ? `${arenaAccent}1A` : "transparent",
-                                    }}
-                                  >
-                                    {isYes ? "YES" : "NO"}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
+                            {f.kind === "yesno" && (
+                              <div className="flex gap-2">
+                                {[true, false].map(isYes => {
+                                  const active = data[f.id] === isYes;
+                                  return (
+                                    <button
+                                      key={String(isYes)}
+                                      type="button"
+                                      onClick={() => update(f.id, isYes)}
+                                      className="px-3 py-1.5 rounded-lg text-xs border transition"
+                                      style={{
+                                        borderColor: active ? arenaAccent : "rgba(255,255,255,0.1)",
+                                        color:       active ? arenaAccent : "rgba(255,255,255,0.7)",
+                                        background:  active ? `${arenaAccent}1A` : "transparent",
+                                      }}
+                                    >
+                                      {isYes ? "YES" : "NO"}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
 
-                          {(f.kind === "longtext" || f.kind === "text") && (f.weakEx || f.strongEx) && (
-                            <div className="mt-1 text-[11px] text-white/40 space-y-0.5">
-                              {f.weakEx   && <div>❌ <span className="text-white/35">Weak:</span> {f.weakEx}</div>}
-                              {f.strongEx && <div>✅ <span className="text-white/55">Strong:</span> {f.strongEx}</div>}
-                            </div>
-                          )}
+                            {(f.kind === "longtext" || f.kind === "text") && (f.weakEx || f.strongEx) && (
+                              <div className="mt-2 text-[11px] space-y-1">
+                                {f.weakEx && (
+                                  <div className="text-white/50 leading-relaxed">
+                                    <span className="text-red-400/80 font-semibold">❌ Weak:</span> {f.weakEx}
+                                  </div>
+                                )}
+                                {f.strongEx && (
+                                  <div className="text-white/75 leading-relaxed">
+                                    <span className="text-emerald-400/90 font-semibold">✅ Strong:</span> {f.strongEx}
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
-                          {f.kind === "longtext" && f.minWords && typeof data[f.id] === "string" && (
-                            <div className="mt-1 text-[10px] text-white/30 font-mono">
-                              {wordCount(data[f.id] as string)} / {f.minWords}+ words
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                            {f.kind === "longtext" && f.minWords && typeof data[f.id] === "string" && (
+                              <div className="mt-1 text-[10px] text-white/30 font-mono">
+                                {wordCount(data[f.id] as string)} / {f.minWords}+ words
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </section>
                 ))}
 

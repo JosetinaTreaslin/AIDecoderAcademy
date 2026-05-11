@@ -9,6 +9,55 @@ GLOBAL STYLE LOCK:
 
 const NEGATIVE_PROMPT = "photorealistic, 3D render, blurry, low quality, distorted faces, extra limbs, watermark, text overlay, wide-angle shot where characters appear tiny";
 
+// ─── Comic / panel intent ─────────────────────────────────────────────────────
+//
+// When the prompt mentions a comic strip / panels / frames, we must explicitly
+// instruct flux-pro on (a) the panel layout and (b) character consistency
+// across panels — otherwise the model often produces a single illustration or
+// drops the character between panels. This is the OBJ 10 deliverable.
+//
+// We detect "comic", "panel", "panels", "strip", "frames", or an explicit
+// integer like "3-panel" / "three panels". If detected we also try to read the
+// panel count (default: 3) so we can name it in the layout instruction.
+
+const COMIC_KEYWORDS_RE = /\b(comic\s+strip|comic|panels?|frames?|comic\s+book)\b/i;
+
+function detectPanelCount(prompt: string): number | null {
+  // "3-panel", "3 panel", "three-panel", "three panels"
+  const digit = prompt.match(/\b(\d+)\s*[-\s]?\s*panels?\b/i);
+  if (digit) return Math.min(6, Math.max(2, parseInt(digit[1], 10)));
+  const word  = prompt.match(/\b(two|three|four|five|six)\s*[-\s]?\s*panels?\b/i);
+  if (word) {
+    const map: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6 };
+    return map[word[1].toLowerCase()] ?? null;
+  }
+  return null;
+}
+
+function isComicPrompt(prompt: string): boolean {
+  return COMIC_KEYWORDS_RE.test(prompt);
+}
+
+// Layout PREFIX — diffusion models read the first ~40 words most strongly,
+// so the panel structure goes at the FRONT. Tested 2026-05-11: flux-pro/v1.1
+// reliably produces 3 separated panels with this opener and ignores it when
+// placed as a suffix.
+function buildComicPrefix(prompt: string): string {
+  const n = detectPanelCount(prompt) ?? 3;
+  return `A horizontal comic strip divided into exactly ${n} equal panels arranged left to right, separated by thick black vertical gutters, panels labelled "PANEL 1"${n >= 2 ? `, "PANEL 2"` : ""}${n >= 3 ? `, "PANEL 3"` : ""}${n >= 4 ? `, … through "PANEL ${n}"` : ""} in small yellow boxes in the top-left of each panel. The same main character appears VISUALLY IDENTICAL in every panel — same face, hairstyle, clothing, and colour palette throughout. `;
+}
+
+function buildComicSuffix(prompt: string): string {
+  const n = detectPanelCount(prompt) ?? 3;
+  return `
+
+COMIC STRIP DELIVERY NOTES:
+- ${n}-panel horizontal layout, equal widths, ~6px thick black gutters
+- Each panel shows ONE clear moment: panel 1 setup, ${n === 3 ? "panel 2 twist, panel 3 punchline" : `middle panels build, panel ${n} is the punchline / reveal`}
+- Dialogue / captions in clean speech bubbles or panel captions — keep text short and legible
+- Wide landscape composition (16:9) — fill the WHOLE frame, NOT a single centred illustration`;
+}
+
 // ─── Intent detection — keywords that should NOT get animation style ──────────
 
 const NO_STYLE_KEYWORDS = [
@@ -36,8 +85,12 @@ function shouldApplyStyle(prompt: string): boolean {
 
 function buildPrompt(prompt: string, forceStyle?: boolean): string {
   const apply = forceStyle !== undefined ? forceStyle : shouldApplyStyle(prompt);
-  if (!apply) return prompt.trim();
-  return prompt.trim() + STYLE_SUFFIX;
+  const comic = isComicPrompt(prompt);
+  let out = prompt.trim();
+  if (comic) out = buildComicPrefix(out) + out;     // layout PREFIX wins attention
+  if (apply) out += STYLE_SUFFIX;
+  if (comic) out += buildComicSuffix(out);
+  return out;
 }
 
 // ─── fal.ai configs ───────────────────────────────────────────────────────────
@@ -70,9 +123,19 @@ const FAL_CONFIGS: Record<string, { endpoint: string; fallback?: string; payload
       negative_prompt: NEGATIVE_PROMPT,
     },
   },
+  // Imagen 4 — best in-class for text rendering inside generated images.
+  // Used automatically when comic intent is detected so dialogue lands.
+  "imagen4": {
+    endpoint: "fal-ai/imagen4/preview",
+    fallback: "fal-ai/flux-pro/v1.1",
+    payload: {
+      aspect_ratio: "16:9",
+      num_images:   1,
+    },
+  },
 };
 
-export type ImageModel = "fal-flux2pro" | "fal-juggernaut" | "gpt-image-1";
+export type ImageModel = "fal-flux2pro" | "fal-juggernaut" | "imagen4" | "gpt-image-1";
 
 async function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));
@@ -182,9 +245,18 @@ export async function generateImage(
     ? buildPrompt(prompt)     // smart detection
     : prompt.trim();          // caller said no style
 
-  console.log(`[imageGenerator] style=${applyStyle && shouldApplyStyle(prompt)} model=${model}`);
+  // Comic intent → auto-upgrade to Imagen 4 for the dialogue text rendering.
+  // flux-pro/v1.1 produces good panels but garbles small text in speech
+  // bubbles; Imagen 4 nails spelling. Only do this when img2img isn't active
+  // (Imagen 4 doesn't support a reference image).
+  let routedModel = model;
+  if (model === "fal-flux2pro" && !imageUrl && isComicPrompt(prompt)) {
+    routedModel = "imagen4";
+  }
+
+  console.log(`[imageGenerator] style=${applyStyle && shouldApplyStyle(prompt)} model=${routedModel}${routedModel !== model ? ` (routed from ${model})` : ""}`);
   console.log(`[imageGenerator] prompt: ${finalPrompt.slice(0, 120)}...`);
 
-  if (model === "gpt-image-1") return generateOpenAI(finalPrompt);
-  return generateFal(finalPrompt, model, imageUrl);
+  if (routedModel === "gpt-image-1") return generateOpenAI(finalPrompt);
+  return generateFal(finalPrompt, routedModel, imageUrl);
 }

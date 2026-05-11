@@ -86,6 +86,11 @@ export async function POST(req: Request) {
     const { imageUrl, imageTitle, cleanPrompt } = extractImageContext(prompt);
     let finalPrompt = cleanPrompt;
 
+    // Carry the "comic / panels" intent through any GPT prompt rewrite below
+    // so the layout suffix in lib/imageGenerator.ts still fires after rewrite.
+    const COMIC_RE      = /\b(comic\s+strip|comic|panels?|frames?|comic\s+book)\b/i;
+    const wasComicIntent = COMIC_RE.test(cleanPrompt);
+
     if (imageUrl && imageTitle) {
       // User injected a saved image and wants to edit it.
       // The redux/img2img model only creates stylistic variations — it cannot reliably
@@ -104,6 +109,13 @@ export async function POST(req: Request) {
       console.log("[generate-image] resolved prompt:", finalPrompt.slice(0, 80));
     } else {
       console.log("[generate-image] direct mode:", cleanPrompt.slice(0, 80));
+    }
+
+    // If the original prompt clearly asked for a comic strip but the GPT
+    // rewrite stripped that out, re-inject the marker so the layout suffix
+    // still fires inside generateImage().
+    if (wasComicIntent && !COMIC_RE.test(finalPrompt)) {
+      finalPrompt = `${finalPrompt} — render as a comic strip with multiple panels`;
     }
 
     // Always use text-to-image (no img2img) — the redux variation model doesn't follow

@@ -65,10 +65,10 @@ export const OBJECTIVES: Objective[] = [
   {
     id: "a1-6", arenaId: 1, order: 6,
     emoji: "🎭",
-    title: "Build Your AI Academy Avatar — HeyGen",
-    description: "Design your AI Academy avatar — appearance, voice, personality, and presentation script — using HeyGen. Identity persists for 6 levels. Open the worksheet, complete the Avatar Identity Card, then record.",
-    outputType: "video",
-    starterPrompt: "Open your worksheet and complete the Think It Canvas before opening HeyGen. The validator reads your worksheet directly.",
+    title: "Build Your AI Academy Avatar",
+    description: "Design your AI Academy avatar — appearance, vibe, personality, signature element. Identity persists for 6 levels. Fill the Avatar Identity Card, then generate the avatar IMAGE in Visual Studio — or drop a photo of yourself in chat to be restyled.",
+    outputType: "image",
+    starterPrompt: "Open your worksheet and complete the Think It Canvas + Avatar Identity Card. Then generate the avatar image from your Identity Card description — or upload a photo and ask AIDA to restyle it.",
     xpReward: 80,
   },
   {
@@ -102,7 +102,7 @@ export const OBJECTIVES: Objective[] = [
     id: "a1-10", arenaId: 1, order: 10,
     emoji: "💥",
     title: "Your First AI Comic Strip",
-    description: "Create a 3-panel funny comic with Canva AI. Plan it (Think It → Story It) before opening any tool. Submit your worksheet + comic image. The validator grades both.",
+    description: "Create a 3-panel funny comic right here in the whiteboard. Plan it (Think It → Story It) before generating. Drop the final comic image in chat. The validator grades your worksheet + your comic image.",
     outputType: "image",
     starterPrompt: "I'm planning a 3-panel comic. Help me brainstorm a funny scenario with a setup, a twist, and a punchline. Audience: someone my age. The punchline must land in panel 3.",
     xpReward: 35,
@@ -376,4 +376,15 @@ export function isArenaComplete(arenaId: number): boolean {
 export function isArenaUnlocked(arenaId: number): boolean {
   if (arenaId <= 1) return true;
   return isArenaComplete(arenaId - 1);
+}
+
+// Curriculum gating — which mission tiles are playable RIGHT NOW.
+//
+// We only have full worksheet specs + validator rubrics for OBJ 6 and OBJ 10
+// at the moment, so the other tiles in Arena 1 are visually present but
+// non-interactive. As specs land for OBJ 1, 2, … just add their ids here.
+const ENABLED_OBJECTIVE_IDS = new Set(["a1-6", "a1-10"]);
+
+export function isObjectiveEnabled(objectiveId: string): boolean {
+  return ENABLED_OBJECTIVE_IDS.has(objectiveId);
 }
