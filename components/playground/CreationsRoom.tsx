@@ -476,6 +476,7 @@ export function CreationsRoom({
     const t = file.type.toLowerCase();
     if (t.startsWith("image/")) return "image";
     if (t.startsWith("audio/")) return "audio";
+    if (t.startsWith("video/")) return "video";
     if (
       t === "application/pdf" ||
       t === "application/msword" ||
@@ -489,6 +490,7 @@ export function CreationsRoom({
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (["png","jpg","jpeg","gif","webp","svg","bmp","avif"].includes(ext)) return "image";
     if (["mp3","wav","ogg","aac","m4a","flac"].includes(ext)) return "audio";
+    if (["mp4","mov","webm","avi","mkv","m4v"].includes(ext)) return "video";
     if (["pdf","doc","docx"].includes(ext)) return "text";
     if (["ppt","pptx"].includes(ext)) return "slides";
     return null;
@@ -731,6 +733,63 @@ export function CreationsRoom({
                 </span>
                 <span style={{ fontSize: 10, color: "rgba(125,211,252,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
                   PNG · JPG · WEBP — multiple
+                </span>
+              </span>
+            </button>
+
+            {/* Video file */}
+            <input type="file"
+              accept="video/mp4,video/mov,video/webm,video/avi,video/x-matroska,.mp4,.mov,.webm,.avi,.mkv,.m4v"
+              style={{ display: "none" }}
+              id="video-upload-input"
+              onChange={handleFileUpload}/>
+            <button onClick={() => (document.getElementById("video-upload-input") as HTMLInputElement)?.click()}
+              style={{
+                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                border:     "1px solid rgba(255,120,0,0.28)",
+                background:
+                  "linear-gradient(180deg, " +
+                    "rgba(120,60,20,0.32) 0%, " +
+                    "rgba(60,28,10,0.55) 50%, " +
+                    "rgba(40,18,8,0.55) 100%" +
+                  ")",
+                color:      "rgba(255,220,180,0.92)",
+                fontSize:   13, fontWeight: 600, transition: "all 0.2s",
+                display:    "flex", flexDirection: "row", alignItems: "center", gap: 14,
+                textAlign:  "left",
+                boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(255,120,0,0)",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "linear-gradient(180deg, rgba(120,60,20,0.55) 0%, rgba(60,28,10,0.7) 50%, rgba(40,18,8,0.7) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,120,0,0.85)";
+                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(255,120,0,0.45)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "linear-gradient(180deg, rgba(120,60,20,0.32) 0%, rgba(60,28,10,0.55) 50%, rgba(40,18,8,0.55) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,120,0,0.28)";
+                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(255,120,0,0)";
+              }}
+            >
+              <span style={{
+                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "linear-gradient(180deg, #FCA47D 0%, #FF7800 50%, #C24E00 100%)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 14px rgba(255,120,0,0.55)",
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="5" width="14" height="14" rx="2" stroke="#1a0800" strokeWidth="1.8"/>
+                  <path d="M16 9l6-3v12l-6-3V9z" fill="#1a0800"/>
+                </svg>
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 13, color: "white", letterSpacing: "-0.01em" }}>
+                  Upload video
+                </span>
+                <span style={{ fontSize: 10, color: "rgba(252,164,125,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
+                  MP4 · MOV · WEBM · AVI · MKV
                 </span>
               </span>
             </button>
