@@ -221,9 +221,9 @@ $$;
 --  STORAGE
 -- ══════════════════════════════════════════════════════════════════════
 
--- Create the public media bucket.
--- Run this separately in the Supabase Storage UI if it fails here,
--- as storage API access depends on your Supabase plan.
-insert into storage.buckets (id, name, public)
-values ('creations-media', 'creations-media', true)
-on conflict (id) do nothing;
+-- -- Create the public media bucket.
+-- -- Run this separately in the Supabase Storage UI if it fails here,
+-- -- as storage API access depends on your Supabase plan.
+-- insert into storage.buckets (id, name, public)
+-- values ('creations-media', 'creations-media', true)
+-- on conflict (id) do nothing;
