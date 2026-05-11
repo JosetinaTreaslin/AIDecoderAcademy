@@ -6,7 +6,7 @@ import { UserButton } from "@clerk/nextjs";
 import { ArenaEnvironment } from "@/components/dashboard/ArenaEnvironment";
 import { AidaAssistant } from "@/components/aida/AidaAssistant";
 import { PersonalisationNudge } from "@/components/dashboard/PersonalisationNudge";
-import { PlaygroundSessionProvider } from "@/lib/playgroundSessionContext";
+import { ChatChannelsProvider } from "@/lib/chatChannels";
 import { getArena, ACTIVE_ARENA_CHANGED_EVENT } from "@/lib/arenas";
 import { playArenaEnterSound } from "@/lib/gameAudio";
 import type { Profile } from "@/types";
@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     : Math.round(((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100);
 
   return (
-    <PlaygroundSessionProvider>
+    <ChatChannelsProvider>
     <div
       className="relative overflow-hidden bg-[#08080F]"
       style={{ height: "100dvh", position: "fixed", inset: 0 }}
@@ -194,6 +194,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <AidaAssistant profile={profile} />
       <PersonalisationNudge profile={profile} />
     </div>
-    </PlaygroundSessionProvider>
+    </ChatChannelsProvider>
   );
 }

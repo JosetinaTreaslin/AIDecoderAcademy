@@ -4,9 +4,12 @@ import { getRubric, genericRubric, type ObjectiveRubric } from "@/lib/objectiveR
 import { isEnabled } from "@/lib/featureFlags";
 import { buildTeacherSystemPrompt } from "@/lib/teacherPersona";
 import { moderateContent } from "@/lib/aidaSafety";
+import { applyCopyMode } from "@/lib/validatorCopyMode";
+import { createAdminClient } from "@/lib/supabase";
 import type { AgeGroup } from "@/types";
 
-export const runtime = "nodejs";
+export const runtime     = "nodejs";
+export const maxDuration = 60;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -119,12 +122,33 @@ export async function POST(req: Request) {
 
     const profile = body.profile ?? { display_name: "Student", age_group: "11-13" as AgeGroup };
 
-    const systemPrompt = isEnabled("USE_NEW_AIDA_PROMPTS")
+    // Attempts-aware copy mode: at attempt 3+ the validator switches from
+    // corrective to metacognitive prompts. Cheap row count, non-blocking.
+    let attemptCount = 0;
+    try {
+      const supabase = createAdminClient();
+      const { data: prof } = await supabase
+        .from("profiles").select("id").eq("clerk_user_id", userId).single();
+      if (prof?.id) {
+        const { count } = await supabase
+          .from("objective_attempts")
+          .select("*", { count: "exact", head: true })
+          .eq("profile_id", prof.id)
+          .eq("lms_id", body.lmsId);
+        attemptCount = count ?? 0;
+      }
+    } catch (err) {
+      console.warn("[validate] attempts count failed, defaulting to 0:", err);
+    }
+
+    const baseSystemPrompt = isEnabled("USE_NEW_AIDA_PROMPTS")
       ? buildTeacherSystemPrompt({
           rubric,
           profile: { display_name: profile.display_name, age_group: profile.age_group as AgeGroup },
         })
       : buildSystemPrompt(rubric, profile);
+
+    const systemPrompt = applyCopyMode(baseSystemPrompt, attemptCount, profile.display_name);
 
     const serialised = serializeMessages(body.messages);
 

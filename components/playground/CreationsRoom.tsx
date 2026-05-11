@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { Image as ImageIcon, FileText, X as XIcon } from "lucide-react";
 import { MessageBubble } from "@/components/playground/MessageBubble";
 import { ObjectiveCard } from "@/components/playground/ObjectiveCard";
 import type { Message } from "@/components/playground/useChat";
@@ -622,17 +623,63 @@ export function CreationsRoom({
         {plusOpen && (
           <div style={{
             position: "absolute", bottom: "calc(100% + 8px)", left: 0, right: 0,
-            background: "rgba(10,6,28,0.97)", border: `1px solid ${arenaAccent}40`,
-            borderRadius: 16, padding: 14,
-            boxShadow: `0 -8px 40px rgba(0,0,0,0.5), 0 0 30px ${arenaAccent}18`,
-            backdropFilter: "blur(20px)", zIndex: 50,
-            display: "flex", flexDirection: "column", gap: 10,
+            // Steel-and-cyan METALLIC — same panel signature as the AIDA chat.
+            // Independent of arenaAccent so it always reads as the "white-blue"
+            // chrome theme regardless of which arena the kid is in.
+            background:
+              "radial-gradient(ellipse 90% 55% at 25% 0%, rgba(0,212,255,0.22) 0%, rgba(8,12,28,0) 60%), " +
+              "radial-gradient(ellipse 70% 50% at 100% 100%, rgba(125,211,252,0.08) 0%, rgba(8,12,28,0) 60%), " +
+              "linear-gradient(180deg, " +
+                "rgba(58,98,158,0.55) 0%, " +
+                "rgba(20,38,72,0.95) 6%, " +
+                "rgba(10,18,38,0.97) 50%, " +
+                "rgba(18,32,62,0.96) 94%, " +
+                "rgba(58,98,158,0.45) 100%" +
+              ")",
+            border:        "1px solid rgba(0,212,255,0.55)",
+            borderRadius:  16,
+            padding:       14,
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.22), " +
+              "inset 0 -1px 0 rgba(255,255,255,0.06), " +
+              "0 0 24px rgba(0,212,255,0.45), " +
+              "0 0 72px rgba(0,212,255,0.22), " +
+              "0 18px 60px rgba(0,0,0,0.7)",
+            backdropFilter: "blur(22px)",
+            zIndex:        50,
+            display:       "flex", flexDirection: "column", gap: 12,
           }}>
-            <div style={{ display: "flex", alignItems: "center" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Upload Files</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{
+                width: 4, height: 4, borderRadius: 4,
+                background: "#00D4FF",
+                boxShadow: "0 0 8px #00D4FF",
+              }}/>
+              <span style={{
+                fontSize:        10,
+                fontWeight:      700,
+                color:           "rgba(255,255,255,0.55)",
+                textTransform:   "uppercase",
+                letterSpacing:   "0.22em",
+                fontFamily:      "'JetBrains Mono', monospace",
+              }}>
+                Upload Files
+              </span>
               <button onClick={() => setPlusOpen(false)}
-                style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", fontSize: 18, lineHeight: 1 }}>
-                ×
+                style={{
+                  marginLeft: "auto",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 6,
+                  width: 22, height: 22,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", color: "rgba(255,255,255,0.5)",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "white"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.5)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
+              >
+                <XIcon size={12} />
               </button>
             </div>
 
@@ -642,18 +689,50 @@ export function CreationsRoom({
               style={{ display: "none" }} onChange={handleFileUpload}/>
             <button onClick={() => fileRef.current?.click()}
               style={{
-                width: "100%", padding: "14px 0", borderRadius: 12, cursor: "pointer",
-                border: `2px dashed ${arenaAccent}60`,
-                background: `${arenaAccent}0a`, color: "rgba(255,255,255,0.6)",
-                fontSize: 13, fontWeight: 600, transition: "all 0.2s",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                border:     "1px solid rgba(0,212,255,0.28)",
+                background:
+                  "linear-gradient(180deg, " +
+                    "rgba(58,98,158,0.32) 0%, " +
+                    "rgba(20,38,72,0.55) 50%, " +
+                    "rgba(14,28,56,0.55) 100%" +
+                  ")",
+                color:      "rgba(232,244,255,0.92)",
+                fontSize:   13, fontWeight: 600, transition: "all 0.2s",
+                display:    "flex", flexDirection: "row", alignItems: "center", gap: 14,
+                textAlign:  "left",
+                boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,212,255,0)",
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${arenaAccent}18`; (e.currentTarget as HTMLElement).style.borderColor = arenaAccent; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = `${arenaAccent}0a`; (e.currentTarget as HTMLElement).style.borderColor = `${arenaAccent}60`; }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "linear-gradient(180deg, rgba(58,98,158,0.55) 0%, rgba(20,38,72,0.7) 50%, rgba(14,28,56,0.7) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.85)";
+                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,212,255,0.45)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "linear-gradient(180deg, rgba(58,98,158,0.32) 0%, rgba(20,38,72,0.55) 50%, rgba(14,28,56,0.55) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.28)";
+                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,212,255,0)";
+              }}
             >
-              <span style={{ fontSize: 24 }}>🖼️</span>
-              <span>Upload screenshots</span>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>PNG, JPG, WEBP — select multiple</span>
+              <span style={{
+                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "linear-gradient(180deg, #7DD3FC 0%, #00D4FF 50%, #0284C7 100%)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 14px rgba(0,212,255,0.55)",
+              }}>
+                <ImageIcon size={20} style={{ color: "#031024" }} />
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 13, color: "white", letterSpacing: "-0.01em" }}>
+                  Upload screenshots
+                </span>
+                <span style={{ fontSize: 10, color: "rgba(125,211,252,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
+                  PNG · JPG · WEBP — multiple
+                </span>
+              </span>
             </button>
 
             {/* Worksheet document */}
@@ -664,18 +743,50 @@ export function CreationsRoom({
               onChange={handleFileUpload}/>
             <button onClick={() => (document.getElementById("doc-upload-input") as HTMLInputElement)?.click()}
               style={{
-                width: "100%", padding: "14px 0", borderRadius: 12, cursor: "pointer",
-                border: `2px dashed ${arenaAccent}60`,
-                background: `${arenaAccent}0a`, color: "rgba(255,255,255,0.6)",
-                fontSize: 13, fontWeight: 600, transition: "all 0.2s",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                border:     "1px solid rgba(0,212,255,0.28)",
+                background:
+                  "linear-gradient(180deg, " +
+                    "rgba(58,98,158,0.32) 0%, " +
+                    "rgba(20,38,72,0.55) 50%, " +
+                    "rgba(14,28,56,0.55) 100%" +
+                  ")",
+                color:      "rgba(232,244,255,0.92)",
+                fontSize:   13, fontWeight: 600, transition: "all 0.2s",
+                display:    "flex", flexDirection: "row", alignItems: "center", gap: 14,
+                textAlign:  "left",
+                boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,212,255,0)",
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${arenaAccent}18`; (e.currentTarget as HTMLElement).style.borderColor = arenaAccent; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = `${arenaAccent}0a`; (e.currentTarget as HTMLElement).style.borderColor = `${arenaAccent}60`; }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "linear-gradient(180deg, rgba(58,98,158,0.55) 0%, rgba(20,38,72,0.7) 50%, rgba(14,28,56,0.7) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.85)";
+                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,212,255,0.45)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "linear-gradient(180deg, rgba(58,98,158,0.32) 0%, rgba(20,38,72,0.55) 50%, rgba(14,28,56,0.55) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.28)";
+                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,212,255,0)";
+              }}
             >
-              <span style={{ fontSize: 24 }}>📄</span>
-              <span>Upload worksheet</span>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>PDF, DOC, DOCX</span>
+              <span style={{
+                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "linear-gradient(180deg, #7DD3FC 0%, #00D4FF 50%, #0284C7 100%)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 14px rgba(0,212,255,0.55)",
+              }}>
+                <FileText size={20} style={{ color: "#031024" }} />
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 13, color: "white", letterSpacing: "-0.01em" }}>
+                  Upload worksheet
+                </span>
+                <span style={{ fontSize: 10, color: "rgba(125,211,252,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
+                  PDF · DOC · DOCX
+                </span>
+              </span>
             </button>
           </div>
         )}
@@ -950,10 +1061,14 @@ export function CreationsRoom({
             if (c?.id && c.id !== "local-upload") await deleteCreation(c.id);
           } catch {}
         }}
+        // SIZE knob: `width` below (doubled from 14vw). Use vw for fluid sizing.
+        // POSITION knobs: `bottom` (% from bottom), `left` (% from left edge of the room).
         style={{
           position: "absolute",
-          bottom: "2%", left: "14%",
-          width: "14vw", zIndex: 15,
+          bottom: "7%",            // ← vertical position (% from bottom of the room)
+          left:   "2%",           // ← horizontal position (% from left of the room)
+          width:  "28vw",          // ← SIZE: doubled from 14vw
+          zIndex: 15,
           alignItems: "flex-end", justifyContent: "center",
           cursor: "copy",
           transition: "transform 0.2s ease",

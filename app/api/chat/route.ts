@@ -38,8 +38,9 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return new Response("Unauthorized", { status: 401 });
 
-    const body: ChatRequest = await req.json();
-    const { message, sessionId, mode, outputType = "text", profile, history, attachments = [] } = body;
+    const body: ChatRequest & { objectiveId?: string | null } = await req.json();
+    const { message, sessionId, mode, outputType = "text", profile, history, attachments = [], objectiveId } = body;
+    const isObjectiveMode = !!objectiveId;
 
     if (!message?.trim()) return new Response("Empty message", { status: 400 });
 
@@ -110,6 +111,7 @@ export async function POST(req: Request) {
           mode,
           outputType,
           arenaTutorPersona: arena.tutorPersona,
+          isObjectiveMode,
         })
       : (() => {
           const systemPrompt = buildSystemPrompt(profile.age_group, mode, profile.display_name, profile.interests, arena.tutorPersona);

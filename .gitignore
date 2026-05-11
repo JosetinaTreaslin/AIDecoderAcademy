@@ -7,3 +7,18 @@ build/
 .env.local
 .env.*
 .claude
+# clerk configuration (can include secrets)
+/.clerk/
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# Dev / smoke / sample assets — not part of the shipped app
+public/tts-samples/
+scripts/
+docs/
+
+# Editor / OS junk
+nul
+.DS_Store
+Thumbs.db

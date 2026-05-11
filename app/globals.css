@@ -54,6 +54,11 @@
   );
 }
 
+@keyframes aida-slide-up {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
 @layer components {
   .card {
     @apply rounded-2xl border transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)];

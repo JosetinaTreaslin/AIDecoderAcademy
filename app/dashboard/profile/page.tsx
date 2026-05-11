@@ -71,27 +71,48 @@ function OnboardingFlow() {
   const toggleInterest = (i: string) =>
     setInterests(prev => prev.includes(i) ? prev.filter(x => x !== i) : prev.length < 8 ? [...prev, i] : prev);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
   const handleSave = async () => {
+    setSaveError(null);
     setSaving(true);
-    let avatarUrl: string | null = null;
-    if (photoFile) {
-      const fd = new FormData();
-      fd.append("file", photoFile);
-      const r = await fetch("/api/profile/photo", { method: "POST", body: fd });
-      if (r.ok) ({ url: avatarUrl } = await r.json());
-    }
-    const res = await fetch("/api/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        display_name: displayName, avatar_emoji: defaultAvatar,
-        avatar_url: avatarUrl ?? null,
-        age_group: gradeToAgeGroup(grade), interests,
-      }),
-    });
-    if (res.ok) {
-      router.replace("/dashboard");
-    } else {
+    console.log("[Onboarding] handleSave fired", { displayName, board, grade, interests });
+    try {
+      let avatarUrl: string | null = null;
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append("file", photoFile);
+        const r = await fetch("/api/profile/photo", { method: "POST", body: fd });
+        if (r.ok) {
+          ({ url: avatarUrl } = await r.json());
+        } else {
+          console.warn("[Onboarding] photo upload failed", r.status, await r.text().catch(() => ""));
+        }
+      }
+      const payload = {
+        display_name: displayName,
+        avatar_emoji: defaultAvatar,
+        avatar_url:   avatarUrl ?? null,
+        age_group:    gradeToAgeGroup(grade),
+        interests,
+      };
+      console.log("[Onboarding] POST /api/profile", payload);
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      console.log("[Onboarding] /api/profile response", res.status);
+      if (res.ok) {
+        router.replace("/dashboard");
+        return;
+      }
+      const errText = await res.text().catch(() => "");
+      console.error("[Onboarding] save failed:", res.status, errText);
+      setSaveError(`Save failed (${res.status}). ${errText.slice(0, 200) || "Check the network tab."}`);
+      setSaving(false);
+    } catch (err) {
+      console.error("[Onboarding] save threw:", err);
+      setSaveError(`Network error: ${(err as Error)?.message ?? "unknown"}`);
       setSaving(false);
     }
   };
@@ -198,6 +219,26 @@ function OnboardingFlow() {
                 </div>
               )}
 
+              {saveError && (
+                <div className="mt-4 px-3 py-2 rounded-lg text-xs relative"
+                     style={{ background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.35)", color: "#FF9999" }}>
+                  <button
+                    onClick={() => setSaveError(null)}
+                    className="absolute top-1.5 right-2 text-[#FF9999] hover:text-white transition-colors leading-none"
+                    aria-label="Dismiss error"
+                    style={{ fontSize: 16, fontWeight: 700 }}
+                  >
+                    ×
+                  </button>
+                  <span className="pr-5 block">{saveError}</span>
+                  <button
+                    onClick={() => router.push("/dashboard/playground")}
+                    className="mt-2 text-[10px] font-bold underline underline-offset-2 hover:text-white transition-colors"
+                  >
+                    Continue to playground anyway →
+                  </button>
+                </div>
+              )}
               <div className="flex gap-3 mt-8">
                 {step > 0 && (
                   <button onClick={() => setStep(s => s - 1)}
@@ -222,6 +263,11 @@ function OnboardingFlow() {
               {step === 0 && (
                 <button onClick={() => setStep(1)} className="w-full text-center text-xs text-white/30 hover:text-white/50 mt-4 transition-colors">
                   Skip photo →
+                </button>
+              )}
+              {step === 1 && (
+                <button onClick={() => router.push("/dashboard/playground")} className="w-full text-center text-xs text-white/30 hover:text-white/50 mt-4 transition-colors">
+                  Skip for now →
                 </button>
               )}
             </div>

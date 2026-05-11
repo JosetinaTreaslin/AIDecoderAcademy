@@ -1,7 +1,8 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Profile, PlaygroundMode, OutputType } from "@/types";
 import { serializeHistory } from "@/lib/serializeHistory";
+import { useWhiteboardWriter } from "@/lib/chatChannels";
 
 export interface Attachment {
   name: string; mimeType: string; data: string; size: number;
@@ -49,12 +50,17 @@ function decodeFromDB(raw: string): { content: string; attachmentMeta?: string[]
   };
 }
 
-export function useChat(profile: Profile | null, mode: PlaygroundMode) {
+export function useChat(profile: Profile | null, mode: PlaygroundMode, objectiveId: string | null = null) {
   const [messages,    setMessages]    = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sessionId,   setSessionId]  = useState<string | null>(null);
   const abortRef          = useRef<AbortController | null>(null);
   const pendingSessionRef = useRef<Promise<string> | null>(null);
+
+  // Mirror messages into the whiteboard channel so AIDA + Validator can read them.
+  // Whiteboard owns this channel; nothing else writes to it.
+  const wbWriter = useWhiteboardWriter();
+  useEffect(() => { wbWriter.setAll(messages); }, [messages, wbWriter]);
 
   const createSession = useCallback(async (m: PlaygroundMode): Promise<string> => {
     if (pendingSessionRef.current) return pendingSessionRef.current;
@@ -65,9 +71,11 @@ export function useChat(profile: Profile | null, mode: PlaygroundMode) {
     })
       .then(r => r.json())
       .then(({ session }) => {
-        setSessionId(session.id);
+        // TEMP: graceful fallback while Supabase is down — session.id may be undefined.
+        const id = session?.id ?? "temp-session";
+        setSessionId(id);
         pendingSessionRef.current = null;
-        return session.id as string;
+        return id as string;
       });
     pendingSessionRef.current = promise;
     return promise;
@@ -168,6 +176,7 @@ export function useChat(profile: Profile | null, mode: PlaygroundMode) {
             },
             history:     historySnapshot,
             attachments: attachments.map(a => ({ data: a.data, mimeType: a.mimeType, name: a.name })),
+            objectiveId,
           }),
         });
 
@@ -204,7 +213,7 @@ export function useChat(profile: Profile | null, mode: PlaygroundMode) {
         setIsStreaming(false);
       }
     },
-    [profile, isStreaming, sessionId, messages, mode, createSession]
+    [profile, isStreaming, sessionId, messages, mode, createSession, objectiveId]
   );
 
   // ─── Image generation ─────────────────────────────────────────────────────

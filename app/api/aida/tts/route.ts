@@ -2,14 +2,35 @@ import { auth } from "@clerk/nextjs/server";
 
 export const runtime = "nodejs";
 
-// Jessica — Playful, Bright, Warm. Young American female. Ideal friendly AI
-// companion voice for students aged 8–16.
-const AIDA_VOICE_ID    = process.env.ELEVENLABS_AIDA_VOICE_ID    ?? "cgSgspJ2msm6clMCkdW9";
-// George — Warm, Captivating Storyteller. British male, middle-aged.
-// Reads as professorial/authoritative without being harsh — perfect teacher.
+// Domi (Supportive) — Strong, confident, warm female. Reads as a slightly
+// older peer / supportive mentor — pairs with the AIDA "Curious Friend"
+// persona (see lib/aidaPersona.ts → AIDA_VOICE_AND_MANNER).
+const AIDA_VOICE_ID    = process.env.ELEVENLABS_AIDA_VOICE_ID    ?? "AZnzlk1XvdvUeBnXmlld";
+// George (Supportive) — Warm, captivating storyteller. British male,
+// middle-aged. Professorial without being harsh — pairs with the Validator
+// Teacher "Skeptical Mentor" persona (see lib/teacherPersona.ts →
+// TEACHER_VOICE_AND_MANNER).
 const TEACHER_VOICE_ID = process.env.ELEVENLABS_TEACHER_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
 
 const ELEVENLABS_MODEL = "eleven_flash_v2_5"; // ~75ms first-byte latency
+
+// Per-role voice tuning. Lower stability + higher style = more emotional
+// range (good for AIDA's friend energy). Higher stability + lower style =
+// more measured (good for the Teacher's mentor weight).
+const VOICE_SETTINGS = {
+  aida: {
+    stability:        0.4,
+    similarity_boost: 0.7,
+    style:            0.3,
+    use_speaker_boost: true,
+  },
+  teacher: {
+    stability:        0.65,
+    similarity_boost: 0.8,
+    style:            0.15,
+    use_speaker_boost: true,
+  },
+} as const;
 
 // Split text into sentence-sized chunks so the first sentence's audio starts
 // playing while later sentences are still generating.
@@ -34,7 +55,8 @@ export async function POST(req: Request) {
       return new Response("TTS not configured", { status: 503 });
     }
 
-    const voiceId = role === "teacher" ? TEACHER_VOICE_ID : AIDA_VOICE_ID;
+    const voiceId       = role === "teacher" ? TEACHER_VOICE_ID : AIDA_VOICE_ID;
+    const voiceSettings = role === "teacher" ? VOICE_SETTINGS.teacher : VOICE_SETTINGS.aida;
     const chunks  = splitIntoChunks(text.slice(0, 4096));
     const encoder = new TextEncoder();
 
@@ -55,14 +77,9 @@ export async function POST(req: Request) {
                   "Accept":       "audio/mpeg",
                 },
                 body: JSON.stringify({
-                  text:       chunk,
-                  model_id:   ELEVENLABS_MODEL,
-                  voice_settings: {
-                    stability:        0.5,
-                    similarity_boost: 0.75,
-                    style:            0.0,
-                    use_speaker_boost: true,
-                  },
+                  text:           chunk,
+                  model_id:       ELEVENLABS_MODEL,
+                  voice_settings: voiceSettings,
                 }),
               }
             );

@@ -131,34 +131,44 @@ export async function PATCH(req: Request) {
   }
 }
 
-// GET — list a student's attempts for an lms_id (used to show attempt history later).
+// GET — list a student's attempts (used for attempt history + attempts-aware
+// validator copy). Accepts either ?lms_id= (canonical) or ?objective_id=
+// (legacy arena-room id). Returns { attempts, count } so the validator copy
+// mode can switch from "standard" to "metacognitive" after attempt 3.
 export async function GET(req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const lmsId = searchParams.get("lms_id");
-    if (!lmsId) return NextResponse.json({ error: "Missing lms_id" }, { status: 400 });
+    const lmsId       = searchParams.get("lms_id");
+    const objectiveId = searchParams.get("objective_id");
+    if (!lmsId && !objectiveId) {
+      return NextResponse.json({ error: "Missing lms_id or objective_id" }, { status: 400 });
+    }
 
     const supabase = createAdminClient();
     const { data: profile } = await supabase
       .from("profiles").select("id").eq("clerk_user_id", userId).single();
-    if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    if (!profile) return NextResponse.json({ attempts: [], count: 0 });
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("objective_attempts")
       .select("id, score, tier, passed, feedback, attempt_number, created_at, completed_at")
       .eq("profile_id", profile.id)
-      .eq("lms_id",     lmsId)
       .order("created_at", { ascending: false });
 
+    if (lmsId)       query = query.eq("lms_id",       lmsId);
+    if (objectiveId) query = query.eq("objective_id", objectiveId);
+
+    const { data, error } = await query;
     if (error) {
       console.error("[objective-attempts GET]", error);
       return NextResponse.json({ error: "Query failed" }, { status: 500 });
     }
 
-    return NextResponse.json({ attempts: data ?? [] });
+    const rows = data ?? [];
+    return NextResponse.json({ attempts: rows, count: rows.length });
   } catch (err) {
     console.error("[objective-attempts GET]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

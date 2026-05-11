@@ -17,7 +17,19 @@ export type ComplexityTier =
   | "T5 — COMBINE"
   | "T6 — CREATE";
 
+// Single-pass rubrics are graded in one LLM call against the playground chat.
+// Staged rubrics (currently only OBJ 10 — l1-10) use a 3-stage gated pipeline
+// with structured form input + image upload — see lib/obj10Rubric.ts and
+// /api/aida/validate/obj10.
+//
+// We keep the original interface name `ObjectiveRubric` for the single-pass
+// shape so the existing 17 rubrics + every consumer (validate route, teacher
+// dialogue, etc.) compile unchanged. The discriminated union `AnyRubric`
+// is the new lookup type that callers should use when they want to handle
+// both kinds.
+
 export interface ObjectiveRubric {
+  kind?:               "single";       // optional — defaults to single-pass
   lmsId:               string;
   title:               string;
   tier:                ComplexityTier;
@@ -142,23 +154,25 @@ export const RUBRICS_L1: ObjectiveRubric[] = [
   },
   {
     lmsId:      "l1-06",
-    title:      "AI Composes Music — Suno.ai Two-Track Lab",
-    tier:       "T2 — COMPARE",
+    title:      "Build Your AI Academy Avatar — HeyGen",
+    tier:       "T3 — CONSTRUCT",
     difficulty: 3,
-    tools:      ["Suno.ai"],
-    labTask: "Track 1: an upbeat hype track for a school video. Track 2: a calm focus track for studying. Download both with their style prompts.",
-    submitRequirements:  "2 Suno.ai audio tracks (different moods) with style prompts.",
-    passCriteria:        "Both tracks playable. Genuinely different moods. Style prompts included.",
-    meritCriteria:       "Mood contrast is striking. Style prompts use precise mood vocabulary.",
-    distinctionCriteria: "Tracks feel professionally produced. Student demonstrates intentional musical decisions.",
+    tools:      ["HeyGen"],
+    labTask: "Open your worksheet. Complete the Think It Canvas (4 fields, 70% threshold — highest in Level 1). Fill the Avatar Identity Card: appearance (40+ words), voice character, 3 personality traits with behavioural descriptions, presentation style, and confirm the 3 required script lines. Open HeyGen. Build your avatar using your Identity Card as the guide. Record your avatar delivering the 3 required script lines verbatim. Download the MP4.",
+    submitRequirements:  "Completed worksheet (.docx) + HeyGen avatar video clip (MP4, min 15 seconds, avatar name visible bottom-right).",
+    passCriteria:        "Avatar exists, video plays, all three required script lines present in transcript.",
+    meritCriteria:       "Avatar clearly reflects the Identity Card. Voice character matches the description.",
+    distinctionCriteria: "Avatar achieves the success definition from Think It Field 4. Intent to evidence — that's the skill.",
     teacherChecklist: [
-      "Are both tracks playable?",
-      "Are the moods clearly different?",
-      "Are style prompts included?",
+      "Is the worksheet submitted with all fields filled?",
+      "Is the video playable and at least 15 seconds?",
+      "Are all three required script lines present?",
+      "Is the avatar name visible in the bottom right?",
     ],
     correctiveHints: [
-      "If tracks sound similar: 'Your style descriptions are too similar. For energetic: hip-hop, upbeat, school, fast, positive. For calm: ambient, piano, slow, peaceful, focus.'",
-      "If prompts missing: 'Add the exact text you typed in the Suno.ai style box below each track. That text IS the prompt.'",
+      "If script lines are missing: 'Your avatar must deliver all three lines verbatim — \"Hi. I am [Avatar Name]\", \"I am an AI Creator at AI Decoder Academy\", \"By Level 6 — I will have built something the world has never seen.\"'",
+      "If appearance description is under 40 words: 'Describe age, clothing, expression, posture, and the setting. At least 40 words — this is your build brief.'",
+      "If video will not download: 'In HeyGen, click the three-dot menu on your finished video and select Download. Wait 2 minutes if still processing.'",
     ],
   },
   {
@@ -223,25 +237,31 @@ export const RUBRICS_L1: ObjectiveRubric[] = [
       "If images don't visually improve: 'Focus on adding DESCRIPTIVE words: lighting, colour palette, artistic style, camera angle.'",
     ],
   },
+  // l1-10 ("Your First AI Comic Strip") is a STAGED rubric (lib/obj10Rubric.ts).
+  // This single-pass mirror entry is for ObjectiveCard display only — the
+  // actual validation always routes through the staged pipeline.
   {
     lmsId:      "l1-10",
-    title:      "Voice Direction Lab — 3 Performances of One Script",
+    title:      "Your First AI Comic Strip",
     tier:       "T4 — EXPERIMENT",
-    difficulty: 5,
-    tools:      ["ElevenLabs"],
-    labTask: "Write a 4-sentence script. Generate it 3 times in ElevenLabs using 3 completely different voices. The script must be IDENTICAL in all 3.",
-    submitRequirements:  "1 script + 3 audio files (same script, 3 voices). Voice name noted for each.",
-    passCriteria:        "All 3 audio files playable. Same script. 3 different voices. Voice names included.",
-    meritCriteria:       "Voice contrasts are striking — same words feel completely different.",
-    distinctionCriteria: "Student articulates which voice fit the content best and why.",
+    difficulty: 4,
+    tools:      ["Canva AI"],
+    labTask: "Download worksheet. Complete Think It Canvas (4 fields, 65% threshold). Story It: write one-sentence story, break into 3 panels, write image prompts + dialogue, pass the Funny Test (does panel 3 make YOU react?). Open Canva AI. Generate all 3 panels using your worksheet prompts. Add text/dialogue, put avatar name in bottom-right corner. Download as PNG.",
+    submitRequirements:  "Completed worksheet (.docx) + 3-panel comic strip PNG with avatar name in bottom-right corner.",
+    passCriteria:        "Worksheet + comic PNG submitted. Three panels present. Dialogue in each. Funny Test confirmed.",
+    meritCriteria:       "Panels have distinct visual moments. Punchline clearly lands in panel 3.",
+    distinctionCriteria: "Publishable quality. Comic achieves the exact audience reaction named in Think It Field 1.",
     teacherChecklist: [
-      "Are all 3 audio files playable?",
-      "Is the script identical in all 3?",
-      "Are voice names present?",
+      "Is the worksheet submitted with Think It + Story It complete?",
+      "Are all 3 panels present in the PNG?",
+      "Does each panel have dialogue?",
+      "Is the avatar name in the bottom-right corner?",
+      "Is the Funny Test confirmed?",
     ],
     correctiveHints: [
-      "If files are silent: 'Re-export from ElevenLabs History as MP3 and re-upload.'",
-      "If same voice 3 times: 'Click the voice name at the top of the panel to browse and select different voices.'",
+      "If panel 3 doesn't land: 'The punchline must make YOU react before you submit. If it doesn't land for you, your audience won't feel it either — rethink panel 3.'",
+      "If panels all look the same: 'Each panel is a different moment in time. Panel 1 = setup, Panel 2 = twist, Panel 3 = punchline. Generate each separately with a distinct scene.'",
+      "If avatar name missing: 'Add your avatar name as text in the bottom-right corner of the final image before downloading.'",
     ],
   },
   {
@@ -415,15 +435,39 @@ export const RUBRICS_L1: ObjectiveRubric[] = [
 export const RUBRICS_L2: ObjectiveRubric[] = [];
 
 // ─── Combined index ──────────────────────────────────────────────────────────
+// Static imports for staged rubrics (currently only OBJ 10). Adding more
+// staged rubrics later → import them here and extend STAGED_RUBRICS.
 
-const ALL_RUBRICS: ObjectiveRubric[] = [...RUBRICS_L1, ...RUBRICS_L2];
+import { OBJ10_RUBRIC, type StagedRubric } from "@/lib/obj10Rubric";
+import { OBJ6_STAGED_RUBRIC } from "@/lib/obj6Rubric";
 
-const rubricMap: Record<string, ObjectiveRubric> = Object.fromEntries(
-  ALL_RUBRICS.map(r => [r.lmsId, r]),
+export type AnyRubric = ObjectiveRubric | StagedRubric;
+
+const SINGLE_RUBRICS: ObjectiveRubric[] = [...RUBRICS_L1, ...RUBRICS_L2];
+const STAGED_RUBRICS: StagedRubric[]    = [OBJ10_RUBRIC, OBJ6_STAGED_RUBRIC];
+
+const singleRubricMap: Record<string, ObjectiveRubric> = Object.fromEntries(
+  SINGLE_RUBRICS.map(r => [r.lmsId, r]),
+);
+const stagedRubricMap: Record<string, StagedRubric> = Object.fromEntries(
+  STAGED_RUBRICS.map(r => [r.lmsId, r]),
 );
 
+// Single-pass-only lookup (preserved for the existing /api/aida/validate
+// route — it only knows how to grade ObjectiveRubric and would crash on a
+// StagedRubric shape).
 export function getRubric(lmsId: string): ObjectiveRubric | undefined {
-  return rubricMap[lmsId];
+  return singleRubricMap[lmsId];
+}
+
+// Generic lookup that returns either kind. Use this from places that need
+// to branch on rubric.kind (e.g. TeacherCharacter dispatcher).
+export function getAnyRubric(lmsId: string): AnyRubric | undefined {
+  return stagedRubricMap[lmsId] ?? singleRubricMap[lmsId];
+}
+
+export function getStagedRubric(lmsId: string): StagedRubric | undefined {
+  return stagedRubricMap[lmsId];
 }
 
 // Generic fallback for arenas/objectives without a fully-specified rubric yet.

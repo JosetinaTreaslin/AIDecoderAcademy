@@ -1,8 +1,46 @@
-// Playground composer — reuses AIDA persona, adds output-format + mode rules.
-// Replaces lib/prompts.ts buildSystemPrompt.
+// Playground composer — system prompt for the WHITEBOARD AI (the in-app
+// creation tool the student uses on the playground canvas).
+//
+// IMPORTANT: This is NOT AIDA. AIDA is the floating side assistant that lives
+// in /api/aida. The whiteboard AI's job is to take the student's prompt and
+// produce a creation (image, audio, slides, story, code, JSON) — never to
+// behave like a side assistant or refer to itself in the third person.
+//
+// We deliberately do NOT reuse buildAidaSystemPrompt here, because doing so
+// makes the whiteboard inherit AIDA's "I am AIDA" identity and any
+// AIDA-specific instructions (e.g. observation-rules for the AIDA panel),
+// which causes the whiteboard to start narrating itself like AIDA. Instead,
+// we share *style* building blocks (safety rules, tone registers,
+// hint-or-answer pattern, profile personalisation) à la carte.
 
-import { buildAidaSystemPrompt } from "@/lib/aidaPersona";
+import { SAFETY_RULES_TEXT } from "@/lib/aidaSafety";
+import {
+  HINT_OR_ANSWER_PATTERN,
+  buildProfilePersonalisation,
+  getAidaToneRegister,
+} from "@/lib/aidaPersona";
 import type { Profile, OutputType, PlaygroundMode } from "@/types";
+
+const WHITEBOARD_BACKSTORY = `
+You are the in-app creation AI on the playground whiteboard at AI Decoder
+Academy — a creative learning platform for students aged 5-16. The student
+is on the playground canvas and types prompts to generate creations: stories,
+explanations, images, audio scenes, slide decks, JSON, and so on.
+
+Your job:
+- Read the student's prompt.
+- Produce exactly the kind of output they asked for (text, JSON, image-prompt,
+  audio script, or slide outline — the OUTPUT FORMAT block below tells you
+  which).
+- Be warm, kid-friendly, and encouraging — but stay focused on the creation.
+
+You are NOT a meta-assistant. The student has a separate floating side
+assistant called AIDA for explanations and coaching. If the student asks
+for explanations or coaching, you can briefly help in-line, but your
+primary identity is "the AI that helps me make things on the canvas".
+Never refer to yourself in the third person; never describe what you are
+doing as if you were observing someone else doing it.
+`.trim();
 
 const OUTPUT_FORMAT_RULES: Record<OutputType, string> = {
   text:
@@ -32,28 +70,44 @@ export interface PlaygroundPromptOptions {
   mode:              PlaygroundMode;
   outputType:        OutputType;
   arenaTutorPersona?: string;
-  pageContext?:      string;
-  sessionContext?:   string;
-  creationsContext?: string;
+  pageContext?:      string;          // accepted for compatibility; not used
+  sessionContext?:   string;          // accepted for compatibility; not used
+  creationsContext?: string;          // accepted for compatibility; not used
+  // True only when the student is working on a graded objective
+  // (URL has ?objective=<id>). Outside objective mode the
+  // hint-or-answer scaffolding is skipped — for free-play creations
+  // we just produce what the student asked for.
+  isObjectiveMode?:  boolean;
 }
 
 export function buildPlaygroundSystemPrompt(opts: PlaygroundPromptOptions): string {
-  const aidaCore = buildAidaSystemPrompt({
-    profile:           opts.profile,
-    pageContext:       opts.pageContext ?? "",
-    sessionContext:    opts.sessionContext,
-    creationsContext:  opts.creationsContext,
-  });
+  const { profile, mode, outputType, arenaTutorPersona, isObjectiveMode } = opts;
 
-  const arenaLayer = opts.arenaTutorPersona
-    ? `\nARENA PERSONALITY: You're currently in an arena where you also embody this energy: ${opts.arenaTutorPersona}. Layer it on top of your AIDA core — still AIDA, just dialled to this arena's vibe.\n`
+  const profilePersonalisation = buildProfilePersonalisation(profile);
+
+  const arenaLayer = arenaTutorPersona
+    ? `\nARENA PERSONALITY: You're currently in an arena where you also embody this energy: ${arenaTutorPersona}. Layer it on top of your warmth — kid-friendly creator, dialled to this arena's vibe.\n`
     : "";
 
-  return `${aidaCore}
+  return `
+${WHITEBOARD_BACKSTORY}
 
+About the student you're talking to:
+- Name: ${profile.display_name}
+- Age group: ${profile.age_group}
+- Interests: ${profile.interests?.length ? profile.interests.join(", ") : "not set"}
+- Level: ${profile.level} · XP: ${profile.xp} · Streak: ${profile.streak_days} days
+
+${getAidaToneRegister(profile.age_group)}
+
+${profilePersonalisation}
+
+${isObjectiveMode ? HINT_OR_ANSWER_PATTERN : "ANSWER STYLE: Just produce what the student asked for, warmly and directly. Don't ask 'hint or answer?' — that scaffolding is reserved for graded objectives. For free-play creations, just make the thing."}
+
+${SAFETY_RULES_TEXT}
 ${arenaLayer}
-${MODE_GUIDANCE[opts.mode]}
+${MODE_GUIDANCE[mode]}
 
-OUTPUT FORMAT: ${OUTPUT_FORMAT_RULES[opts.outputType]}
-`;
+OUTPUT FORMAT: ${OUTPUT_FORMAT_RULES[outputType]}
+`.trim();
 }

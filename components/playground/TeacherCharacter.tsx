@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { TeacherDialogue, type ValidationResult } from "./TeacherDialogue";
-import { getRubric, genericRubric, type ObjectiveRubric } from "@/lib/objectiveRubrics";
+import { ObjectiveSubmissionPanel } from "./ObjectiveSubmissionPanel";
+import { getRubric, genericRubric, getStagedRubric, type ObjectiveRubric } from "@/lib/objectiveRubrics";
 import { OBJECTIVES, toLmsId, type Objective } from "@/lib/objectives";
+import { useValidatorWriter } from "@/lib/chatChannels";
 
 interface Props {
   // Legacy id from URL ?objective=  (e.g. "a1-3"). May also be a doc-style
@@ -24,22 +26,85 @@ interface Props {
   onObjectiveCompleted?: (objectiveId: string, lmsId: string) => void;
 }
 
+// Tracks which staged objectives have already auto-opened the validator panel
+// during this JS session. Resets on full page reload (module re-evaluation),
+// which is the desired behaviour — every fresh page load re-greets the student.
+const _autoOpenedObjectives = new Set<string>();
+
 export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCompleted }: Props) {
   const [open, setOpen] = useState(false);
   const [hint, setHint] = useState(true); // "💬 Talk to teacher" badge fades after first interaction
+  const { setLast: publishValidator } = useValidatorWriter();
 
   // Resolve rubric + the underlying Objective (for fallback title/task).
   const lmsId  = objectiveId.startsWith("l") ? objectiveId : toLmsId(objectiveId);
   const objective: Objective | undefined = OBJECTIVES.find(o => o.id === objectiveId);
-  const rubric: ObjectiveRubric =
-    getRubric(lmsId)
-    ?? genericRubric(
-      objective?.title       ?? `Objective ${objectiveId}`,
-      objective?.description ?? "Complete the assigned task.",
-    );
+
+  // Staged rubrics (currently only OBJ 10 / l1-10) take a different path:
+  // they get the multi-step ObjectiveSubmissionPanel instead of the
+  // single-pass TeacherDialogue. We resolve both up-front and pick at render.
+  const stagedRubric  = getStagedRubric(lmsId);
+  const isStaged      = !!stagedRubric;
+
+  const rubric: ObjectiveRubric = isStaged
+    ? genericRubric(
+        // Staged rubric is rendered by ObjectiveSubmissionPanel; this stub is
+        // never read by TeacherDialogue but satisfies the type contract.
+        stagedRubric.title,
+        "Staged validation — see ObjectiveSubmissionPanel.",
+      )
+    : (getRubric(lmsId)
+        ?? genericRubric(
+          objective?.title       ?? `Objective ${objectiveId}`,
+          objective?.description ?? "Complete the assigned task.",
+        ));
 
   // Hide the floating hint after the dialogue has been opened once.
   useEffect(() => { if (open) setHint(false); }, [open]);
+
+  // Tell AidaAssistant to hide itself while the validator panel is open.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(open ? "validator-panel-open" : "validator-panel-close"));
+  }, [open]);
+
+  // Auto-open the validator panel on every fresh page load for staged objectives.
+  // We use a module-level Set (JS memory) instead of sessionStorage — this way
+  // a full page reload (F5) clears the gate and re-opens the panel, which is
+  // exactly what the student needs when they come back to continue working.
+  // Client-side navigation between objectives within the same tab also works
+  // correctly because the Set key is per objectiveId.
+  useEffect(() => {
+    if (!isStaged || typeof window === "undefined") return;
+    if (_autoOpenedObjectives.has(objectiveId)) return;
+    // IMPORTANT: add to Set INSIDE the callback, not before. React Strict Mode
+    // (dev) runs effects twice: mount → cleanup → mount. If we add to the Set
+    // before starting the timer, cleanup cancels the timer but the Set already
+    // has the key, so the second mount returns early and the panel never opens.
+    // Adding inside the callback means a cancelled timer never marks the key.
+    const t = setTimeout(() => {
+      _autoOpenedObjectives.add(objectiveId);
+      setOpen(true);
+    }, 700);
+    return () => clearTimeout(t);
+  }, [isStaged, objectiveId]);
+
+  // Whiteboard fallback — for staged rubrics, the validator can fall back to
+  // recent whiteboard outputs of the matching type if the student didn't
+  // upload anything. The discriminator is the objective's outputType, e.g.
+  // OBJ 10 (image) → take recent assistant messages where outputType==="image"
+  // and content is a URL. Order: oldest → newest, so the validator can grab
+  // whiteboardImages.at(-1) for "most recent."
+  const wantedOutputType = objective?.outputType ?? "image";
+  const whiteboardImages = messages
+    .filter(m =>
+      m.role === "assistant"
+      && !m.isLoading
+      && m.outputType === wantedOutputType
+      && wantedOutputType === "image"
+      && typeof m.content === "string"
+      && m.content.startsWith("http"),
+    )
+    .map(m => ({ url: m.content }));
 
   async function handleValidate(): Promise<{ result: ValidationResult; attemptId: string } | null> {
     const cleanMessages = messages
@@ -95,6 +160,25 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
       return { result, attemptId: "" };
     }
     const { attempt_id } = await aRes.json() as { attempt_id: string };
+
+    // 3. Publish validator state to the channel so AIDA can ground its replies.
+    // We fetch the running attempt count for attempts-aware copy + UI hints.
+    let attemptCount = 0;
+    try {
+      const cRes = await fetch(`/api/objective-attempts?objective_id=${encodeURIComponent(objectiveId)}`);
+      if (cRes.ok) {
+        const j = await cRes.json() as { count?: number };
+        attemptCount = j.count ?? 0;
+      }
+    } catch { /* non-fatal */ }
+    publishValidator({
+      lmsId,
+      lastTier:    result.tier,
+      lastMode:    null,                                // generic validator has no canvas mode
+      lastSummary: result.summary,
+      attempts:    { count: attemptCount, lastAt: new Date().toISOString() },
+    });
+
     return { result, attemptId: attempt_id };
   }
 
@@ -133,14 +217,16 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
   return (
     <>
       {/* Bottom-left character sprite — clickable, idle bob.
-          Fluid sizing so it scales between ~72px and ~112px across screen sizes. */}
+          Size knob: change the `clamp(...)` width/height below (currently 2× original).
+          Position knobs: `left` and `bottom` below (lower px = closer to that edge).
+          Original size was clamp(72px, 6vw, 112px) — halve back if needed. */}
       <button
         onClick={() => setOpen(true)}
         aria-label="Talk to the validator teacher"
         className="fixed z-[55]"
         style={{
-          left:        "clamp(16px, 1.5vw, 32px)",
-          bottom:      "clamp(16px, 2vh, 32px)",
+          left:        "clamp(16px, 1.5vw, 32px)",  // ← horizontal position from left edge
+          bottom:      "clamp(0px, 0vh, 0px)",    // ← vertical position from bottom edge
           padding:     0,
           background:  "transparent",
           border:      "none",
@@ -157,8 +243,8 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
             alt=""
             draggable={false}
             style={{
-              width:     "clamp(72px, 6vw, 112px)",
-              height:    "clamp(72px, 6vw, 112px)",
+              width:     "clamp(173px, 14.4vw, 269px)",  // ← SIZE: 2× original + 20% (was clamp(144px, 12vw, 224px))
+              height:    "clamp(173px, 14.4vw, 269px)",  // ← SIZE: keep equal to width
               objectFit: "contain",
               filter:    "drop-shadow(0 0 18px rgba(124,58,237,0.55))",
             }}
@@ -183,13 +269,41 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
         </motion.div>
       </button>
 
-      <TeacherDialogue
-        open={open}
-        rubric={rubric}
-        onClose={() => setOpen(false)}
-        onValidate={handleValidate}
-        onComplete={handleComplete}
-      />
+      {isStaged && stagedRubric ? (
+        <ObjectiveSubmissionPanel
+          open={open}
+          rubric={stagedRubric}
+          profile={profile}
+          whiteboardImages={whiteboardImages}
+          onClose={() => setOpen(false)}
+          onComplete={async () => {
+            // Award XP via the existing engine, same as TeacherDialogue's path.
+            if (objective?.xpReward) {
+              try {
+                await fetch("/api/xp", {
+                  method:  "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body:    JSON.stringify({
+                    event_type: "objective_complete",
+                    meta: { objective_id: objectiveId, lms_id: lmsId, xp: objective.xpReward },
+                  }),
+                });
+              } catch (err) {
+                console.warn("[TeacherCharacter] XP award failed:", err);
+              }
+            }
+            onObjectiveCompleted?.(objectiveId, lmsId);
+          }}
+        />
+      ) : (
+        <TeacherDialogue
+          open={open}
+          rubric={rubric}
+          onClose={() => setOpen(false)}
+          onValidate={handleValidate}
+          onComplete={handleComplete}
+        />
+      )}
     </>
   );
 }

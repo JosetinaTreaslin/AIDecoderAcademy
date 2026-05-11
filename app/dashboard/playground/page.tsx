@@ -6,12 +6,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CreationsRoom }     from "@/components/playground/CreationsRoom";
 import { SaveCreationModal } from "@/components/playground/SaveCreationModal";
 import { TeacherCharacter }  from "@/components/playground/TeacherCharacter";
+import { WorksheetIcon }     from "@/components/playground/WorksheetIcon";
+import { WorksheetPopup }    from "@/components/playground/WorksheetPopup";
+import { getWorksheetSchema } from "@/lib/worksheetSchemas";
 import { BadgeUnlockToast }  from "@/components/gamification/BadgeUnlockToast";
 import { XPFlash }           from "@/components/gamification/XPFlash";
 import { useChat }           from "@/components/playground/useChat";
 import { useXP, type XPResult } from "@/lib/useXP";
 import { getArena, type Badge } from "@/lib/arenas";
-import { usePlaygroundSession } from "@/lib/playgroundSessionContext";
 import { markObjectiveComplete, getObjectiveById } from "@/lib/objectives";
 import type { Profile, PlaygroundMode, OutputType } from "@/types";
 
@@ -112,6 +114,10 @@ function PlaygroundInner() {
   const [saveOutputType, setSaveOutputType]  = useState<OutputType>("text");
   const [xpFlash,        setXpFlash]         = useState<{ amount: number; streak: boolean } | null>(null);
   const [badgeToast,     setBadgeToast]      = useState<(Badge & { earned_at: string }) | null>(null);
+  // Worksheet popup state — only meaningful when activeObjectiveId resolves
+  // to a staged-rubric worksheet schema (currently OBJ 10 + OBJ 6).
+  const [worksheetOpen,  setWorksheetOpen]   = useState(false);
+  const [hasDraft,       setHasDraft]        = useState(false);
   const badgeQueueRef = useRef<(Badge & { earned_at: string })[]>([]);
   const didInit       = useRef(false);
 
@@ -120,14 +126,11 @@ function PlaygroundInner() {
     startSession,
     sendMessage, sendImage, sendAudio, sendSlides,
     reset,
-  } = useChat(profile, mode);
+  } = useChat(profile, mode, activeObjectiveId);
 
-  const { setPlaygroundMessages } = usePlaygroundSession();
-
-  // Keep AIDA's context in sync with live playground messages
-  useEffect(() => {
-    setPlaygroundMessages(messages);
-  }, [messages, setPlaygroundMessages]);
+  // Whiteboard messages are mirrored into the chat-channel automatically by
+  // useChat itself (see lib/chatChannels.tsx + components/playground/useChat.ts).
+  // No manual sync needed here.
 
   const onBadgeUnlock = useCallback((b: Badge & { earned_at: string }) => {
     setBadgeToast(prev => {
@@ -161,16 +164,54 @@ function PlaygroundInner() {
     fetch("/api/profile")
       .then(r => r.ok ? r.json() : { profile: null })
       .then(({ profile }) => {
-        if (!profile) router.replace("/dashboard/profile");
-        else setProfile(profile);
+        // TEMP: redirect disabled while Supabase egress quota is exceeded.
+        // Restore when Supabase is back: if (!profile) router.replace("/dashboard/profile");
+        if (profile) {
+          setProfile(profile);
+        } else {
+          // TEMP: fake profile while Supabase is down — remove when Supabase is back.
+          setProfile({
+            id: "temp-bypass",
+            clerk_user_id: "temp",
+            display_name: "Tester",
+            avatar_emoji: "🚀",
+            avatar_url: null,
+            age_group: "11-13",
+            interests: ["Gaming", "Science"],
+            xp: 0,
+            level: 1,
+            active_arena: 1,
+            streak_days: 0,
+            last_active_date: null,
+            badges: [],
+          } as unknown as import("@/types").Profile);
+        }
       });
   }, [router]);
 
-  // Start session once profile is ready
+  // Start session once profile is ready, then pre-configure for the active objective.
   useEffect(() => {
     if (profile && !didInit.current) {
       didInit.current = true;
-      startSession(mode);
+      startSession(mode).then(() => {
+        if (activeObjective) {
+          // Pre-set output type to match the objective (e.g. "image" for OBJ 10).
+          if (activeObjective.outputType) {
+            setOutputType(activeObjective.outputType as OutputType);
+          }
+          // Skip the auto-starter-prompt for STAGED objectives (OBJ 10 / OBJ 6).
+          // For staged work the validator pops up to greet + brief instead, so
+          // the kid arrives at a clean whiteboard. Free-play and non-staged
+          // objectives still get the starter prompt to seed the conversation.
+          const hasStagedRubric = !!getWorksheetSchema(activeObjectiveId ?? "");
+          if (activeObjective.starterPrompt && !hasStagedRubric) {
+            sendMessage(
+              activeObjective.starterPrompt,
+              (activeObjective.outputType ?? "text") as OutputType,
+            );
+          }
+        }
+      });
     }
   }, [profile]); // eslint-disable-line
 
@@ -252,6 +293,21 @@ function PlaygroundInner() {
   const activeArena     = getArena(profile?.active_arena ?? 1);
   const ARENA_ACCENT      = activeArena.accent;
   const ARENA_ACCENT_GLOW = activeArena.accentGlow;
+
+  // Worksheet schema for the active objective. Null if the objective has no
+  // staged worksheet (in which case the icon stays hidden).
+  const worksheetSchema = activeObjectiveId ? getWorksheetSchema(activeObjectiveId) : null;
+
+  // hasDraft = there's a saved worksheet draft for this profile + objective.
+  // Re-checked when the popup closes so the indicator dot stays accurate.
+  useEffect(() => {
+    if (!worksheetSchema || !profile?.id || typeof window === "undefined") {
+      setHasDraft(false);
+      return;
+    }
+    const key = `aida:worksheet:${worksheetSchema.lmsId}:${profile.id}:draft`;
+    setHasDraft(!!localStorage.getItem(key));
+  }, [worksheetSchema, profile?.id, worksheetOpen]);
 
   // Loading state
   if (!profile) return (
@@ -346,6 +402,40 @@ function PlaygroundInner() {
             router.push(`/dashboard/world/${profile?.active_arena ?? 1}`);
           }}
         />
+      )}
+
+      {/* Worksheet — only when the active objective has a staged schema */}
+      {worksheetSchema && profile && (
+        <>
+          <WorksheetIcon
+            arenaAccent={ARENA_ACCENT}
+            arenaAccentGlow={ARENA_ACCENT_GLOW}
+            hasDraft={hasDraft}
+            onClick={() => setWorksheetOpen(true)}
+          />
+          <WorksheetPopup
+            open={worksheetOpen}
+            lmsId={worksheetSchema.lmsId}
+            profileId={profile.id}
+            arenaAccent={ARENA_ACCENT}
+            arenaAccentGlow={ARENA_ACCENT_GLOW}
+            onClose={() => setWorksheetOpen(false)}
+            onSubmit={async (payload) => {
+              // Hand off the FULL payload (form + worksheet file + media +
+              // notes) to ObjectiveSubmissionPanel via localStorage. The
+              // panel doesn't ask for any of these — it just pulls and
+              // validates on click.
+              if (typeof window !== "undefined") {
+                localStorage.setItem(
+                  `aida:worksheet:${worksheetSchema.lmsId}:${profile.id}:pending`,
+                  JSON.stringify(payload),
+                );
+              }
+              setWorksheetOpen(false);
+              alert("Saved. Tap the teacher and hit Validate when you're ready.");
+            }}
+          />
+        </>
       )}
     </div>
   );

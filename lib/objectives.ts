@@ -68,12 +68,12 @@ export const OBJECTIVES: Objective[] = [
   // ── BOTTOM-LEFT WALL (06–09) ─────────────────────────────────────────────
   {
     id: "a1-6", arenaId: 1, order: 6,
-    emoji: "🎵",
-    title: "AI Composes Music — Suno.ai Two-Track Lab",
-    description: "Open Suno.ai. Track 1: an upbeat hype track for a school video. Track 2: a calm focus track for studying. Download both with their style prompts.",
-    outputType: "audio",
-    starterPrompt: "Generate music — Track 1: hip-hop, upbeat, school energy, fast tempo, positive, motivating. Track 2: ambient piano, slow, peaceful, focus, calm study mood.",
-    xpReward: 25,
+    emoji: "🎭",
+    title: "Build Your AI Academy Avatar — HeyGen",
+    description: "Design your AI Academy avatar — appearance, voice, personality, and presentation script — using HeyGen. Identity persists for 6 levels. Open the worksheet, complete the Avatar Identity Card, then record.",
+    outputType: "video",
+    starterPrompt: "Open your worksheet and complete the Think It Canvas before opening HeyGen. The validator reads your worksheet directly.",
+    xpReward: 80,
   },
   {
     id: "a1-7", arenaId: 1, order: 7,
@@ -106,12 +106,12 @@ export const OBJECTIVES: Objective[] = [
   // ── TOP-RIGHT WALL (10–13) ───────────────────────────────────────────────
   {
     id: "a1-10", arenaId: 1, order: 10,
-    emoji: "🎭",
-    title: "Voice Direction Lab — 3 Performances of One Script",
-    description: "Write a 4-sentence script. Generate it 3 times in ElevenLabs using 3 completely different voices. Hear how the SAME words feel different.",
-    outputType: "audio",
-    starterPrompt: "Generate audio: AI is changing how young people learn. It can adapt to your pace and your style. Every prompt you write is a new experiment. The better your prompt, the more powerful your result.",
-    xpReward: 30,
+    emoji: "💥",
+    title: "Your First AI Comic Strip",
+    description: "Create a 3-panel funny comic with Canva AI. Plan it (Think It → Story It) before opening any tool. Submit your worksheet + comic image. The validator grades both.",
+    outputType: "image",
+    starterPrompt: "I'm planning a 3-panel comic. Help me brainstorm a funny scenario with a setup, a twist, and a punchline. Audience: someone my age. The punchline must land in panel 3.",
+    xpReward: 35,
   },
   {
     id: "a1-11", arenaId: 1, order: 11,
