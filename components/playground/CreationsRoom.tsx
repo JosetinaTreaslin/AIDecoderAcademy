@@ -898,7 +898,7 @@ export function CreationsRoom({
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", pointerEvents: "none" }}
       />
 
-      {/* ── Left panel hotspot zones (desktop only) ── */}
+      {/* ── Left panel hotspot zones (desktop only) — VISIBLE FOR CALIBRATION ── */}
       <div className="hidden lg:block" style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none" }}>
         {SHELF_HOTSPOTS.map(hz => (
           <button
@@ -908,17 +908,21 @@ export function CreationsRoom({
             style={{
               position: "absolute",
               top: hz.top, left: hz.left, width: hz.width, height: hz.height,
-              background: "transparent",
-              border: "none",
+              background: `rgba(${hz.glowRgb},0.25)`,
+              border: `2px solid rgba(${hz.glowRgb},0.85)`,
               borderRadius: 8,
               cursor: "pointer",
               pointerEvents: "auto",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: hz.glowColor, fontSize: 9, fontWeight: 700, fontFamily: "monospace",
             }}
-          />
+          >
+            {hz.label}
+          </button>
         ))}
       </div>
 
-      {/* ── Bottom tray hotspot zones — traffic light indicator ── */}
+      {/* ── Bottom tray hotspot zones — VISIBLE FOR CALIBRATION ── */}
       <div className="hidden lg:block" style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none" }}>
         {BOTTOM_TRAY_HOTSPOTS.map(hz => {
           const isActive = selected === hz.id;
@@ -930,8 +934,8 @@ export function CreationsRoom({
               style={{
                 position: "absolute",
                 top: hz.top, left: hz.left, width: hz.width, height: hz.height,
-                background: "transparent",
-                border: "none",
+                background: `rgba(${hz.glowRgb},0.28)`,
+                border: `2px solid rgba(${hz.glowRgb},0.9)`,
                 borderRadius: 12,
                 cursor: "pointer",
                 pointerEvents: "auto",
