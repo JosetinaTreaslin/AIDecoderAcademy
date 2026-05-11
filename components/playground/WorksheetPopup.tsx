@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Save, Send, Trash2, Upload, FileText, Image as ImageIcon, Film } from "lucide-react";
+import { X, Save, Send, Trash2, Upload, Image as ImageIcon, Film, Download } from "lucide-react";
 import { useWorksheetWriter } from "@/lib/chatChannels";
 import {
   getWorksheetSchema,
@@ -120,14 +120,17 @@ function allRequiredFilled(schema: WorksheetSchema, data: Record<string, string 
     .every(s => s.fields.every(f => isFieldFilled(f, data[f.id])));
 }
 
-// OBJ 6 = single video. OBJ 10 = multiple images. Used for the media zone.
+// OBJ 6 = single video upload required (HeyGen MP4, too big for chat upload).
+// OBJ 10 = no in-popup uploads — the kid drops their comic image straight into
+// chat and the validator picks it up from there. Worksheet docs likewise go
+// through chat now.
 function mediaConfig(lmsId: string): {
   kind:     "image" | "video";
   accept:   string;
   multiple: boolean;
   label:    string;
   hint:     string;
-} {
+} | null {
   if (lmsId === "l1-06") {
     return {
       kind:     "video",
@@ -137,13 +140,7 @@ function mediaConfig(lmsId: string): {
       hint:     ".mp4 / .webm / .mov · single file · max 60 MB",
     };
   }
-  return {
-    kind:     "image",
-    accept:   "image/*",
-    multiple: true,
-    label:    "Comic image(s) — optional",
-    hint:     ".png .jpg .webp .gif · multiple allowed",
-  };
+  return null;
 }
 
 export function WorksheetPopup({
@@ -152,10 +149,8 @@ export function WorksheetPopup({
   const schema = useMemo(() => getWorksheetSchema(lmsId), [lmsId]);
   const media = useMemo(() => mediaConfig(lmsId), [lmsId]);
   const [data, setData] = useState<Record<string, string | boolean>>({});
-  const [worksheetFile, setWorksheetFile] = useState<FullDraft["worksheetFile"]>(undefined);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>("");
-  const [worksheetUploading, setWorksheetUploading] = useState(false);
   const [mediaUploading, setMediaUploading] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -175,7 +170,6 @@ export function WorksheetPopup({
     if (!open || !schema) return;
     const initial = loadDraft(lmsId, profileId);
     setData(initial.data);
-    setWorksheetFile(initial.worksheetFile);
     setMediaUrls(initial.mediaUrls ?? []);
     setNotes(initial.notes ?? "");
     writer.setDraft(lmsId, initial.data);
@@ -189,7 +183,6 @@ export function WorksheetPopup({
       if (e.key !== storageKey(lmsId, profileId)) return;
       const fresh = loadDraft(lmsId, profileId);
       setData(fresh.data);
-      setWorksheetFile(fresh.worksheetFile);
       setMediaUrls(fresh.mediaUrls ?? []);
       setNotes(fresh.notes ?? "");
       writer.setDraft(lmsId, fresh.data);
@@ -211,7 +204,6 @@ export function WorksheetPopup({
   // handler so the kid never loses anything they typed/uploaded.
   function persist(next: {
     data?:          Record<string, string | boolean>;
-    worksheetFile?: FullDraft["worksheetFile"];
     mediaUrls?:     string[];
     notes?:         string;
   }) {
@@ -219,7 +211,6 @@ export function WorksheetPopup({
     debounceRef.current = setTimeout(() => {
       const draft: FullDraft = {
         data:          next.data          ?? data,
-        worksheetFile: next.worksheetFile !== undefined ? next.worksheetFile : worksheetFile,
         mediaUrls:     next.mediaUrls     ?? mediaUrls,
         notes:         next.notes         ?? notes,
       };
@@ -243,23 +234,12 @@ export function WorksheetPopup({
     });
   }
 
-  // ── File uploaders ───────────────────────────────────────────────────────
+  // ── File uploaders — only used when the objective requires an in-popup
+  //    upload (OBJ 6 video). OBJ 10 has no popup uploads; the comic + worksheet
+  //    doc both go through chat.
 
-  async function handleWorksheetUpload(file: File) {
-    setUploadError(null);
-    setWorksheetUploading(true);
-    try {
-      const r = await uploadFile(lmsId, "worksheet", file);
-      const uploaded = { url: r.url, filename: r.filename, format: (r.format ?? "docx") as "pdf" | "docx" };
-      setWorksheetFile(uploaded);
-      persist({ worksheetFile: uploaded });
-    } catch (e) {
-      setUploadError((e as Error).message);
-    } finally {
-      setWorksheetUploading(false);
-    }
-  }
   async function handleMediaUpload(file: File) {
+    if (!media) return;
     setUploadError(null);
     setMediaUploading(n => n + 1);
     try {
@@ -282,10 +262,6 @@ export function WorksheetPopup({
       return next;
     });
   }
-  function removeWorksheetFile() {
-    setWorksheetFile(undefined);
-    persist({ worksheetFile: undefined });
-  }
   function updateNotes(v: string) {
     const capped = v.slice(0, 2000);
     setNotes(capped);
@@ -297,20 +273,64 @@ export function WorksheetPopup({
     if (!window.confirm("Discard draft? This cannot be undone.")) return;
     localStorage.removeItem(storageKey(lmsId, profileId));
     setData({});
-    setWorksheetFile(undefined);
     setMediaUrls([]);
     setNotes("");
     setSavedAt(null);
     writer.clear();
   }
 
+  async function downloadDocx() {
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import("docx");
+    type Para = InstanceType<typeof Paragraph>;
+    const children: Para[] = [
+      new Paragraph({ text: schema!.title, heading: HeadingLevel.HEADING_1 }),
+      new Paragraph({ text: schema!.intro, spacing: { after: 200 } }),
+    ];
+    for (const section of schema!.sections) {
+      children.push(new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }));
+      if (section.subtitle) {
+        children.push(new Paragraph({ children: [new TextRun({ text: section.subtitle, italics: true, color: "666666" })], spacing: { after: 100 } }));
+      }
+      for (const f of section.fields) {
+        children.push(new Paragraph({ children: [new TextRun({ text: f.label, bold: true })], spacing: { before: 160, after: 40 } }));
+        if (f.kind === "yesno") {
+          const val = data[f.id];
+          const answer = typeof val === "boolean" ? (val ? "YES" : "NO") : "___";
+          children.push(new Paragraph({ text: answer, spacing: { after: 120 } }));
+        } else {
+          const val = typeof data[f.id] === "string" ? (data[f.id] as string) : "";
+          const rows = f.kind === "longtext" ? (f.rows ?? 3) : 1;
+          if (val) {
+            children.push(new Paragraph({ text: val, spacing: { after: 120 } }));
+          } else {
+            for (let i = 0; i < rows; i++) {
+              children.push(new Paragraph({ children: [new TextRun({ text: "___________________________________________", color: "AAAAAA" })], spacing: { after: 40 } }));
+            }
+          }
+        }
+      }
+    }
+    if (notes.trim()) {
+      children.push(new Paragraph({ text: "Notes", heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }));
+      children.push(new Paragraph({ text: notes }));
+    }
+    const doc = new Document({ sections: [{ children }] });
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${schema!.title.replace(/[^a-z0-9]/gi, "_")}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (!schema) return null;
 
-  // Submit allowed if either:
-  //   - all required inline fields filled (kid typed in-app), or
-  //   - they uploaded a worksheet file (kid did it offline)
+  // Submit allowed when the required inline fields are filled. (The kid can
+  // also drop a filled .docx/.pdf into chat — that path is picked up by the
+  // validator directly, no popup involvement.)
   const inlineFilled = allRequiredFilled(schema, data);
-  const canSubmit    = (inlineFilled || !!worksheetFile) && !worksheetUploading && mediaUploading === 0;
+  const canSubmit    = inlineFilled && mediaUploading === 0;
 
   return (
     <AnimatePresence>
@@ -418,95 +438,56 @@ export function WorksheetPopup({
                   </section>
                 ))}
 
-                {/* ── Worksheet file upload (alternative to filling inline) ── */}
-                <section>
-                  <h3 className="text-sm font-display font-bold text-white">📄 Or upload your filled worksheet (.pdf / .docx)</h3>
-                  <p className="text-xs text-white/50 mb-2">Optional — fill the form above OR upload your filled worksheet here. Either works.</p>
-                  {worksheetFile ? (
-                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10">
-                      <FileText size={16} style={{ color: arenaAccent }} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-white/90 truncate">{worksheetFile.filename}</div>
-                        <div className="text-[10px] text-white/40">{worksheetFile.format.toUpperCase()} · uploaded</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={removeWorksheetFile}
-                        className="text-[11px] px-2 py-1 rounded-md bg-white/[0.06] text-white/70 hover:text-white"
-                      >
-                        replace
-                      </button>
-                    </div>
-                  ) : (
+                {/* ── Comic / video upload — only when the objective REQUIRES an in-popup
+                       upload (OBJ 6 video). For OBJ 10 the comic comes from chat. ── */}
+                {media && (
+                  <section>
+                    <h3 className="text-sm font-display font-bold text-white">
+                      {media.kind === "video" ? <Film size={16} className="inline mr-1.5" /> : <ImageIcon size={16} className="inline mr-1.5" />}
+                      {media.label}
+                    </h3>
+                    <p className="text-xs text-white/50 mb-2">{media.hint}</p>
+
                     <label
                       className="block rounded-lg border-2 border-dashed border-white/15 px-4 py-3 text-center cursor-pointer hover:border-white/25 transition"
                       style={{ background: "rgba(255,255,255,0.02)" }}
                     >
                       <Upload size={16} className="inline mr-2 text-white/60" />
                       <span className="text-xs text-white/70">
-                        {worksheetUploading ? "Uploading…" : "Drop or click to upload .pdf / .docx"}
+                        {mediaUploading > 0 ? `Uploading${mediaUploading > 1 ? ` (${mediaUploading})` : ""}…` : `Drop or click to upload`}
                       </span>
                       <input
                         type="file"
-                        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        accept={media.accept}
+                        multiple={media.multiple}
                         className="hidden"
                         onChange={e => {
-                          const f = e.target.files?.[0];
-                          if (f) handleWorksheetUpload(f);
+                          Array.from(e.target.files ?? []).forEach(handleMediaUpload);
                           e.target.value = "";
                         }}
                       />
                     </label>
-                  )}
-                </section>
 
-                {/* ── Comic / video upload ── */}
-                <section>
-                  <h3 className="text-sm font-display font-bold text-white">
-                    {media.kind === "video" ? <Film size={16} className="inline mr-1.5" /> : <ImageIcon size={16} className="inline mr-1.5" />}
-                    {media.label}
-                  </h3>
-                  <p className="text-xs text-white/50 mb-2">{media.hint}</p>
-
-                  <label
-                    className="block rounded-lg border-2 border-dashed border-white/15 px-4 py-3 text-center cursor-pointer hover:border-white/25 transition"
-                    style={{ background: "rgba(255,255,255,0.02)" }}
-                  >
-                    <Upload size={16} className="inline mr-2 text-white/60" />
-                    <span className="text-xs text-white/70">
-                      {mediaUploading > 0 ? `Uploading${mediaUploading > 1 ? ` (${mediaUploading})` : ""}…` : `Drop or click to upload`}
-                    </span>
-                    <input
-                      type="file"
-                      accept={media.accept}
-                      multiple={media.multiple}
-                      className="hidden"
-                      onChange={e => {
-                        Array.from(e.target.files ?? []).forEach(handleMediaUpload);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-
-                  {mediaUrls.length > 0 && (
-                    <div className={media.kind === "video" ? "mt-2" : "mt-2 grid grid-cols-4 gap-2"}>
-                      {mediaUrls.map((url, i) => (
-                        <div key={url} className="relative rounded-md overflow-hidden border border-white/10">
-                          {media.kind === "video"
-                            ? <video src={url} controls className="w-full max-h-64 object-contain bg-black"/>
-                            : <img  src={url} alt={`media-${i}`} className="w-full aspect-square object-cover"/>
-                          }
-                          <button
-                            type="button"
-                            onClick={() => removeMedia(i)}
-                            className="absolute top-1 right-1 rounded-full bg-black/70 text-white text-xs"
-                            style={{ width: 20, height: 20 }}
-                          >×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                    {mediaUrls.length > 0 && (
+                      <div className={media.kind === "video" ? "mt-2" : "mt-2 grid grid-cols-4 gap-2"}>
+                        {mediaUrls.map((url, i) => (
+                          <div key={url} className="relative rounded-md overflow-hidden border border-white/10">
+                            {media.kind === "video"
+                              ? <video src={url} controls className="w-full max-h-64 object-contain bg-black"/>
+                              : <img  src={url} alt={`media-${i}`} className="w-full aspect-square object-cover"/>
+                            }
+                            <button
+                              type="button"
+                              onClick={() => removeMedia(i)}
+                              className="absolute top-1 right-1 rounded-full bg-black/70 text-white text-xs"
+                              style={{ width: 20, height: 20 }}
+                            >×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
 
                 {/* ── Notes ── */}
                 <section>
@@ -545,11 +526,17 @@ export function WorksheetPopup({
                   </button>
                   <button
                     type="button"
+                    onClick={downloadDocx}
+                    className="px-3 py-1.5 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/5 transition flex items-center gap-1"
+                  >
+                    <Download size={12} /> Download .docx
+                  </button>
+                  <button
+                    type="button"
                     disabled={!canSubmit}
                     onClick={() => onSubmit({
                       lmsId,
                       data,
-                      worksheetFile,
                       mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
                       notes:     notes.trim().length > 0 ? notes : undefined,
                     })}

@@ -5,6 +5,8 @@ import { queryContext } from "@/lib/pinecone";
 import { getPageDoc } from "@/lib/aidaDocs";
 import { isEnabled } from "@/lib/featureFlags";
 import { buildAidaSystemPrompt } from "@/lib/aidaPersona";
+import { OBJECTIVES, toLmsId } from "@/lib/objectives";
+import { getRubric, getStagedRubric } from "@/lib/objectiveRubrics";
 import { moderateContent, detectDistress, buildDistressFooter, getRefusalLine } from "@/lib/aidaSafety";
 import { shouldAttachWhiteboard, wrapWhiteboardTranscript } from "@/lib/aidaWhiteboardRouter";
 import type { Profile, AgeGroup } from "@/types";
@@ -197,6 +199,44 @@ export async function POST(req: Request) {
       }
     }
 
+    // ── Resolve active objective + curriculum digest ────────────────────────
+    // When the kid clicks into a mission, the URL carries ?objective=<id>
+    // (e.g. "a1-6"). AIDA needs the full objective metadata + rubric criteria
+    // injected into her system prompt, otherwise she hallucinates "I can't
+    // see the current objective". Look up both the Objective record and the
+    // (staged or single-pass) rubric so she can coach on tier/pass criteria.
+    let activeObjective: Parameters<typeof buildAidaSystemPrompt>[0]["activeObjective"];
+    if (objectiveId) {
+      const obj = OBJECTIVES.find(o => o.id === objectiveId);
+      const lmsId = obj ? toLmsId(obj.id) : objectiveId;
+      const staged = getStagedRubric(lmsId);
+      const single = !staged ? getRubric(lmsId) : null;
+      activeObjective = {
+        id:    objectiveId,
+        lmsId,
+        title: obj?.title ?? staged?.title ?? single?.title ?? objectiveId,
+        description: obj?.description ?? "",
+        emoji: obj?.emoji,
+        tier:  single?.tier,
+        tools: single?.tools,
+        labTask: single?.labTask,
+        passCriteria:        single?.passCriteria,
+        meritCriteria:       single?.meritCriteria,
+        distinctionCriteria: single?.distinctionCriteria,
+      };
+    }
+
+    // Curriculum digest — short, one-line-per-objective summary so AIDA can
+    // answer "what's next?" / "what's in this arena?" without hallucinating.
+    // Only includes objectives at or below the student's current level (no
+    // spoilers for locked arenas).
+    const currentArena = profile?.active_arena ?? 1;
+    const curriculumDigest = OBJECTIVES
+      .filter(o => o.arenaId <= currentArena)
+      .sort((a, b) => a.arenaId - b.arenaId || a.order - b.order)
+      .map(o => `- ${o.id} · Arena ${o.arenaId} #${o.order} · ${o.emoji} ${o.title} (${o.outputType}, ${o.xpReward} XP)`)
+      .join("\n");
+
     const baseSystemPrompt = isEnabled("USE_NEW_AIDA_PROMPTS")
       ? buildAidaSystemPrompt({
           profile:           profile as Profile,
@@ -206,6 +246,8 @@ export async function POST(req: Request) {
           isVoiceMode,
           interruptedContext,
           isObjectiveMode,
+          activeObjective,
+          curriculumDigest,
         })
       : `You are AIDA, an AI assistant built into AI Decoder Academy — a creative AI learning platform for students aged 11–16.${interruptedContext ? `\n\nIMPORTANT: The student just interrupted you mid-response. You were in the middle of saying: "${interruptedContext.slice(0, 400)}". Acknowledge the new question briefly, answer it clearly, then offer to continue your previous explanation if it's still relevant.` : ""}
 

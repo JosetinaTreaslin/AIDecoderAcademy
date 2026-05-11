@@ -15,8 +15,8 @@ interface Props {
 
   // Live playground messages. The validator scores these against the rubric.
   // We accept the same `Message` shape useChat.ts produces — only role,
-  // content, and outputType matter to the validator.
-  messages: { role: "user" | "assistant"; content: string; outputType?: string; isLoading?: boolean }[];
+  // content, outputType, and attachmentMeta matter to the validator.
+  messages: { role: "user" | "assistant"; content: string; outputType?: string; isLoading?: boolean; attachmentMeta?: string[] }[];
 
   // For age-adapted feedback.
   profile: { display_name?: string; age_group?: string } | null;
@@ -90,21 +90,59 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
 
   // Whiteboard fallback — for staged rubrics, the validator can fall back to
   // recent whiteboard outputs of the matching type if the student didn't
-  // upload anything. The discriminator is the objective's outputType, e.g.
-  // OBJ 10 (image) → take recent assistant messages where outputType==="image"
-  // and content is a URL. Order: oldest → newest, so the validator can grab
-  // whiteboardImages.at(-1) for "most recent."
+  // upload anything. Two image sources qualify:
+  //   1. AI-generated images: assistant messages with outputType="image"
+  //      whose content is a URL.
+  //   2. User-attached/uploaded images: user messages whose content contains
+  //      one or more `[Image titled "...": <https URL>]` markers — these come
+  //      from the kid dropping a screenshot into chat. attachmentMeta items
+  //      shaped `img:URL` are a second signal for the same thing.
+  // Order: oldest → newest, so the validator can grab whiteboardImages.at(-1)
+  // for "most recent."
   const wantedOutputType = objective?.outputType ?? "image";
-  const whiteboardImages = messages
-    .filter(m =>
-      m.role === "assistant"
-      && !m.isLoading
-      && m.outputType === wantedOutputType
-      && wantedOutputType === "image"
-      && typeof m.content === "string"
-      && m.content.startsWith("http"),
-    )
-    .map(m => ({ url: m.content }));
+  const wantsImages      = wantedOutputType === "image";
+
+  const IMG_MARKER_RE = /\[Image titled "[^"]*":\s*(https?:\/\/[^\s\]]+)\s*\]/g;
+  const DOC_MARKER_RE = /\[Document titled "([^"]*)":\s*(https?:\/\/[^\s\]]+)\s*\]/g;
+  const whiteboardImages: { url: string }[] = [];
+  // Chat-uploaded worksheet docs — fallback for the validator when the popup
+  // is empty. Same `[Document titled "X": URL]` marker the chat uses.
+  const whiteboardDocs: { url: string; filename: string; format: "pdf" | "docx" }[] = [];
+  for (const m of messages) {
+    if (m.isLoading || m.role !== "user" || typeof m.content !== "string") continue;
+    for (const match of m.content.matchAll(DOC_MARKER_RE)) {
+      const url = match[2];
+      const filename = match[1] || url.split("/").pop() || "worksheet";
+      const lower = (url + " " + filename).toLowerCase();
+      const format: "pdf" | "docx" = lower.includes(".pdf") ? "pdf" : "docx";
+      whiteboardDocs.push({ url, filename, format });
+    }
+  }
+  if (wantsImages) {
+    for (const m of messages) {
+      if (m.isLoading) continue;
+      // AI-generated image messages
+      if (m.role === "assistant"
+          && m.outputType === "image"
+          && typeof m.content === "string"
+          && m.content.startsWith("http")) {
+        whiteboardImages.push({ url: m.content });
+        continue;
+      }
+      // User-attached images — parse content markers + attachmentMeta tags
+      if (m.role === "user" && typeof m.content === "string") {
+        const matches = m.content.matchAll(IMG_MARKER_RE);
+        for (const match of matches) whiteboardImages.push({ url: match[1] });
+        if (Array.isArray(m.attachmentMeta)) {
+          for (const tag of m.attachmentMeta) {
+            if (typeof tag === "string" && tag.startsWith("img:")) {
+              whiteboardImages.push({ url: tag.slice(4) });
+            }
+          }
+        }
+      }
+    }
+  }
 
   async function handleValidate(): Promise<{ result: ValidationResult; attemptId: string } | null> {
     const cleanMessages = messages
@@ -275,6 +313,7 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
           rubric={stagedRubric}
           profile={profile}
           whiteboardImages={whiteboardImages}
+          whiteboardDocs={whiteboardDocs}
           onClose={() => setOpen(false)}
           onComplete={async () => {
             // Award XP via the existing engine, same as TeacherDialogue's path.

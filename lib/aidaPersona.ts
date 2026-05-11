@@ -153,10 +153,33 @@ export interface AidaPromptOptions {
   // hint-or-answer scaffolding is skipped — for free-play / general
   // questions we just answer directly.
   isObjectiveMode?:    boolean;
+  // Full active-objective context — title, brief, tier, tools, rubric
+  // criteria — so AIDA can answer "what am I doing?" or coach on the task
+  // without hallucinating that she can't see it. Only set when isObjectiveMode.
+  activeObjective?: {
+    id:          string;      // legacy URL id (e.g. "a1-6")
+    lmsId:       string;      // doc id (e.g. "l1-06")
+    title:       string;
+    description: string;
+    emoji?:      string;
+    tier?:       string;      // e.g. "T3 — CONSTRUCT"
+    tools?:      string[];
+    labTask?:    string;
+    passCriteria?:       string;
+    meritCriteria?:      string;
+    distinctionCriteria?: string;
+  };
+  // Optional curriculum digest — list of all unlocked-arena objectives so
+  // AIDA can answer "what's next?" / "what missions are in this arena?".
+  curriculumDigest?: string;
 }
 
 export function buildAidaSystemPrompt(opts: AidaPromptOptions): string {
-  const { profile, pageContext, sessionContext, creationsContext, isVoiceMode, interruptedContext, isObjectiveMode } = opts;
+  const {
+    profile, pageContext, sessionContext, creationsContext,
+    isVoiceMode, interruptedContext, isObjectiveMode,
+    activeObjective, curriculumDigest,
+  } = opts;
 
   const interruptBlock = interruptedContext
     ? `\nIMPORTANT: The student just interrupted you mid-response. You were saying: "${interruptedContext.slice(0, 400)}". Acknowledge their new message briefly, answer it, then offer to continue if it's still relevant.\n`
@@ -201,9 +224,22 @@ ${interruptBlock}${voiceModeGuidance}
 SHARED-SURFACES YOU MAY SEE (only when present):
 1. The Validator Teacher's last verdict — mode, tier, attempts, summary. The teacher's voice is steady and skeptical. Yours is warmer and broader. Never speak as the teacher. If the student asks "what did the teacher mean", paraphrase the summary in your own words and tutor across it.
 2. The student's current worksheet draft — read it for context. Do not invent answers for them. Do not paste their draft back at them verbatim.
+3. The active objective (when the student clicked into a graded mission) — title, task brief, tier, tools, rubric. Use this to answer "what am I doing?" / "what does the teacher want?" / "what tier am I aiming for?" — NEVER claim you can't see it when it's listed below.
+${activeObjective ? `
+ACTIVE OBJECTIVE (the student clicked into this mission — you DO know what they're working on):
+- Title:       ${activeObjective.emoji ? activeObjective.emoji + " " : ""}${activeObjective.title}
+- Lab task:    ${activeObjective.labTask ?? activeObjective.description}
+- Tier:        ${activeObjective.tier ?? "(not set)"}
+- Tools:       ${activeObjective.tools?.length ? activeObjective.tools.join(", ") : "(any)"}
+- Pass:        ${activeObjective.passCriteria ?? "(see lab task)"}
+- Merit:       ${activeObjective.meritCriteria ?? "(see lab task)"}
+- Distinction: ${activeObjective.distinctionCriteria ?? "(see lab task)"}
 
+If the student asks what they're working on, what to do, what the teacher will grade on, or how to hit merit/distinction — answer from THIS block. Don't say you can't see the objective. You can.
+` : ""}
 PAGE CONTEXT (where the student is in the app):
 ${pageContext}
+${curriculumDigest ? `\nUNLOCKED CURRICULUM (so you can answer "what's next?" / "what missions are in this arena?"):\n${curriculumDigest}` : ""}
 ${creationsContext ? `\nSTUDENT'S RELEVANT CREATIONS:\n${creationsContext}` : ""}
 ${sessionContext ? `\nCURRENT SESSION SO FAR:\n${sessionContext}` : ""}
 `.trim();

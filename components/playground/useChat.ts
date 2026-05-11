@@ -71,11 +71,11 @@ export function useChat(profile: Profile | null, mode: PlaygroundMode, objective
     })
       .then(r => r.json())
       .then(({ session }) => {
-        // TEMP: graceful fallback while Supabase is down — session.id may be undefined.
-        const id = session?.id ?? "temp-session";
+        const id = session?.id as string;
+        if (!id) throw new Error("Session create failed: no id returned");
         setSessionId(id);
         pendingSessionRef.current = null;
-        return id as string;
+        return id;
       });
     pendingSessionRef.current = promise;
     return promise;

@@ -39,9 +39,21 @@ interface Props {
   rubric:           StagedRubric;
   profile:          { id?: string; display_name?: string; age_group?: string } | null;
   whiteboardImages: WhiteboardImageMessage[];   // recent images from whiteboard chat
+  // Worksheet docs the kid dropped into chat (priority: popup wins, this is fallback)
+  whiteboardDocs?:  { url: string; filename: string; format: "pdf" | "docx" }[];
   onClose:          () => void;
   onComplete:       (composite: number, tier: FinalResult["tier"]) => Promise<void>;
 }
+
+// Funny SAGE one-liners for "no worksheet anywhere" — kid sees one at random.
+// SAGE = Skeptical Mentor, but with a wry sense of humour. Never mean.
+const FUNNY_NO_WORKSHEET = [
+  "The worksheet is emptier than my patience right now. Fill it in, or drop the doc.",
+  "I'm staring at a blank slate. Worksheet, please.",
+  "No worksheet, no validation. The form's right there. The upload zone's right there. Pick one.",
+  "You came to be graded… without the work. Bold. Now fill the worksheet.",
+  "Help me help you. I need either the form filled in or a doc uploaded.",
+] as const;
 
 type Phase = "intro" | "ready" | "submitting" | "result";
 
@@ -154,7 +166,7 @@ function clearDraft(lmsId: string, profileId?: string) {
 }
 
 export function ObjectiveSubmissionPanel({
-  open, rubric, profile, whiteboardImages, onClose, onComplete,
+  open, rubric, profile, whiteboardImages, whiteboardDocs = [], onClose, onComplete,
 }: Props) {
   const isObj6        = rubric.lmsId === "l1-06";
   const validateUrl   = isObj6 ? "/api/aida/validate/obj6" : "/api/aida/validate/obj10";
@@ -331,9 +343,24 @@ export function ObjectiveSubmissionPanel({
 
     const fresh = readPending(rubric.lmsId, profile?.id) ?? pending;
     setPending(fresh);
-    const worksheetPayload = buildWorksheetPayload(fresh);
+    // Priority order:
+    //   1. Popup data (inline form OR file uploaded inside the worksheet popup)
+    //   2. Chat doc fallback (kid dropped a .pdf/.docx into the whiteboard)
+    //   3. Funny SAGE complaint → bail
+    let worksheetPayload = buildWorksheetPayload(fresh);
+    if (!worksheetPayload && whiteboardDocs.length > 0) {
+      const latest = whiteboardDocs[whiteboardDocs.length - 1];
+      worksheetPayload = {
+        kind:     "file",
+        url:      latest.url,
+        format:   latest.format,
+        filename: latest.filename,
+      };
+    }
     if (!worksheetPayload) {
-      setError("The worksheet is empty. Fill it in (or upload a .docx/.pdf), then come back.");
+      const funny = FUNNY_NO_WORKSHEET[Math.floor(Math.random() * FUNNY_NO_WORKSHEET.length)];
+      setError(funny);
+      speakLine(funny);
       return;
     }
 
@@ -346,7 +373,15 @@ export function ObjectiveSubmissionPanel({
     const mediaToUse = mediaFromPending.length > 0 ? mediaFromPending : fallbackMedia;
 
     if (isObj6 && mediaToUse.length === 0) {
-      setError("I need the HeyGen MP4. Drop it in the worksheet, then come back.");
+      const msg = "I need the HeyGen MP4. Drop it in the worksheet, then come back. I don't grade vibes.";
+      setError(msg);
+      speakLine(msg);
+      return;
+    }
+    if (!isObj6 && mediaToUse.length === 0) {
+      const msg = "Worksheet — in. Comic — missing. I can read minds, not blank canvases. Generate the comic or upload it.";
+      setError(msg);
+      speakLine(msg);
       return;
     }
 

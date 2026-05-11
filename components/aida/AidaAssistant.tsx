@@ -89,6 +89,11 @@ function serializePlaygroundSession(msgs: PlaygroundMessage[]): { text: string; 
 interface ChatMessage {
   role:    "user" | "assistant";
   content: string;
+  // "nudge" = AIDA's inline thought-bubble reaction to a whiteboard prompt.
+  // Rendered with a distinct (italic, dimmer) thought-bubble style. Not part
+  // of the conversation history sent back to /api/aida.
+  kind?:   "nudge";
+  nudgeKind?: "progress" | "encourage" | "stray";
 }
 
 type PlaygroundMessage = import("@/components/playground/useChat").Message;
@@ -231,6 +236,65 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   useEffect(() => { isOnPGRef.current = isOnPlayground; },    [isOnPlayground]);
   useEffect(() => { objectiveIdRef.current = activeObjectiveId; }, [activeObjectiveId]);
   useEffect(() => { pmRef.current = playgroundMessages; },    [playgroundMessages]);
+
+  // ── Nudge trigger: fire AIDA's inline thought bubble on each new user prompt
+  // in the whiteboard. We compare current vs. previous whiteboard user-message
+  // count; on increase, take the newest user message and POST to /api/aida/nudge.
+  // The response is appended as a ChatMessage with kind:"nudge" so it renders
+  // with a distinct thought-bubble style (italic, dimmer, 💭 prefix).
+  //
+  // Off-objective (no activeObjectiveId) → only encourages, never strays. Server
+  // already handles that gracefully (no rubric → "encourage" kind).
+  const prevWhiteboardUserCountRef = useRef<number>(0);
+  const nudgeInFlightRef            = useRef<boolean>(false);
+  useEffect(() => {
+    if (!isOnPlayground) return;
+    const userMessages = playgroundMessages.filter(
+      m => m.role === "user" && m.content && !isWhiteboardSystemNoise(m.content),
+    );
+    const prevCount = prevWhiteboardUserCountRef.current;
+    prevWhiteboardUserCountRef.current = userMessages.length;
+    // Skip first paint (count goes 0 → N on history load) and any non-increase.
+    if (prevCount === 0 || userMessages.length <= prevCount) return;
+    if (nudgeInFlightRef.current) return;
+    const latest = userMessages[userMessages.length - 1];
+    if (!latest?.content) return;
+
+    nudgeInFlightRef.current = true;
+    const recentHistory = userMessages.slice(-4, -1).map(m => m.content);
+    (async () => {
+      try {
+        const res = await fetch("/api/aida/nudge", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userPrompt:    latest.content,
+            objectiveId:   activeObjectiveId,
+            ageGroup:      profile?.age_group ?? "11-13",
+            displayName:   profile?.display_name ?? "you",
+            recentHistory,
+            // Attempt-aware tone: count + lastTier come from the validator
+            // channel, refreshed each time SAGE finishes grading.
+            attemptCount:  validatorState.attempts?.count ?? 0,
+            lastTier:      validatorState.lastTier,
+          }),
+        });
+        if (!res.ok) return;
+        const data = await res.json() as { text: string; kind: "progress" | "encourage" | "stray" };
+        if (!data?.text?.trim()) return;
+        setMessages(prev => [
+          ...prev,
+          { role: "assistant", content: data.text, kind: "nudge", nudgeKind: data.kind },
+        ]);
+      } catch (err) {
+        console.warn("[AIDA nudge] failed:", err);
+      } finally {
+        nudgeInFlightRef.current = false;
+      }
+    })();
+    // We deliberately watch only playgroundMessages — the rest are stable refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playgroundMessages, isOnPlayground]);
 
   // ── Check MediaRecorder availability (voice mode requires it) ─────────────
   useEffect(() => {
@@ -429,7 +493,10 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
 
     const myId = ++sendIdRef.current;
 
-    const history = messagesRef.current.slice(-6);
+    // Drop inline thought-bubble nudges from the conversation history — they
+    // are AIDA's observations to the kid, not turns in the back-and-forth, so
+    // including them confuses the next reply.
+    const history = messagesRef.current.filter(m => m.kind !== "nudge").slice(-6);
     const p   = profileRef.current;
     const pn  = pathnameRef.current;
     const ioP = isOnPGRef.current;
@@ -1037,7 +1104,31 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
           </div>
         )}
 
-        {messages.map((msg, i) => (
+        {messages.map((msg, i) => {
+          // Inline thought-bubble nudge — visually distinct: italic, dimmer,
+          // dashed border, 💭 prefix. Tinted by nudgeKind: stray = amber,
+          // progress = cyan, encourage = neutral.
+          if (msg.kind === "nudge") {
+            const tint =
+              msg.nudgeKind === "stray"    ? "rgba(255,176,32,0.55)"  :
+              msg.nudgeKind === "progress" ? "rgba(0,212,255,0.55)"   :
+                                             "rgba(255,255,255,0.25)";
+            return (
+              <div key={i} className="flex gap-2 justify-start opacity-90">
+                <div className="max-w-[85%] px-3 py-1.5 rounded-2xl text-[11px] leading-relaxed italic"
+                  style={{
+                    background:   "linear-gradient(180deg, rgba(20,34,60,0.35) 0%, rgba(8,16,32,0.30) 100%)",
+                    border:       `1px dashed ${tint}`,
+                    color:        "rgba(232,244,255,0.78)",
+                    borderRadius: "14px 14px 14px 4px",
+                  }}
+                >
+                  <span className="mr-1.5">💭</span>{msg.content}
+                </div>
+              </div>
+            );
+          }
+          return (
           <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "assistant" && (
               <div
@@ -1097,7 +1188,8 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
 
         <div ref={bottomRef} />
       </div>

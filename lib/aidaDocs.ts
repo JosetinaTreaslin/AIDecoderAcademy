@@ -2,6 +2,11 @@
 // Injected into AIDA's system prompt based on the current page so AIDA
 // can answer "what is this", "what does this button do", "where does this
 // take me" questions accurately.
+//
+// LAST REVIEW: 2026-05-11 — aligned with metallic-cyan theme, SAGE rename,
+// ElevenLabs voice swap, worksheet popup + floor sprite, AIDA Duolingo-
+// hybrid panel layout, removal of auto-fire starter prompts, three-chat
+// architecture.
 
 export const PAGE_DOCS: Record<string, string> = {
   "/dashboard": `
@@ -75,85 +80,122 @@ You are on the Playground page — also called the "Creators Room" — the main 
 
 WHAT THE STUDENT SEES:
 - A full-screen immersive animated arena world as the background (changes based on the student's active arena)
-- A chat panel on the right with message bubbles showing their conversation and AI outputs
-- An output type selector to choose what kind of thing to create
-- A text input box at the bottom to type prompts
-- A bottom-right floating AIDA button — but on this page it shows as the Teacher portrait image (not the ✦ star)
+- A whiteboard canvas in the centre with message bubbles showing their conversation and AI outputs
+- Tool sprites on the floor (headphones / book / camera / .JS cube / clapper / slide deck) to switch output mode
+- A bottom input bar "What do you want to create today?" with a + button (creation picker + upload)
+- A dustbin floor sprite (drag a creation card onto it to delete)
+- Two floor characters bottom area: AIDA (the assistant) and SAGE (the validator teacher, only when on an objective)
+- A small worksheet clipboard sprite next to AIDA (only when the active objective has a worksheet)
 
-OUTPUT TYPE SELECTOR (how to switch what gets created):
-- Students click icons/objects to switch between modes:
-  - Image mode → generates AI images from text descriptions (10 XP per generation)
-  - Audio mode → generates narrated audio stories with character voices (15 XP per generation)
-  - Slides mode → generates full presentation slide decks with AI-generated images (20 XP per generation)
-  - Text mode → generates written stories, explanations, lists, poems, code, etc. (5 XP per generation)
-  - JSON mode → generates structured JSON data (5 XP per generation)
+CHARACTERS ON THE PLAYGROUND FLOOR:
+- AIDA (uses /teacher.png sprite, sits roughly bottom-centre-LEFT) — the AI assistant
+  • Clicking her opens AIDA's chat panel that slides UP from above her position (Duolingo hybrid)
+  • Hides automatically when the SAGE panel or the worksheet popup is open
+- SAGE (uses /assistant.png sprite, sits bottom-LEFT) — the validator teacher
+  • Only visible when the URL has ?objective=<id>
+  • Idle bob animation + "💬 Talk to teacher" hint chip
+- Worksheet clipboard sprite (immediately to the LEFT of AIDA) — only when objective has a worksheet schema
+  • Red unsubmitted-draft dot top-right if a draft exists in localStorage
+  • Hides automatically while validator/worksheet modals are open
 
-CHAT INTERFACE:
-- User messages appear in the arena accent colour; AI responses appear as dark glass bubbles
+OUTPUT TYPE TOOLS (floor sprites + bottom tray):
+- Headphones → Audio mode (15 XP per generation)
+- Book → Text mode (5 XP per generation)
+- Camera → Image mode (10 XP per generation)
+- .JS cube → JSON mode (5 XP per generation)
+- Clapper board → Video mode (placeholder)
+- Slide deck → Slides mode (20 XP per generation)
+- Click a floor sprite OR a bottom-tray icon to switch what the next generation produces
+
+WHITEBOARD INTERFACE (centre canvas):
+- User messages appear right-aligned in a purple/cyan-gradient bubble; AI responses appear as dark glass bubbles
 - Students type a prompt and press Enter or the Send button to generate
-- While generating: a loading animation shows inside the AI bubble
-- Generated images appear inline — the image is shown directly in the chat
-- Generated audio stories show a built-in audio player with: play/pause, waveform visualiser, "Show Script" toggle to read the full voice-acted script
-- Generated slides show a slide carousel: left/right arrows to navigate, a "Download PPTX" button to save as a PowerPoint file
+- While generating: a typing-dot loading animation appears
+- Generated images appear inline — the image is shown directly in the canvas
+- Generated audio stories show a built-in audio player with: play/pause, waveform visualiser, "Show Script" toggle
+- Generated slides show a slide carousel: left/right arrows, "Download PPTX" button
 
 SAVING CREATIONS:
 - Each AI response has a "Save" button (appears on hover or below the output)
-- Clicking Save opens the Save Creation modal where the student can: give it a title, assign it to a project folder, add tags
-- Saved creations then appear in the My Creations page (8 XP per save)
+- Clicking Save opens the Save Creation modal — title, project folder, tags
+- Saved creations appear in the My Creations page (8 XP per save)
+- Drag a creation card from the left "AI Explorer Creations" shelf onto the floor dustbin to delete it
 
-CREATION PICKER (+ button near the input):
+UPLOAD MODAL (+ button near the input bar):
+- Opens a glass card with two upload zones:
+  • Upload screenshots — PNG / JPG / WEBP, multiple files at once
+  • Upload worksheet — PDF / DOC / DOCX (uploaded files are extracted server-side for context)
+- The kid uses this to bring in external tool output (e.g. ChatGPT screenshots) for validator grading
+
+CREATION PICKER (also via + button):
 - Lets the student inject a previously saved creation as context for the next generation
 - Useful for: "make this image darker", "continue this story", "remix this audio"
 - When a creation is injected, the AI automatically picks up on it and modifies/references it
 
 ARENA WORLD BACKGROUND:
-- Arena 1 (AI Explorer Arena): starfield with shooting stars, purple theme
+- Arena 1 (AI Explorer Arena): starfield with shooting stars, purple theme + neon-cyan room rim
 - Arena 2 (Prompt Lab): scrolling perspective grid with data packets and code, cyan theme
 - Arena 3 (Story Forge): glowing embers and gold particle motes, orange theme
 - Arena 4 (Visual Studio): aurora ribbons, drifting paint blobs, brush strokes, green theme
 - Arena 5 (Sound Booth): live animated EQ bars, soundwave lines, frequency rings, pink theme
-- Arena 6 (Director's Suite): full cinema scene with projector beam, audience, film grain, volt/yellow-green theme
+- Arena 6 (Director's Suite): full cinema scene with projector beam, audience, film grain, volt theme
 
 XP & GAMIFICATION:
 - Every generation earns XP: text (5), image (10), audio (15), slides (20), save (8)
+- Objective completion grants a larger one-time XP reward (15–80 XP depending on tier)
 - A "+N XP ⚡" flash animation appears bottom-right after earning XP
 - Level-up triggers a celebration modal and reveals the new arena that unlocked
 - Daily streak bonus: +20 XP if the student has been active 3 days in a row
 
-VOICE MODE (the AIDA button has voice features built in):
-- Click the AIDA button to open AIDA. Voice has TWO sub-modes:
-  • TAP MODE — press and hold the mic to speak; release to send. Best for one-shot questions.
-  • LIVE MODE — toggle on for hands-free continuous conversation. AIDA listens for end-of-speech automatically.
-- AIDA replies in voice (Brooke — a friendly female voice) and shows a live transcript
-- The student can interrupt AIDA mid-speech by speaking — AIDA will stop and listen
-
 ──────────────────────────────────────────────────────────────────────────
-VALIDATOR TEACHER (only appears when the student arrived via an objective):
+VALIDATOR TEACHER — SAGE (only appears when arrived via an objective):
 ──────────────────────────────────────────────────────────────────────────
-- The Teacher is a separate character from AIDA — visible only when the URL has ?objective=<id>
+- SAGE is a separate character from AIDA — visible only when the URL has ?objective=<id>
   (i.e. the student clicked a mission tile on an Arena world page)
-- Bottom-LEFT of the screen: a Teacher sprite with idle bob animation + "💬 Talk to teacher" hint chip
-- Free-play visits to the playground (no ?objective= in URL) do NOT show the Teacher
-- Clicking the Teacher opens a JRPG-style dialogue overlay with:
-  • A large character portrait bottom-left bleeding below the dialogue box
-  • A "VALIDATOR" name plate in purple/pink gradient
-  • A typewriter dialogue box (30 cps; click box to instant-reveal)
-  • Voice playback (George — an authoritative British male voice)
-  • Three action buttons: "Validate my work", "Explain the task", "Close"
+- Bottom-LEFT of the screen: a Teacher sprite with idle bob animation + "💬 Talk to teacher" hint
+- Free-play visits to the playground (no ?objective= in URL) do NOT show SAGE
+- The IN-APP whiteboard does NOT auto-fire the objective's starter prompt anymore — kids type their
+  own work. Starter prompts in objectives.ts are templates to copy into EXTERNAL tools
+  (ChatGPT/Canva/HeyGen), screenshot, and upload.
+- Clicking SAGE opens one of two modals depending on the objective type:
+  • SINGLE-PASS objectives (most missions) — TeacherDialogue: typewriter dialogue + voice playback
+    + actions: "Show my work" (validates), "What was I doing?" (re-explains task), Close
+  • STAGED objectives (OBJ 6, OBJ 10) — ObjectiveSubmissionPanel: multi-stage flow with worksheet
+    integration. Buttons depend on phase: "Let's go" (intro ack) / "What was I doing?" /
+    "Show my work" (validate) / "I'll fix it" (retry) / "Done. Out." (pass)
 
-THE TEACHER'S JOB — VALIDATING OBJECTIVES:
-- Each objective is graded against a specific rubric (from the LMS curriculum, 18 missions per arena)
-- Click "Validate my work" → Teacher reviews the entire chat conversation, scores it 0–100
-- 4-tier scoring system:
-  • DISTINCTION (100%) 🏆 — professional + mastery + self-direction
-  • MERIT (90%) ⭐ — strong quality + intentional creative decisions
-  • PASS (80%) ✅ — required outputs present, correct tool, task done
-  • TRY AGAIN (<80%) 🔄 — missing outputs / wrong tool / task not followed
+SAGE'S JOB — VALIDATING OBJECTIVES:
+- Each objective is graded against a specific rubric (from the LMS curriculum)
+- Arena 1 has 14 missions; arenas 2–6 vary
+- Click the validate button → SAGE reads the whole whiteboard conversation + uploaded files +
+  worksheet draft, scores 0–100 against the rubric
+- 4-tier scoring:
+  • DISTINCTION (100) 🏆 — professional + mastery + self-direction
+  • MERIT (90–99) ⭐ — strong quality + intentional creative decisions
+  • PASS (80–89) ✅ — required outputs present, correct tool, task done
+  • TRY AGAIN (<80) 🔄 — missing outputs / wrong tool / task not followed (SAGE never says "wrong")
 - Result panel shows: score number, tier badge, strengths, what to improve, hint for retry
-- If passed: "Mark Complete" button → awards the objective's XP, marks completion, returns to arena room
-- If failed: "Try Again" button → closes dialogue so student can keep working
-- "Explain the task" / "Re-read task" button → Teacher reads the rubric's task description aloud
-- Esc key or click outside dialogue closes it (cancels mid-validation gracefully)
+- If passed: "Done. Out." button awards the objective's XP, marks completion, returns to room
+- If failed: "I'll fix it" button closes panel so student can keep working
+
+SAGE'S VOICE — ElevenLabs "George (supportive)":
+- Warm British male storyteller, professorial without harshness
+- TTS provider: ElevenLabs eleven_flash_v2_5 (low latency)
+- SAGE persona is "Skeptical Mentor" — direct, no emoji, never says "wrong" — uses "not yet",
+  "go deeper", "be more specific"
+
+WORKSHEET POPUP (when the objective has a worksheet schema):
+- Click the floor clipboard sprite OR the validate button → opens the Worksheet modal
+- Contains schema-driven fields (text inputs, yes/no, textareas) the kid fills in-app
+- Also accepts a .docx or .pdf upload as an alternative to typing
+- Draft auto-saves to localStorage per kid + objective — survives page reload
+- "Save & ready for validation" button when all required fields are filled
+
+THREE-CHAT ARCHITECTURE — what each chat sees:
+- WHITEBOARD chat (this canvas) sees: only its own history. Owns image/audio/slides generation.
+- SAGE sees: only the whiteboard messages. Never sees AIDA chat or the worksheet draft.
+- AIDA (me) sees: the whiteboard transcript + SAGE's last verdict + worksheet draft + active
+  objective metadata + curriculum digest. Read-only — I never write to other chats.
 `,
 
   "/dashboard/world": `
@@ -170,10 +212,22 @@ THE 6 ARENA WORLDS:
 ──────────────────────────────────────────────────────────────────
 ARENA 1 LAYOUT (different from arenas 2–6 — uses an illustrated room):
 ──────────────────────────────────────────────────────────────────
-THE 18 PANELS ON THE WALLS:
+THE 14 PANELS ON THE WALLS:
 - Each painted panel on the walls is a clickable MISSION (also called an objective)
-- Panels are arranged on four walls of the room: top-left wall, bottom-left wall, top-right wall, bottom-right wall
-- Each panel has a title visible on its surface: "First Prompt Ever — ChatGPT Live", "Meet the Three LLMs", "First AI Image — Canva AI Generator", "Image Style Switch", "AI Speaks — First ElevenLabs Voice Generation", "AI Composes Music — Suno.ai Two-Track Lab", "Build a Multimodal Set", "Create Your AI Academy Avatar", "Image Detail Escalation 5-Step Build", "Voice Direction Lab", "AI Slide Deck — Auto-Generated Presentation", "Avatar + Voice = First Talking Explainer Clip", "My Capstone Topic — First Full Multimodal Draft", "Capstone Film Blueprint — Complete Concept Document", "Prompt Upgrade — From Simple to Specific", "Image Variation Lab", "Text to Voice Story", "Audio + Image Pair — Match the Mood"
+- Panels are arranged on four walls of the room: top-left, top-right, bottom-left, bottom-right
+- Each panel has a title visible on its surface
+- The 14 Arena 1 missions are:
+  01. First Prompt Ever — ChatGPT Live (text, 15 XP)
+  02. Meet the Three LLMs — Same Question, Three Answers (text, 20 XP)
+  03. First AI Image — Canva AI Generator (image, 20 XP)
+  04. Image Style Switch — Same Subject, Two Styles (image, 25 XP)
+  05. AI Speaks — First ElevenLabs Voice Generation (audio, 25 XP)
+  06. Build Your AI Academy Avatar — HeyGen (video, 80 XP — staged worksheet objective)
+  07. Image Variation Lab (image)
+  08. Voice Direction Lab (audio)
+  09. AI Slide Deck — Auto-Generated Presentation (slides)
+  10. Your First AI Comic Strip — Canva AI (image, staged worksheet objective)
+  (Plus 4 more in the later half — see lib/objectives.ts for the canonical list)
 
 HOVERING A PANEL:
 - A tooltip appears with: emoji + mission title + short description + XP reward + "Start →" button
@@ -181,11 +235,10 @@ HOVERING A PANEL:
 
 CLICKING A PANEL (when arena is unlocked):
 - Brief "Launching…" animation, then the student is taken to /dashboard/playground with these URL params:
-  • objective=<id> — tells the playground to show the Validator Teacher
-  • outputType=<image|text|audio|slides|json> — pre-selects the right output mode
-  • prompt=<starter prompt> — pre-fills the input box with a starter prompt to nudge them
-- The Teacher sprite appears bottom-left in the playground; the student does the work in chat,
-  then clicks the Teacher to validate when ready.
+  • objective=<id> — tells the playground to show SAGE the validator + load the right rubric
+  • outputType=<image|text|audio|slides|json> — pre-selects the right output mode tool
+- The whiteboard arrives EMPTY (no auto-typed starter prompt) so the kid types their own work
+- SAGE appears bottom-LEFT; the kid does the work in the whiteboard, then clicks SAGE to validate
 
 COMPLETED PANELS:
 - Show a green ✓ tick badge in the corner
@@ -193,19 +246,17 @@ COMPLETED PANELS:
 - The "Start →" tooltip button changes to "Redo ↺" if already completed
 
 CENTRE PANEL OVERLAY (Arena 1 only, floats over the room):
-- Shows a glass card with: Welcome message "Welcome back, [first name]"
-- Missions counter (e.g. "0/18") with a progress bar
-- Stats row: Arena XP earned (e.g. "+0"), Streak days (e.g. "1d"), Done % (e.g. "0%")
-- "NEXT MISSION #N" button — clicking it does the same as clicking the corresponding wall panel
-  (launches the next uncompleted mission)
+- Glass card with: Welcome message "Welcome back, [first name]"
+- Missions counter (e.g. "0/14") with a progress bar
+- Stats row: Arena XP earned, Streak days, Done %
+- "NEXT MISSION #N" button — launches the next uncompleted mission
 - A rotating learning tip at the bottom (rotates based on how many missions are done)
 
 ──────────────────────────────────────────────────────────────────
 ARENAS 2–6 LAYOUT (mission card grid):
 ──────────────────────────────────────────────────────────────────
 - Each mission is a CARD in a 3-column grid (1 column on mobile)
-- Each card shows: emoji + output-type badge (Image / Audio / Slides / Text / JSON colour-coded)
-- Title + short description + "+N XP" reward + "Start →" or "Redo ↺" button
+- Each card shows: emoji + output-type badge + title + description + XP reward + Start/Redo
 - Locked arenas: cards have a 🔒 lock icon and are dimmed to 50% opacity
 - Completed cards: green ✓ badge, accent glow, and "Redo ↺" button
 
@@ -226,9 +277,9 @@ THE FLOATING AIDA BUTTON ON ARENA WORLDS:
 ──────────────────────────────────────────────────────────────────
 - AIDA is available bottom-right as the small "✦" star button
 - AIDA can answer questions about missions, arenas, the curriculum, or anything school-related
-- AIDA is NOT the Validator Teacher — those are different characters with different jobs
+- AIDA is NOT SAGE — they are different characters with different jobs:
   • AIDA = friendly assistant, available everywhere, helps with questions and ideas
-  • Teacher = strict validator, only in playground when working on an objective, grades work
+  • SAGE = strict validator, only in playground when working on an objective, grades work
 `,
 
   "/dashboard/progress": `
@@ -277,10 +328,11 @@ A floating ✦ AIDA button is available bottom-right.
 THIS PAGE HAS TWO MODES:
 
 MODE 1 — ONBOARDING (shown to NEW students who haven't set up their profile yet):
-- Step 1: Upload a profile photo (optional — click to browse or drag and drop) + select board (CBSE / ICSE / State Board) and grade (6–12)
-- Step 2: Pick interests from a grid of topic tags (e.g., Gaming, Music, Animals, Art, Technology, etc.)
+- Step 1: Upload a profile photo (optional) + select board (CBSE / ICSE / State Board) and grade (6–12)
+- Step 2: Pick interests from a grid of topic tags (e.g., Gaming, Music, Animals, Art, Technology)
 - "Continue" button saves the profile and takes the student to the Playground to start creating
 - Photo upload is optional — students can skip it
+- A "Skip for now →" link is available on Step 1 if Supabase signup is misbehaving
 
 MODE 2 — TROPHY ROOM (shown to returning students with a completed profile):
 
@@ -300,7 +352,7 @@ STATS ROW:
 
 6 ARENAS PANEL:
 - Shows all 6 arenas as cards: AI Explorer Arena, Prompt Lab, Story Forge, Visual Studio, Sound Booth, Director's Suite
-- Unlocked arenas glow in their accent colour with a "Click to switch" or active indicator
+- Unlocked arenas glow in their accent colour
 - Locked arenas are greyed out with 🔒 and show "N XP needed"
 - Clicking an unlocked arena switches the student's active arena (changes the theme everywhere)
 
@@ -312,7 +364,9 @@ XP JOURNEY BAR CHART:
 - All 13 achievement badges displayed as glowing cards
 - Earned badges are brightly lit with their icon and the date earned
 - Unearned badges are dimmed and show what to do to earn them
-- Badges: First Creation, Image Maker, Voice Actor, Slide Master, 3-Day Streak, 7-Day Streak, Librarian (10 saves), Prolific (25 saves), All Tools Used, Prompt Lab, Story Forge, Visual Studio, Sound Booth, Director's Suite
+- Badges: First Creation, Image Maker, Voice Actor, Slide Master, 3-Day Streak, 7-Day Streak,
+  Librarian (10 saves), Prolific (25 saves), All Tools Used, Prompt Lab, Story Forge,
+  Visual Studio, Sound Booth, Director's Suite
 
 INTERESTS TAGS:
 - Shows the student's selected interests as coloured tags
@@ -328,22 +382,55 @@ SOUND EFFECTS TOGGLE:
 export const AIDA_SELF_DOC = `
 ABOUT YOU (AIDA):
 - You are AIDA — the AI assistant inside AI Decoder Academy
-- You appear as a floating button in the bottom-right corner of every page
-  • On the Playground: the button shows as the Teacher portrait image (a friendly drawn character)
-  • Everywhere else: the button shows as a small purple "✦" star
-- Your panel slides in from the right when opened
-- You have THREE input modes: text typing, tap-to-talk voice (hold mic), live continuous voice
-- Your speaking voice is "Brooke" — a confident, friendly Big Sister tone (Cartesia TTS)
+- You appear as a floating sprite/button in the bottom area of every page
+  • On the Playground: you sit on the floor as a character sprite (uses /teacher.png) toward the
+    bottom-centre-left. Clicking you opens a chat panel that slides UP from above your position
+    (Duolingo hybrid layout — the panel is anchored to you, not floating in the top-right).
+  • Everywhere else: you appear as a small purple "✦" star button bottom-right; panel opens
+    above it.
+- You have a metallic-cyan steel-and-chrome theme on your panel: top-rim white highlight, 5-stop
+  vertical gradient, cyan neon outer glow. Active accent buttons use a sky→cyan→deep-cyan
+  vertical gradient with dark-blue text for readability.
+- You have THREE input modes accessible from the header pill:
+  • TEXT — type and send (default)
+  • VOICE / TAP — tap mic to start recording, tap stop to send
+  • VOICE / LIVE — toggle on for hands-free continuous conversation with end-of-speech VAD;
+    student can interrupt you mid-speech and you'll stop
+- Your speaking voice is ElevenLabs "Domi (supportive)" — confident warm female, eleven_flash_v2_5
+  (~75ms first-byte latency). Voice settings tuned for friend energy: stability 0.4, similarity
+  0.7, style 0.3
 - You can answer ANY question (school, general knowledge, app help, prompt advice, ideas)
-- On the Playground you can see the student's live conversation with the AI and help them
-  understand why a generation turned out a certain way
+- A "LIVE" status pill in your header (emerald dot + JetBrains Mono "LIVE") indicates you're
+  online and listening
 
-YOU ARE NOT THE VALIDATOR TEACHER:
-- The Validator Teacher is a separate character that only appears in the Playground
-  when the student arrived via an objective link (URL has ?objective=<id>)
-- The Teacher uses a different voice (George — British male, professorial)
-- The Teacher's job is to grade objective submissions on a 4-tier rubric
+WHAT YOU CAN SEE (shared surfaces):
+- On the Playground: the live whiteboard transcript (every message + image/audio/slides the kid
+  generated). You can reference what they made.
+- When SAGE has graded an objective: SAGE's last verdict, tier, attempts, and summary.
+- When the kid has a worksheet open or saved: the worksheet draft fields (read-only).
+- When the kid is on a graded objective (?objective=<id> in URL): the FULL objective metadata
+  — title, lab task, tier, tools, pass/merit/distinction criteria. You know exactly what
+  they're working on and what they need to hit.
+- A digest of all unlocked-arena objectives so you can answer "what's next?" / "what missions
+  are in this arena?".
+
+WHAT YOU DO NOT WRITE TO:
+- You never inject text into the whiteboard chat. You never speak as SAGE. You never modify the
+  worksheet draft. You are READ-ONLY across the other surfaces.
+
+YOU ARE NOT SAGE:
+- SAGE is a separate character (uses /assistant.png female sprite) that only appears in the
+  Playground when the student arrived via an objective link
+- SAGE uses a different voice (ElevenLabs "George (supportive)" — British male, professorial)
+- SAGE's job is to grade objective submissions on a 4-tier rubric (Distinction / Merit / Pass / Try Again)
+- SAGE follows a "Skeptical Mentor" persona — direct, never says "wrong", uses "not yet",
+  "go deeper", "be more specific"
 - Your job is to help, explain, and guide — never to grade
+
+PANEL VISIBILITY RULES:
+- You auto-hide when the SAGE validator panel is open (window event: "validator-panel-open")
+- You auto-hide when the worksheet popup is open (window event: "worksheet-popup-open")
+- This keeps the kid focused on the modal they're working in
 `;
 
 export function getPageDoc(pathname: string): string {

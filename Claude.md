@@ -245,6 +245,82 @@ User messages with file attachments encode types as `"\n__attach:image,audio__"`
 
 ---
 
+## Three-Chat Architecture (AIDA · SAGE · Whiteboard)
+
+Three independent chat surfaces share a single React context (`lib/chatChannels.tsx`) that publishes three read-only snapshots: `whiteboard.messages`, `validator` (last verdict), `worksheet` (current draft). Each chat owns its own route + persona and only reads what it's allowed to.
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                       chatChannels Provider                          │
+│   ┌──────────────┐   ┌──────────────┐   ┌─────────────────────┐      │
+│   │ whiteboard   │   │ validator    │   │ worksheet           │      │
+│   │ snapshot     │   │ last verdict │   │ current draft       │      │
+│   └──────┬───────┘   └──────┬───────┘   └──────────┬──────────┘      │
+└──────────┼──────────────────┼─────────────────────┼──────────────────┘
+           │                  │                     │
+   writes ▼ reads ◄──┐  writes ▼               reads ▼
+┌─────────────────┐  │  ┌─────────────────┐    ┌─────────────────┐
+│ WHITEBOARD chat │  │  │ VALIDATOR (SAGE)│    │ WorksheetPopup  │
+│ useChat.ts      │  │  │ TeacherCharacter│    │  + WorksheetIcon│
+│ /api/chat       │  │  │ /api/aida/      │    │                 │
+│                 │  │  │  validate       │    │                 │
+└─────────────────┘  │  └────────┬────────┘    └────────┬────────┘
+                     │           │                       │
+                     │           │ reads ◄───────────────┘
+                     │           ▼
+                     │   ┌────────────────────────────────────────┐
+                     │   │ AIDA assistant                          │
+                     └───┤ AidaAssistant.tsx                       │
+                         │ /api/aida                               │
+                         │ reads: whiteboard + validator + worksh. │
+                         │        + active objective + curriculum  │
+                         └─────────────────────────────────────────┘
+```
+
+### What each chat sees (system-prompt level)
+
+| Surface | API | Sees | Persona | Voice (TTS) |
+|---|---|---|---|---|
+| **Whiteboard** | `/api/chat` | profile, own history, attachments | `playgroundPersona.ts` — creation AI, age-tier register | n/a (text-only output for chat; image/audio/slides go to their own routes) |
+| **AIDA** | `/api/aida` | whiteboard transcript (via router) · validator state · worksheet draft · **active objective metadata** · **curriculum digest** · creations (Pinecone) · page doc | `aidaPersona.ts` — Curious Friend / older cousin | ElevenLabs **Domi (supportive)** |
+| **SAGE** (validator) | `/api/aida/validate` | whiteboard messages[] only · rubric · attempt count | `teacherPersona.ts` — Skeptical Mentor; never says "wrong"; no emoji | ElevenLabs **George (supportive)** |
+
+### Boundary rules — must not break
+
+1. **Whiteboard chat sees no other chats.** Don't feed AIDA replies or validator verdicts into `/api/chat` history.
+2. **AIDA never writes** to whiteboard or validator channels — read-only.
+3. **Validator only sees whiteboard messages** — never AIDA chat, never worksheet draft. If you need to add context, add a new channel; don't leak across.
+4. **Worksheet** is owned by `WorksheetPopup` (writer) → `useWorksheetReader` (AIDA reads). SAGE never reads it; SAGE works off the rendered whiteboard images.
+
+### AIDA's objective awareness (Nov 2026)
+
+When the playground URL has `?objective=<id>`, `app/api/aida/route.ts` looks up the objective from `lib/objectives.ts` + rubric from `lib/objectiveRubrics.ts` and passes them as `activeObjective` into `buildAidaSystemPrompt`. AIDA's prompt then includes the title, lab task, tier, tools, and pass/merit/distinction criteria — so she can answer "what am I doing?" / "what does the teacher want?" / "how do I hit merit?" without hallucinating.
+
+She also receives a `curriculumDigest` — a one-line-per-objective summary of every mission in arenas at-or-below the student's current level (no spoilers for locked arenas) — so she can answer "what's next?" / "what's in this arena?".
+
+### Cross-component visibility events
+
+Three window `CustomEvent`s coordinate which floating sprites/panels are visible:
+
+| Event | Fired by | Listened by | Effect |
+|---|---|---|---|
+| `validator-panel-open` / `-close` | `TeacherCharacter.tsx` useEffect on `open` | `AidaAssistant.tsx`, `WorksheetIcon.tsx` | Hides AIDA + worksheet sprite while SAGE panel is up |
+| `worksheet-popup-open` / `-close` | `WorksheetPopup.tsx` useEffect on `open` | `AidaAssistant.tsx`, `WorksheetIcon.tsx` | Hides AIDA + worksheet sprite while worksheet modal is up |
+
+Use this same pattern if you add a future overlay that should hide the floating characters.
+
+### Metallic-cyan theme (Nov 2026)
+
+AIDA chat panel, SAGE panel, and the Upload Files modal share a **steel-and-cyan metallic** signature, independent of arena accent:
+
+- 5-stop vertical gradient: top-rim chrome highlight → steel → deep middle → steel → bottom rim
+- `inset 0 1px 0 rgba(255,255,255,0.22)` on top edge for polished-metal look
+- Twin cyan glow: tight `0 0 24px rgba(0,212,255,0.45)` + wide `0 0 72px rgba(0,212,255,0.22)`
+- Active accents use sky→cyan→deep-cyan vertical gradient `#7DD3FC → #00D4FF → #0284C7` with dark-blue text (`#031024`) for readability
+- Typography: `JetBrains Mono` uppercase for eyebrow/tag labels, `Syne` for display titles, `DM Sans` for body
+
+---
+
 ## Design System
 
 ### Colour Tokens

@@ -390,12 +390,22 @@ export function CreationsRoom({
 
   const send = () => {
     const t = input.trim();
-    if (!t || isStreaming) return;
+    const hasAttachments = injected.length > 0;
+    // Allow attachment-only sends — kid can drop a file in and hit Enter
+    // without typing anything. Block only when truly empty.
+    if ((!t && !hasAttachments) || isStreaming) return;
     // Build context from all injected items (image, doc, saved creations etc.)
     const ctx     = injected.map(buildCreationContext).join("");
     // Output type is ALWAYS what the user selected — injected items are context only
     const outType = selected;
-    onSend(ctx + t, outType);
+    // If no text but attachments are present, synthesise a short auto-prompt
+    // so the API + bubble both have something to render.
+    const effectiveText = t || (hasAttachments
+      ? (injected.length === 1
+          ? `Here's my ${injected[0].output_type ?? "file"} — take a look.`
+          : `Here are ${injected.length} files I want you to look at.`)
+      : "");
+    onSend(ctx + effectiveText, outType);
     setInput("");
     setInjected([]);
     setPlusOpen(false);
@@ -409,7 +419,7 @@ export function CreationsRoom({
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
-  const canSend = input.trim().length > 0 && !isStreaming;
+  const canSend = (input.trim().length > 0 || injected.length > 0) && !isStreaming;
 
   const injectCreation = (c: Creation) => {
     setInjected(prev => {

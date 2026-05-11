@@ -164,52 +164,30 @@ function PlaygroundInner() {
     fetch("/api/profile")
       .then(r => r.ok ? r.json() : { profile: null })
       .then(({ profile }) => {
-        // TEMP: redirect disabled while Supabase egress quota is exceeded.
-        // Restore when Supabase is back: if (!profile) router.replace("/dashboard/profile");
-        if (profile) {
-          setProfile(profile);
-        } else {
-          // TEMP: fake profile while Supabase is down — remove when Supabase is back.
-          setProfile({
-            id: "temp-bypass",
-            clerk_user_id: "temp",
-            display_name: "Tester",
-            avatar_emoji: "🚀",
-            avatar_url: null,
-            age_group: "11-13",
-            interests: ["Gaming", "Science"],
-            xp: 0,
-            level: 1,
-            active_arena: 1,
-            streak_days: 0,
-            last_active_date: null,
-            badges: [],
-          } as unknown as import("@/types").Profile);
+        if (!profile) {
+          router.replace("/dashboard/profile");
+          return;
         }
+        setProfile(profile);
       });
   }, [router]);
 
   // Start session once profile is ready, then pre-configure for the active objective.
+  //
+  // IMPORTANT: We do NOT auto-fire the objective's starterPrompt anymore.
+  // Reason: most starter prompts (e.g. OBJ 1 "First Prompt Ever") are templates
+  // the kid is meant to copy into an EXTERNAL tool (ChatGPT/Canva/HeyGen), take
+  // a screenshot, and submit. Auto-sending it in the in-app whiteboard pollutes
+  // the canvas with a prompt the kid never wrote and validator might grade
+  // against. The starter prompt stays available in the objective record for
+  // reference (rendered in the objective card / SAGE intro).
   useEffect(() => {
     if (profile && !didInit.current) {
       didInit.current = true;
       startSession(mode).then(() => {
-        if (activeObjective) {
+        if (activeObjective?.outputType) {
           // Pre-set output type to match the objective (e.g. "image" for OBJ 10).
-          if (activeObjective.outputType) {
-            setOutputType(activeObjective.outputType as OutputType);
-          }
-          // Skip the auto-starter-prompt for STAGED objectives (OBJ 10 / OBJ 6).
-          // For staged work the validator pops up to greet + brief instead, so
-          // the kid arrives at a clean whiteboard. Free-play and non-staged
-          // objectives still get the starter prompt to seed the conversation.
-          const hasStagedRubric = !!getWorksheetSchema(activeObjectiveId ?? "");
-          if (activeObjective.starterPrompt && !hasStagedRubric) {
-            sendMessage(
-              activeObjective.starterPrompt,
-              (activeObjective.outputType ?? "text") as OutputType,
-            );
-          }
+          setOutputType(activeObjective.outputType as OutputType);
         }
       });
     }

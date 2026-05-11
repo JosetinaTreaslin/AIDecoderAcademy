@@ -67,10 +67,10 @@ export function WorksheetIcon({ onClick, arenaAccent, arenaAccentGlow, hasDraft 
         //   Keep the FIRST percentage in this calc identical to AIDA's `right`
         //   in AidaAssistant.tsx (currently 62%). Change the final `+ Xpx` to
         //   tune the gap between worksheet and AIDA.
-        right:  "calc(62% + clamp(173px, 14.4vw, 269px) + 4px)",
-        bottom: "0px",                                    // ← matches AIDA's bottom
-        width:  "clamp(130px, 10.8vw, 202px)",             // ← SIZE knob: width  (75% of AIDA)
-        height: "clamp(130px, 10.8vw, 202px)",             // ← SIZE knob: height (keep equal to width)
+        right:  "calc(53% + clamp(173px, 14.4vw, 269px) + 4px)",
+        bottom: "20px",                                    // ← matches AIDA's bottom
+        width:  "clamp(260px, 21.6vw, 404px)",             // ← SIZE knob: width  (2× original)
+        height: "clamp(260px, 21.6vw, 404px)",             // ← SIZE knob: height (keep equal to width)
         background: "transparent",
         border:     "none",
         padding:    0,

@@ -30,20 +30,33 @@ export interface ObjectiveIntro {
   beats: ObjectiveIntroBeat[];
 }
 
+// Voice/rhythm notes for kid audiences (11–16, Gen Z + Alpha):
+//   - 8-second hook: beat 1 names WHO + WHAT in under 8 words.
+//   - No try-hard slang ("lit", "fire", etc) — that reads as cringe at this age.
+//     Adults who quote Gen Z dictionaries are the joke, not the messenger.
+//   - No exclamation marks unless natural. Calm beats loud.
+//   - Direct, specific, no platitudes. They have heard "you can do it" too
+//     many times for it to land.
+//   - SAGE introduces themselves explicitly (kid wants to know who's talking).
+//   - End with a concrete first action, not a vague encouragement.
 const INTROS: Record<string, ObjectiveIntro> = {
+  // OBJ 10 — Your First AI Comic Strip
   "l1-10": {
     beats: [
-      { text: "Three panels. One punchline.",                                 tone: "curious and quietly amused, like setting up a challenge you secretly hope they'll meet" },
-      { text: "Most people overthink panel one. Don't. It's just setup.",     tone: "dry, knowing — sharing a small insight, almost a confession" },
-      { text: "When it's ready… show me what you've got.",                    tone: "warm and inviting, with a soft pause before the call to action" },
+      { text: "Hey. I'm Sage — I check your work.",                            tone: "casual hello, like a tutor pulling up a chair" },
+      { text: "OBJ 10. Three panels, one punchline. That's the whole job.",    tone: "matter-of-fact, naming the task without selling it" },
+      { text: "Start with the worksheet. That's where the comic actually gets made.", tone: "dry, knowing — letting them in on the real game" },
+      { text: "When you're ready, hit Validate.",                              tone: "warm and brief, an open door not a push" },
     ],
   },
 
+  // OBJ 6 — Build Your AI Academy Avatar
   "l1-06": {
     beats: [
-      { text: "Your avatar is going to represent you. For the next six levels.", tone: "calm, slightly weighty — naming what's at stake without scaring them" },
-      { text: "A vague brief makes a generic face. A real brief makes your face.", tone: "matter-of-fact, like a coach stating a rule of the craft" },
-      { text: "Fill the worksheet… record three lines… then show me.",            tone: "soft and patient, almost a quiet checklist" },
+      { text: "I'm Sage. I'll grade this one.",                                tone: "calm hello, no theatre" },
+      { text: "OBJ 6. Design your avatar — the face you're using for the next six levels.", tone: "matter-of-fact, naming the stakes once and moving on" },
+      { text: "Plan it on the worksheet first. Then record your three lines on HeyGen.", tone: "practical, like reading the recipe out loud" },
+      { text: "Bring me both when they're ready.",                             tone: "patient, almost waiting" },
     ],
   },
 };
