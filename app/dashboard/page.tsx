@@ -483,16 +483,16 @@ function PanelImage({ arenaId, src, alt, onClick, locked }: {
     >
       {locked && (
         <>
-          {/* Full-panel frost. backdrop-filter blurs whatever's behind this
-              div — which IS the panel's background-image — so the art ends up
-              actually blurry without us touching its size. */}
+          {/* Full-panel frost — lighter blur and tint so the panel art is
+              still clearly visible underneath (kid sees "powered down" not
+              "covered up"). */}
           <div
             aria-hidden
             className="absolute inset-0"
             style={{
-              backdropFilter:       "blur(7px) saturate(80%)",
-              WebkitBackdropFilter: "blur(7px) saturate(80%)" as unknown as string,
-              background:           "rgba(8,16,32,0.32)",
+              backdropFilter:       "blur(2.5px) saturate(85%)",
+              WebkitBackdropFilter: "blur(2.5px) saturate(85%)" as unknown as string,
+              background:           "rgba(8,16,32,0.12)",
               pointerEvents:        "none",
             }}
           />
