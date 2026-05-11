@@ -153,16 +153,101 @@ export async function POST(req: Request) {
           return `${systemPrompt}\n\nOUTPUT FORMAT: ${outputInstruction}`;
         })();
 
-    // Build message history for OpenAI
+    // ── Build message history for OpenAI ──────────────────────────────────
+    // Each prior turn may include an outputType. We rebuild the history as
+    // multimodal where appropriate so GPT actually SEES previous images, and
+    // gets a useful text summary of previous audio / slide outputs instead
+    // of a raw JSON blob it can't make sense of.
+    //
+    // Patterns recognised:
+    //   - assistant + outputType="image" + content starts with http → image_url
+    //   - assistant + outputType="audio" + content is JSON → narrator text + dialogue lines
+    //   - assistant + outputType="slides" + content is JSON → section titles + concept bullets
+    //   - user message with [Image titled "X": URL] markers → split into text + image_url(s)
+    //   - everything else → pass through as text
+    const IMG_MARKER_RE_H = /\[Image titled "[^"]*":\s*(https?:\/\/[^\s\]]+)\s*\]\s*\n*/g;
+    const IMG_URL_HEAD    = /^https?:\/\//i;
+    const truncate = (s: string, n = 800) => s.length > n ? s.slice(0, n) + "…" : s;
+
+    function summariseAudioJson(raw: string): string {
+      try {
+        const p = JSON.parse(raw);
+        const narrator = p?.script?.narrator_text ?? "";
+        const lines = Array.isArray(p?.script?.dialogues)
+          ? p.script.dialogues.map((d: { character?: string; text?: string }) => `${d.character ?? "?"}: ${d.text ?? ""}`).join("\n")
+          : "";
+        return `[Audio scene I generated earlier — narrator + dialogue script]\nNarrator: ${truncate(narrator, 600)}${lines ? `\n\n${truncate(lines, 600)}` : ""}`;
+      } catch { return "[Audio scene I generated earlier]"; }
+    }
+    function summariseSlidesJson(raw: string): string {
+      try {
+        const p = JSON.parse(raw);
+        const sections = Array.isArray(p?.sections)
+          ? p.sections.map((s: { title?: string; concepts?: string[] }) =>
+              `• ${s.title ?? "Untitled"}: ${(s.concepts ?? []).join(", ")}`).join("\n")
+          : "";
+        return `[Slide deck I generated earlier — section outline]\nTitle: ${p?.title ?? "Untitled"}\n${sections}`;
+      } catch { return "[Slide deck I generated earlier]"; }
+    }
+
+    type HistTurn = { role: "user" | "assistant"; content: string; outputType?: string };
+    function buildHistoryTurn(m: HistTurn): OpenAI.Chat.ChatCompletionMessageParam | null {
+      if (!m.content.trim() || m.content === "__init__") return null;
+      const ot = m.outputType ?? "text";
+
+      // Assistant — images become real vision parts so the model can see them
+      if (m.role === "assistant" && ot === "image" && IMG_URL_HEAD.test(m.content.trim())) {
+        return {
+          role: "assistant",
+          content: [
+            { type: "text", text: "[Image I generated earlier — shown above]" },
+            // Note: assistant `image_url` parts aren't supported on all models;
+            // pass the URL as inline text so the next user turn can reference
+            // it, and re-attach via the user turn if the kid asks about it.
+          ],
+        } as OpenAI.Chat.ChatCompletionMessageParam;
+      }
+      if (m.role === "assistant" && ot === "audio")  return { role: "assistant", content: summariseAudioJson(m.content) };
+      if (m.role === "assistant" && ot === "slides") return { role: "assistant", content: summariseSlidesJson(m.content) };
+
+      // User — extract [Image titled "X": URL] markers into multimodal parts
+      if (m.role === "user") {
+        const urls: string[] = [];
+        for (const match of m.content.matchAll(IMG_MARKER_RE_H)) urls.push(match[1]);
+        if (urls.length > 0) {
+          const cleaned = m.content.replace(IMG_MARKER_RE_H, "").trim();
+          return {
+            role: "user",
+            content: [
+              { type: "text", text: cleaned || "(see the image I shared)" },
+              ...urls.map(url => ({ type: "image_url" as const, image_url: { url, detail: "high" as const } })),
+            ],
+          };
+        }
+      }
+      return { role: m.role, content: m.content };
+    }
+
+    const historyTurns = (history as HistTurn[])
+      .slice(-12)
+      .map(buildHistoryTurn)
+      .filter((m): m is OpenAI.Chat.ChatCompletionMessageParam => m !== null);
+
+    // Re-attach assistant-generated image URLs to the LATEST assistant turn
+    // by surfacing them on the NEXT (current) user turn. This is how
+    // gpt-4o-mini gets to actually see what the assistant produced — assistant
+    // turns can't carry image_url parts, so the previous image URLs ride
+    // along with the upcoming user message instead.
+    const recentAssistantImages: string[] = [];
+    for (const h of (history as HistTurn[]).slice(-6)) {
+      if (h.role === "assistant" && (h.outputType ?? "text") === "image" && IMG_URL_HEAD.test(h.content.trim())) {
+        recentAssistantImages.push(h.content.trim());
+      }
+    }
+
     const openaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: "system", content: fullSystem },
-      ...history
-        .filter(m => m.content.trim() !== "" && m.content !== "__init__")
-        .slice(-20)
-        .map(m => ({
-          role:    m.role as "user" | "assistant",
-          content: m.content,
-        })),
+      ...historyTurns,
     ];
 
     // ── Extract injected creation markers from the user message ────────────
@@ -221,7 +306,16 @@ export async function POST(req: Request) {
       image_url: { url, detail: "high" as const },
     }));
 
-    const allImageParts = [...directImageAttachments, ...markerImageAttachments];
+    // Re-attach previously generated assistant images so GPT can still SEE
+    // what it produced earlier when the kid asks a follow-up ("make the
+    // colours warmer", "what was the punchline panel?", etc.). Cap at 3 to
+    // keep token cost reasonable.
+    const carriedAssistantImages = recentAssistantImages.slice(-3).map((url) => ({
+      type: "image_url" as const,
+      image_url: { url, detail: "low" as const },
+    }));
+
+    const allImageParts = [...directImageAttachments, ...markerImageAttachments, ...carriedAssistantImages];
 
     if (allImageParts.length > 0) {
       const parts: OpenAI.Chat.ChatCompletionContentPart[] = [

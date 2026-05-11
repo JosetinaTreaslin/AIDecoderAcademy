@@ -126,11 +126,19 @@ export function useChat(profile: Profile | null, mode: PlaygroundMode, objective
       if (!profile || isStreaming) return;
       const isInit = text === "__init__";
 
+      // Send the recent turns (last 12) and INCLUDE outputType so the API
+      // route can wire image messages back as multimodal vision parts —
+      // otherwise GPT loses sight of every image/audio/slide the kid has
+      // already generated this session.
       const historySnapshot = messages
         .filter(m => m.content.trim() !== "" && m.content !== "__init__")
-        .filter(m => { const ot = m.outputType ?? "text"; return ot === "text" || ot === "json"; })
-        .slice(-20)
-        .map(m => ({ role: m.role, content: m.content }));
+        .filter(m => !m.isLoading)
+        .slice(-12)
+        .map(m => ({
+          role:       m.role,
+          content:    m.content,
+          outputType: m.outputType ?? "text",
+        }));
 
       if (!isInit) {
         const attTypes = bubbleMeta ?? getAttachTypes(attachments);
