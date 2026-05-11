@@ -1,11 +1,258 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ARENAS } from "@/lib/arenas";
 import { isArenaUnlocked } from "@/lib/objectives";
 import type { Profile } from "@/types";
+
+// ── Onboarding modal (shown on first visit when profile is incomplete) ────────
+
+const BOARDS = ["CBSE", "ICSE", "State Board"];
+const GRADES = ["6", "7", "8", "9", "10", "11", "12"];
+const ACCENT = "#7C3AED";
+const ACCENT_GLOW = "rgba(124,58,237,0.4)";
+
+function gradeToAgeGroup(grade: string) {
+  const g = parseInt(grade);
+  if (g <= 5)  return "5-7";
+  if (g <= 7)  return "8-10";
+  if (g <= 10) return "11-13";
+  return "14+";
+}
+
+function getDefaultAvatar(name: string): string {
+  const map: Record<string, string> = {
+    a:"🦁",b:"🐻",c:"🐱",d:"🐶",e:"🦅",f:"🦊",g:"🦍",h:"🐹",i:"🦔",j:"🐯",
+    k:"🦘",l:"🦁",m:"🐭",n:"🦎",o:"🦉",p:"🐼",q:"🦆",r:"🐰",s:"🐍",t:"🐯",
+    u:"🦄",v:"🦅",w:"🐺",x:"🦖",y:"🦚",z:"🦓",
+  };
+  return map[name?.charAt(0).toLowerCase() ?? "s"] ?? "🚀";
+}
+
+function OnboardingModal({ initialName, onComplete }: {
+  initialName: string;
+  onComplete: (profile: Profile) => void;
+}) {
+  const [step,         setStep]         = useState(0);
+  const [displayName,  setDisplayName]  = useState(initialName);
+  const [board,        setBoard]        = useState("CBSE");
+  const [grade,        setGrade]        = useState("8");
+  const [interests,    setInterests]    = useState<string[]>([]);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile,    setPhotoFile]    = useState<File | null>(null);
+  const [saving,       setSaving]       = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const INTEREST_OPTIONS = [
+    "Gaming","Music","Sports","Art","Science","Technology","Movies","Books",
+    "Dance","Travel","Cooking","Fashion","Nature","Photography","Math","History",
+  ];
+
+  const toggleInterest = (i: string) =>
+    setInterests(prev => prev.includes(i) ? prev.filter(x => x !== i) : prev.length < 8 ? [...prev, i] : prev);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setPhotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    let avatarUrl: string | null = null;
+    if (photoFile) {
+      const fd = new FormData();
+      fd.append("file", photoFile);
+      const r = await fetch("/api/profile/photo", { method: "POST", body: fd });
+      if (r.ok) ({ url: avatarUrl } = await r.json());
+    }
+    const defaultEmoji = getDefaultAvatar(displayName);
+    const res = await fetch("/api/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        display_name: displayName || "Explorer",
+        avatar_emoji: defaultEmoji,
+        avatar_url:   avatarUrl ?? null,
+        age_group:    gradeToAgeGroup(grade),
+        interests,
+      }),
+    });
+    if (res.ok) {
+      const { profile } = await res.json();
+      onComplete(profile);
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ background: "rgba(6,6,15,0.85)", backdropFilter: "blur(12px)" }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md rounded-3xl overflow-hidden"
+        style={{ background: "rgba(15,15,26,0.98)", border: "1px solid rgba(255,255,255,0.08)" }}
+      >
+        {/* Progress bar */}
+        <div className="h-1 w-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+          <div className="h-full transition-all duration-500" style={{ width: step === 0 ? "50%" : "100%", background: ACCENT, boxShadow: `0 0 8px ${ACCENT_GLOW}` }}/>
+        </div>
+
+        <div className="px-8 pt-7 pb-8">
+          {/* Header */}
+          <div className="mb-6">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest" style={{ color: ACCENT }}>
+              Step {step + 1} of 2
+            </span>
+            <h2 className="font-display font-black text-2xl text-white mt-1">
+              {step === 0 ? "Set up your profile 🚀" : "Personalise your experience ✨"}
+            </h2>
+            <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>
+              {step === 0 ? "Add a photo and your name — takes 30 seconds." : "Pick your grade and what you're into."}
+            </p>
+          </div>
+
+          {step === 0 ? (
+            <div className="space-y-5">
+              {/* Photo + name */}
+              <div className="flex items-center gap-5">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="relative flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden transition-all hover:opacity-80"
+                  style={{ background: "rgba(255,255,255,0.05)", border: `2px dashed ${photoPreview ? ACCENT : "rgba(255,255,255,0.15)"}` }}
+                >
+                  {photoPreview
+                    ? <img src={photoPreview} alt="" className="w-full h-full object-cover"/>
+                    : <span className="text-3xl absolute inset-0 flex items-center justify-center">{getDefaultAvatar(displayName)}</span>
+                  }
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                    style={{ background: "rgba(0,0,0,0.5)" }}>
+                    <span className="text-xs text-white font-bold">Edit</span>
+                  </div>
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange}/>
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold mb-2 uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.4)" }}>
+                    Display Name
+                  </label>
+                  <input
+                    value={displayName}
+                    onChange={e => setDisplayName(e.target.value)}
+                    placeholder="Your first name"
+                    className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "#fff",
+                    }}
+                    onFocus={e => (e.target.style.borderColor = ACCENT)}
+                    onBlur={e => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={!displayName.trim()}
+                onClick={() => setStep(1)}
+                className="w-full font-display font-black py-3.5 rounded-xl text-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40"
+                style={{ background: ACCENT, color: "#fff", boxShadow: `0 0 24px ${ACCENT_GLOW}` }}
+              >
+                Next →
+              </button>
+              <p className="text-center text-[11px]" style={{ color: "rgba(255,255,255,0.25)" }}>
+                Photo is optional — we'll use the emoji if you skip.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Board */}
+              <div>
+                <label className="block text-[10px] font-bold mb-2.5 uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  Education Board
+                </label>
+                <div className="flex gap-2">
+                  {BOARDS.map(b => (
+                    <button key={b} type="button" onClick={() => setBoard(b)}
+                      className="px-4 py-2 rounded-xl text-sm font-bold border transition-all"
+                      style={{
+                        background: board === b ? `${ACCENT}22` : "rgba(255,255,255,0.04)",
+                        borderColor: board === b ? `${ACCENT}60` : "rgba(255,255,255,0.08)",
+                        color: board === b ? ACCENT : "rgba(255,255,255,0.4)",
+                      }}>
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Grade */}
+              <div>
+                <label className="block text-[10px] font-bold mb-2.5 uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  Grade / Class
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {GRADES.map(g => (
+                    <button key={g} type="button" onClick={() => setGrade(g)}
+                      className="w-11 h-11 rounded-xl text-sm font-black border transition-all"
+                      style={{
+                        background: grade === g ? `${ACCENT}22` : "rgba(255,255,255,0.04)",
+                        borderColor: grade === g ? `${ACCENT}60` : "rgba(255,255,255,0.08)",
+                        color: grade === g ? ACCENT : "rgba(255,255,255,0.4)",
+                      }}>
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Interests */}
+              <div>
+                <label className="block text-[10px] font-bold mb-2.5 uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  Interests <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(pick up to 8)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+                  {INTEREST_OPTIONS.map(i => (
+                    <button key={i} type="button" onClick={() => toggleInterest(i)}
+                      className="px-3 py-1.5 rounded-full text-xs font-bold border transition-all"
+                      style={{
+                        background: interests.includes(i) ? `${ACCENT}22` : "rgba(255,255,255,0.04)",
+                        borderColor: interests.includes(i) ? `${ACCENT}60` : "rgba(255,255,255,0.08)",
+                        color: interests.includes(i) ? ACCENT : "rgba(255,255,255,0.4)",
+                      }}>
+                      {i}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setStep(0)}
+                  className="px-5 py-3.5 rounded-xl text-sm font-bold border transition-all"
+                  style={{ borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.03)" }}>
+                  ← Back
+                </button>
+                <button type="button" onClick={handleSave} disabled={saving}
+                  className="flex-1 font-display font-black py-3.5 rounded-xl text-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                  style={{ background: ACCENT, color: "#fff", boxShadow: `0 0 24px ${ACCENT_GLOW}` }}>
+                  {saving ? "Saving…" : "Launch my journey 🚀"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 // ── Leaderboard types ──────────────────────────────────────────────────────
 
@@ -230,23 +477,26 @@ function PanelImage({ arenaId, src, alt, onClick }: {
 
 export default function HubPage() {
   const router = useRouter();
-  const [profile,       setProfile]       = useState<Profile | null>(null);
-  const [transitioning, setTransitioning] = useState<number | null>(null);
-  const [videoError,    setVideoError]    = useState(false);
-  const [lockedToast,   setLockedToast]   = useState<number | null>(null);
+  const [profile,        setProfile]        = useState<Profile | null>(null);
+  const [transitioning,  setTransitioning]  = useState<number | null>(null);
+  const [videoError,     setVideoError]     = useState(false);
+  const [lockedToast,    setLockedToast]    = useState<number | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [initialName,    setInitialName]    = useState("");
 
   useEffect(() => {
     fetch("/api/profile")
       .then(r => r.ok ? r.json() : { profile: null })
       .then(({ profile }) => {
         if (!profile || !(profile.display_name && profile.age_group)) {
-          router.replace("/dashboard/profile");
-          return;
+          setInitialName(profile?.display_name ?? "");
+          setShowOnboarding(true);
+        } else {
+          setProfile(profile);
         }
-        setProfile(profile);
       })
       .catch(() => {});
-  }, [router]);
+  }, []);
 
   const handleClick = useCallback((arenaId: number) => {
     if (!isArenaUnlocked(arenaId)) {
@@ -274,6 +524,19 @@ export default function HubPage() {
   return (
     <div className="relative w-full flex flex-col overflow-hidden"
       style={{ height: "100dvh", fontFamily: "var(--font-dm-sans,'DM Sans',sans-serif)" }}>
+
+      {/* Onboarding modal — shown on first visit when profile is incomplete */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingModal
+            initialName={initialName}
+            onComplete={(p) => {
+              setProfile(p);
+              setShowOnboarding(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Responsive styles */}
       <style>{`

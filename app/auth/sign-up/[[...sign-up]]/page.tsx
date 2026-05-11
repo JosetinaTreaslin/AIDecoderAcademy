@@ -145,7 +145,7 @@ export default function SignUpPage() {
       await signUp.authenticateWithRedirect({
         strategy:            "oauth_google",
         redirectUrl:         "/auth/sso-callback",
-        redirectUrlComplete: "/dashboard/profile",
+        redirectUrlComplete: "/dashboard",
       });
     } catch (err: unknown) {
       const clerkError = (err as { errors?: { message: string }[] })?.errors?.[0];
