@@ -168,6 +168,20 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   // Whether AIDA voices her thought-bubble nudges. Persisted in localStorage
   // so the kid's preference survives reloads. Default: ON.
   const [nudgeAudioEnabled, setNudgeAudioEnabled] = useState<boolean>(true);
+
+  // Most-recent floating nudge — shown as a speech bubble above the AIDA
+  // sprite when the chat PANEL is closed (so kids see the thought even if
+  // they haven't opened the chat). Auto-dismisses after ~9s.
+  const [floatingNudge, setFloatingNudge] = useState<{
+    text: string;
+    kind: "progress" | "encourage" | "stray";
+    at:   number;
+  } | null>(null);
+  useEffect(() => {
+    if (!floatingNudge) return;
+    const t = setTimeout(() => setFloatingNudge(null), 9000);
+    return () => clearTimeout(t);
+  }, [floatingNudge]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = localStorage.getItem("aida:nudgeAudio");
@@ -304,6 +318,9 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
           ...prev,
           { role: "assistant", content: data.text, kind: "nudge", nudgeKind: data.kind },
         ]);
+        // Also surface as a floating speech bubble next to the AIDA sprite
+        // so the kid SEES the thought even when the chat panel is closed.
+        setFloatingNudge({ text: data.text, kind: data.kind, at: Date.now() });
         // Speak the nudge unless the kid has muted thought-bubble audio.
         // Re-read the localStorage flag so a toggle between renders is
         // respected without waiting for state to flow back here.
@@ -1529,6 +1546,86 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
               style={{ width: "100%", height: "100%", objectFit: "contain" }}
             />
           </button>
+
+          {/* Floating nudge bubble — surfaces AIDA's thought next to the
+              sprite when the chat panel is closed. Same text+kind that goes
+              into the chat history; auto-dismisses after 9s. */}
+          {!open && floatingNudge && (() => {
+            const tint =
+              floatingNudge.kind === "stray"    ? "rgba(255,176,32,0.85)"  :
+              floatingNudge.kind === "progress" ? "rgba(0,212,255,0.85)"   :
+                                                  "rgba(125,211,252,0.7)";
+            const glow =
+              floatingNudge.kind === "stray"    ? "rgba(255,176,32,0.40)"  :
+              floatingNudge.kind === "progress" ? "rgba(0,212,255,0.45)"   :
+                                                  "rgba(125,211,252,0.30)";
+            return (
+              <div
+                role="status"
+                aria-live="polite"
+                style={{
+                  position:       "absolute",
+                  bottom:         "calc(100% + 14px)",
+                  left:           "50%",
+                  transform:      "translateX(-50%)",
+                  width:          "clamp(220px, 24vw, 320px)",
+                  padding:        "10px 28px 10px 14px",
+                  borderRadius:   "16px 16px 16px 4px",
+                  background:     "linear-gradient(180deg, rgba(20,34,60,0.97) 0%, rgba(8,16,32,0.97) 100%)",
+                  border:         `1.5px dashed ${tint}`,
+                  boxShadow:      `0 0 22px ${glow}, 0 12px 30px rgba(0,0,0,0.55)`,
+                  color:          "rgba(232,244,255,0.95)",
+                  fontSize:       12,
+                  lineHeight:     1.5,
+                  fontStyle:      "italic",
+                  fontFamily:     "'DM Sans', system-ui, sans-serif",
+                  animation:      "aida-slide-up 0.28s cubic-bezier(0.16,1,0.3,1) both",
+                  pointerEvents:  "auto",
+                }}
+              >
+                <span style={{ marginRight: 6 }}>💭</span>
+                {floatingNudge.text}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setFloatingNudge(null); }}
+                  aria-label="Dismiss"
+                  style={{
+                    position:    "absolute",
+                    top:         6,
+                    right:       6,
+                    width:       18,
+                    height:      18,
+                    borderRadius: "50%",
+                    background:  "rgba(8,16,32,0.7)",
+                    border:      `1px solid ${tint}`,
+                    color:       "rgba(232,244,255,0.85)",
+                    fontSize:    11,
+                    lineHeight:  1,
+                    cursor:      "pointer",
+                    padding:     0,
+                    display:     "flex",
+                    alignItems:  "center",
+                    justifyContent: "center",
+                  }}
+                >×</button>
+                {/* Tail */}
+                <div
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    bottom:   -7,
+                    left:     "50%",
+                    transform: "translateX(-50%) rotate(45deg)",
+                    width:    12,
+                    height:   12,
+                    background: "linear-gradient(135deg, rgba(20,34,60,0.97) 0%, rgba(8,16,32,0.97) 100%)",
+                    borderRight: `1.5px dashed ${tint}`,
+                    borderBottom: `1.5px dashed ${tint}`,
+                  }}
+                />
+              </div>
+            );
+          })()}
         </div>
       )}
 
