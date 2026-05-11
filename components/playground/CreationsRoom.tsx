@@ -1008,44 +1008,15 @@ export function CreationsRoom({
                 cursor: "pointer",
                 pointerEvents: "auto",
                 display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                paddingBottom: 4,
-                gap: 3,
+                alignItems: "flex-end",
+                justifyContent: "center",
+                paddingBottom: "0%",
               }}
             >
-              {/* Label chip — covers the PNG-baked label underneath with our
-                  canonical output-type name (Headphones→Audio, Book→Text,
-                  Camera→Image, JS File→JSON, Clapper Board→Video, Slide
-                  Deck→Slides). */}
-              <span
-                style={{
-                  display: "inline-block",
-                  padding: "2px 8px",
-                  borderRadius: 999,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: "0.06em",
-                  fontFamily: "var(--font-syne), system-ui, sans-serif",
-                  color: isActive ? "#08080F" : "rgba(255,255,255,0.96)",
-                  background: isActive
-                    ? hz.glowColor
-                    : `linear-gradient(180deg, rgba(6,12,24,0.92) 0%, rgba(2,8,18,0.92) 100%)`,
-                  border: `1px solid ${isActive ? "rgba(255,255,255,0.5)" : `rgba(${hz.glowRgb},0.55)`}`,
-                  boxShadow: isActive
-                    ? `0 0 14px rgba(${hz.glowRgb},0.7)`
-                    : `0 2px 8px rgba(0,0,0,0.6)`,
-                  whiteSpace: "nowrap",
-                  transition: "all 0.2s",
-                }}
-              >
-                {hz.label}
-              </span>
-              {/* Traffic-light dot stays as the selection indicator */}
+              {/* Traffic light dot */}
               <span style={{
                 display: "block",
-                width: 8, height: 8,
+                width: 10, height: 10,
                 borderRadius: "50%",
                 background: isActive ? "#22c55e" : "#ef4444",
                 boxShadow: isActive

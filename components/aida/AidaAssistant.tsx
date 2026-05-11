@@ -314,12 +314,9 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
         if (!res.ok) return;
         const data = await res.json() as { text: string; kind: "progress" | "encourage" | "stray" };
         if (!data?.text?.trim()) return;
-        setMessages(prev => [
-          ...prev,
-          { role: "assistant", content: data.text, kind: "nudge", nudgeKind: data.kind },
-        ]);
-        // Also surface as a floating speech bubble next to the AIDA sprite
-        // so the kid SEES the thought even when the chat panel is closed.
+        // Nudges live ONLY as floating cartoon thought-bubbles above the AIDA
+        // sprite — not in the chat history. They're a side commentary, not a
+        // turn in the conversation.
         setFloatingNudge({ text: data.text, kind: data.kind, at: Date.now() });
         // Speak the nudge unless the kid has muted thought-bubble audio.
         // Re-read the localStorage flag so a toggle between renders is
@@ -1547,80 +1544,147 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
             />
           </button>
 
-          {/* Floating nudge bubble — surfaces AIDA's thought next to the
-              sprite when the chat panel is closed. Same text+kind that goes
-              into the chat history; auto-dismisses after 9s. */}
+          {/* Cartoon-style thought bubble — floats above AIDA's head with
+              two trailing dots leading down to her, just like a comic-strip
+              "she's thinking…" panel. Auto-dismisses after 9s. NOT shown
+              inside the chat panel — this is the only place the nudge
+              appears, so kids see it whether AIDA is open or not. */}
           {!open && floatingNudge && (() => {
-            const tint =
-              floatingNudge.kind === "stray"    ? "rgba(255,176,32,0.85)"  :
-              floatingNudge.kind === "progress" ? "rgba(0,212,255,0.85)"   :
-                                                  "rgba(125,211,252,0.7)";
-            const glow =
-              floatingNudge.kind === "stray"    ? "rgba(255,176,32,0.40)"  :
-              floatingNudge.kind === "progress" ? "rgba(0,212,255,0.45)"   :
-                                                  "rgba(125,211,252,0.30)";
+            const isStray    = floatingNudge.kind === "stray";
+            const isProgress = floatingNudge.kind === "progress";
+
+            // Theme colours — light cloudy fill, kind-tinted accent outline + glow.
+            const fillTop   = "#FFFFFF";
+            const fillBot   = "#F0F4FF";
+            const stroke    = isStray ? "#FFB020" : isProgress ? "#00D4FF" : "#7DD3FC";
+            const text      = "#0B1A2F";              // dark for readability on cloud
+            const glow      = isStray ? "rgba(255,176,32,0.55)"
+                            : isProgress ? "rgba(0,212,255,0.55)"
+                            : "rgba(125,211,252,0.45)";
+
             return (
               <div
                 role="status"
                 aria-live="polite"
+                aria-label="AIDA is thinking"
                 style={{
-                  position:       "absolute",
-                  bottom:         "calc(100% + 14px)",
-                  left:           "50%",
-                  transform:      "translateX(-50%)",
-                  width:          "clamp(220px, 24vw, 320px)",
-                  padding:        "10px 28px 10px 14px",
-                  borderRadius:   "16px 16px 16px 4px",
-                  background:     "linear-gradient(180deg, rgba(20,34,60,0.97) 0%, rgba(8,16,32,0.97) 100%)",
-                  border:         `1.5px dashed ${tint}`,
-                  boxShadow:      `0 0 22px ${glow}, 0 12px 30px rgba(0,0,0,0.55)`,
-                  color:          "rgba(232,244,255,0.95)",
-                  fontSize:       12,
-                  lineHeight:     1.5,
-                  fontStyle:      "italic",
-                  fontFamily:     "'DM Sans', system-ui, sans-serif",
-                  animation:      "aida-slide-up 0.28s cubic-bezier(0.16,1,0.3,1) both",
-                  pointerEvents:  "auto",
+                  position:      "absolute",
+                  bottom:        "calc(100% + 26px)",   // leave space for trailing dots
+                  left:          "50%",
+                  transform:     "translateX(-50%)",
+                  width:         "clamp(220px, 24vw, 320px)",
+                  pointerEvents: "auto",
+                  animation:     "aida-slide-up 0.32s cubic-bezier(0.16,1,0.3,1) both",
+                  filter:        `drop-shadow(0 0 18px ${glow}) drop-shadow(0 8px 18px rgba(0,0,0,0.35))`,
                 }}
               >
-                <span style={{ marginRight: 6 }}>💭</span>
-                {floatingNudge.text}
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setFloatingNudge(null); }}
-                  aria-label="Dismiss"
+                {/* The cloud — pseudo-elements via two stacked rounded rects
+                    plus radial bumps at the bottom corners make a cartoon
+                    cloud shape without needing SVG. */}
+                <div
                   style={{
-                    position:    "absolute",
-                    top:         6,
-                    right:       6,
-                    width:       18,
-                    height:      18,
-                    borderRadius: "50%",
-                    background:  "rgba(8,16,32,0.7)",
-                    border:      `1px solid ${tint}`,
-                    color:       "rgba(232,244,255,0.85)",
-                    fontSize:    11,
-                    lineHeight:  1,
-                    cursor:      "pointer",
-                    padding:     0,
-                    display:     "flex",
-                    alignItems:  "center",
-                    justifyContent: "center",
+                    position:     "relative",
+                    background:   `linear-gradient(180deg, ${fillTop} 0%, ${fillBot} 100%)`,
+                    border:       `2.5px solid ${stroke}`,
+                    borderRadius: "36px 36px 36px 36px / 30px 30px 28px 28px",
+                    padding:      "14px 28px 14px 18px",
+                    color:        text,
+                    fontSize:     13,
+                    lineHeight:   1.45,
+                    fontFamily:   "'DM Sans', system-ui, sans-serif",
                   }}
-                >×</button>
-                {/* Tail */}
+                >
+                  {/* Two small "scallop" bumps left + right on the bottom give
+                      the bubble its cloud silhouette. */}
+                  <span
+                    aria-hidden
+                    style={{
+                      position:   "absolute",
+                      left:       18,
+                      bottom:     -10,
+                      width:      26,
+                      height:     20,
+                      borderRadius: "50%",
+                      background: fillBot,
+                      border:     `2.5px solid ${stroke}`,
+                      zIndex:     -1,
+                    }}
+                  />
+                  <span
+                    aria-hidden
+                    style={{
+                      position:   "absolute",
+                      right:      32,
+                      bottom:     -8,
+                      width:      22,
+                      height:     16,
+                      borderRadius: "50%",
+                      background: fillBot,
+                      border:     `2.5px solid ${stroke}`,
+                      zIndex:     -1,
+                    }}
+                  />
+                  {/* The thought text itself */}
+                  <span style={{ fontStyle: "italic", fontWeight: 500 }}>
+                    {floatingNudge.text}
+                  </span>
+
+                  {/* Dismiss button — small, on the cloud */}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setFloatingNudge(null); }}
+                    aria-label="Dismiss"
+                    style={{
+                      position:    "absolute",
+                      top:         -8,
+                      right:       -8,
+                      width:       22,
+                      height:      22,
+                      borderRadius: "50%",
+                      background:  "#FFFFFF",
+                      border:      `2px solid ${stroke}`,
+                      color:       text,
+                      fontSize:    13,
+                      fontWeight:  700,
+                      lineHeight:  1,
+                      cursor:      "pointer",
+                      padding:     0,
+                      display:     "flex",
+                      alignItems:  "center",
+                      justifyContent: "center",
+                      boxShadow:   "0 2px 6px rgba(0,0,0,0.25)",
+                    }}
+                  >×</button>
+                </div>
+
+                {/* Trailing thought-dots — two shrinking circles leading down
+                    toward AIDA's head. Classic comic-strip "thinking" cue. */}
                 <div
                   aria-hidden
                   style={{
-                    position: "absolute",
-                    bottom:   -7,
-                    left:     "50%",
-                    transform: "translateX(-50%) rotate(45deg)",
-                    width:    12,
-                    height:   12,
-                    background: "linear-gradient(135deg, rgba(20,34,60,0.97) 0%, rgba(8,16,32,0.97) 100%)",
-                    borderRight: `1.5px dashed ${tint}`,
-                    borderBottom: `1.5px dashed ${tint}`,
+                    position:  "absolute",
+                    top:       "calc(100% + 4px)",
+                    left:      "calc(50% - 16px)",
+                    width:     14,
+                    height:    14,
+                    borderRadius: "50%",
+                    background: fillBot,
+                    border:    `2.5px solid ${stroke}`,
+                    boxShadow: `0 0 10px ${glow}`,
+                  }}
+                />
+                <div
+                  aria-hidden
+                  style={{
+                    position:  "absolute",
+                    top:       "calc(100% + 22px)",
+                    left:      "calc(50% - 7px)",
+                    width:     8,
+                    height:    8,
+                    borderRadius: "50%",
+                    background: fillBot,
+                    border:    `2px solid ${stroke}`,
+                    boxShadow: `0 0 8px ${glow}`,
                   }}
                 />
               </div>
