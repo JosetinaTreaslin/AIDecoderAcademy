@@ -47,6 +47,51 @@ interface Props {
   onComplete:       (composite: number, tier: FinalResult["tier"]) => Promise<void>;
 }
 
+// ── Per-field roasty lines (empty field → specific callout) ─────────────────
+// Roasty + funny tone per the design brief — dry wit, no cringe, Gen Z/Alpha.
+// Each key matches the exact field id used in worksheetSchemas.ts / validators.
+// Only fires for completely empty fields; vague-but-filled fields go to SAGE's
+// rubric grading (she'll call them out there with specific feedback).
+
+const OBJ6_FIELD_LINES: Record<string, string> = {
+  intent:            "Intent — blank. What is this avatar actually for? Start there.",
+  assumptions:       "Assumptions — empty. Bold of you to assume I won't notice.",
+  audience:          "Audience — nothing. 'Everyone' is a red flag. Name one specific person.",
+  success:           "Success — also blank. How will you know when it works? I can't read minds.",
+  appearance:        "Appearance — skipped. Even stick figures have a description.",
+  voiceCharacter:    "Voice and character — blank. Give it a personality or it's just a floating logo.",
+  personalityTraits: "Personality traits — empty. Even NPCs have three of these.",
+  presentationStyle: "Presentation style — nothing. Formal? Casual? Robotic? Pick one.",
+  successTest:       "Success test — skipped. How will you know the avatar actually works for someone?",
+};
+
+const OBJ10_FIELD_LINES: Record<string, string> = {
+  intent:           "Intent — blank. What is this comic actually about? Start there.",
+  assumptions:      "Assumptions — empty. Bold of you to assume I won't notice.",
+  audience:         "Audience — nothing. 'Everyone' is a red flag. Name one person.",
+  success:          "Success — also blank. How will you know the comic landed?",
+  oneSentenceStory: "One-sentence story — blank. The whole comic hangs off this one line. Write it.",
+  panel1Image:      "Panel 1 image prompt — empty. The setup is kind of essential to the rest of this.",
+  panel1Dialogue:   "Panel 1 dialogue — nothing. Someone has to say something in panel one.",
+  panel2Image:      "Panel 2 image prompt — blank. Comics need a middle. That's the genre.",
+  panel2Dialogue:   "Panel 2 dialogue — also blank. The two of you are matching.",
+  panel3Image:      "Panel 3 image prompt — skipped. The punchline visual isn't optional.",
+  panel3Dialogue:   "Panel 3 punchline dialogue — missing. That's a joke with no ending. Classic move.",
+};
+
+function getEmptyFieldLines(
+  data: Record<string, string | boolean>,
+  isObj6: boolean,
+): string[] {
+  const map = isObj6 ? OBJ6_FIELD_LINES : OBJ10_FIELD_LINES;
+  return Object.entries(map)
+    .filter(([key]) => {
+      const val = data[key];
+      return val === undefined || val === null || val.toString().trim() === "";
+    })
+    .map(([, line]) => line);
+}
+
 // Funny SAGE one-liners for "no worksheet anywhere" — kid sees one at random.
 // SAGE = Skeptical Mentor, but with a wry sense of humour. Never mean.
 const FUNNY_NO_WORKSHEET = [
@@ -121,15 +166,28 @@ interface ReadyContext {
   notesLen:        number;
   whiteboardCount: number;
   isObj6:          boolean;
+  emptyFieldCount: number;  // required fields that are still blank in the inline form
 }
 
 function pickReadyLine(ctx: ReadyContext): string {
-  const { hasInlineForm, hasFile, mediaCount, notesLen, whiteboardCount, isObj6 } = ctx;
+  const { hasInlineForm, hasFile, mediaCount, notesLen, whiteboardCount, isObj6, emptyFieldCount } = ctx;
   const hasWorksheet = hasInlineForm || hasFile;
 
   // Nothing yet — gentle, not pushy.
   if (!hasWorksheet && mediaCount === 0 && whiteboardCount === 0) {
     return pickRandom(READY_LINES_EMPTY);
+  }
+
+  // Inline form started but has gaps — surface the count so the kid knows
+  // before they click validate and hear the full field-by-field breakdown.
+  if (hasInlineForm && emptyFieldCount === 1) {
+    return "One gap in there. Quick fix — then show me.";
+  }
+  if (hasInlineForm && emptyFieldCount === 2) {
+    return "Found two gaps. Worth filling those before you hit validate.";
+  }
+  if (hasInlineForm && emptyFieldCount >= 3) {
+    return `${emptyFieldCount} fields still empty. Check the worksheet, then come back.`;
   }
 
   // Specific notice patterns — Sage commenting on what the kid actually did.
@@ -182,10 +240,28 @@ interface PendingPayload {
 function readPending(lmsId: string, profileId?: string): PendingPayload | null {
   if (typeof window === "undefined" || !profileId) return null;
   try {
-    const raw = localStorage.getItem(`aida:worksheet:${lmsId}:${profileId}:pending`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && parsed.lmsId === lmsId) return parsed as PendingPayload;
+    // Explicit submit wins — written when student clicks "Save & ready for validation"
+    const pendingRaw = localStorage.getItem(`aida:worksheet:${lmsId}:${profileId}:pending`);
+    if (pendingRaw) {
+      const parsed = JSON.parse(pendingRaw);
+      if (parsed && typeof parsed === "object" && parsed.lmsId === lmsId) return parsed as PendingPayload;
+    }
+    // Fall back to the autosaved draft — written on every keystroke.
+    // This means SAGE can always read whatever the student typed, even if they
+    // closed the worksheet without explicitly clicking "Save & ready".
+    const draftRaw = localStorage.getItem(`aida:worksheet:${lmsId}:${profileId}:draft`);
+    if (draftRaw) {
+      const parsed = JSON.parse(draftRaw);
+      if (parsed && typeof parsed === "object" && parsed.data && typeof parsed.data === "object") {
+        return {
+          lmsId,
+          data:          parsed.data,
+          worksheetFile: parsed.worksheetFile,
+          mediaUrls:     Array.isArray(parsed.mediaUrls) ? parsed.mediaUrls : undefined,
+          notes:         typeof parsed.notes === "string" ? parsed.notes : undefined,
+        };
+      }
+    }
     return null;
   } catch {
     return null;
@@ -312,13 +388,17 @@ export function ObjectiveSubmissionPanel({
       setPhase("ready");
       // Media now comes from chat — count whichever kind the objective needs.
       const chatMediaCount = isObj6 ? whiteboardVideos.length : whiteboardImages.length;
+      const hasInlineForm = !!(fresh?.data && Object.keys(fresh.data).length > 0);
       const ctx: ReadyContext = {
-        hasInlineForm:   !!(fresh?.data && Object.keys(fresh.data).length > 0),
+        hasInlineForm,
         hasFile:         (whiteboardDocs?.length ?? 0) > 0,
         mediaCount:      chatMediaCount,
         notesLen:        fresh?.notes?.length ?? 0,
         whiteboardCount: whiteboardImages.length,
-        isObj6:          isObj6,
+        isObj6,
+        emptyFieldCount: hasInlineForm && fresh?.data
+          ? getEmptyFieldLines(fresh.data, isObj6).length
+          : 0,
       };
       speakLine(pickReadyLine(ctx));
     }
@@ -423,6 +503,19 @@ export function ObjectiveSubmissionPanel({
       setError(msg);
       speakLine(msg);
       return;
+    }
+
+    // Hard gate: call out every empty required field before sending to API.
+    if (worksheetPayload.kind === "inline-form") {
+      const emptyLines = getEmptyFieldLines(worksheetPayload.data, isObj6);
+      if (emptyLines.length > 0) {
+        const beats: ObjectiveIntroBeat[] = [
+          ...emptyLines.map(text => ({ text })),
+          { text: "Fill those in. Then come back. I'll be here." },
+        ];
+        void speakBeats(beats);
+        return;
+      }
     }
 
     setPhase("submitting");
@@ -557,13 +650,17 @@ export function ObjectiveSubmissionPanel({
     const fresh = readPending(rubric.lmsId, profile?.id);
     setPending(fresh);
     const chatMediaCount = isObj6 ? whiteboardVideos.length : whiteboardImages.length;
+    const hasInlineForm = !!(fresh?.data && Object.keys(fresh.data).length > 0);
     const ctx: ReadyContext = {
-      hasInlineForm:   !!(fresh?.data && Object.keys(fresh.data).length > 0),
+      hasInlineForm,
       hasFile:         (whiteboardDocs?.length ?? 0) > 0,
       mediaCount:      chatMediaCount,
       notesLen:        fresh?.notes?.length ?? 0,
       whiteboardCount: whiteboardImages.length,
       isObj6:          isObj6,
+      emptyFieldCount: hasInlineForm && fresh?.data
+        ? getEmptyFieldLines(fresh.data, isObj6).length
+        : 0,
     };
     speakLine(pickReadyLine(ctx));
   }
@@ -792,7 +889,7 @@ function ReadyView({
       <div className="text-[12px] font-display font-bold text-white/80">What I'll grade</div>
       <Row label="Worksheet"
            ok={!!(hasInline || hasFile)}
-           detail={hasFile ? `📄 ${pending!.worksheetFile!.filename}` : hasInline ? "Filled in app" : "Not yet — open the worksheet"}/>
+           detail={hasFile ? `📄 ${pending!.worksheetFile!.filename}` : hasInline ? "Filled in — ready" : "Not yet — open the worksheet and fill it in"}/>
       <Row label={isObj6 ? "Avatar video" : "Comic image"}
            ok={mediaCount > 0 || usingWhiteboardFallback}
            detail={
