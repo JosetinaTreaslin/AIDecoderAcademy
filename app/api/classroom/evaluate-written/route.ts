@@ -83,24 +83,23 @@ Return ONLY a valid JSON object (no markdown, no explanation) in this exact form
 
 The feedback should be specific — mention what the student got right and what was missing.`;
 
-    const userContent: OpenAI.Chat.ChatCompletionContentPart[] = [
-      {
-        type: "text",
-        text: `Here are the questions and marking schemes:\n\n${questionsBlock}\n\nPlease evaluate the student's handwritten answers shown in the image(s) above.`,
-      },
-      // Images first so GPT-4o sees them before the text prompt
-      ...image_urls.map(url => ({
-        type: "image_url" as const,
-        image_url: { url, detail: "high" as const },
-      })),
-    ];
+    // Fetch images server-side and convert to base64 — OpenAI can't reach Supabase Storage URLs directly
+    const imageparts: OpenAI.Chat.ChatCompletionContentPart[] = await Promise.all(
+      image_urls.map(async (url) => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch image: ${url}`);
+        const buffer = await res.arrayBuffer();
+        const mime   = res.headers.get("content-type") ?? "image/jpeg";
+        const b64    = Buffer.from(buffer).toString("base64");
+        return {
+          type: "image_url" as const,
+          image_url: { url: `data:${mime};base64,${b64}`, detail: "high" as const },
+        };
+      })
+    );
 
-    // Reorder: images first, then text
     const orderedContent: OpenAI.Chat.ChatCompletionContentPart[] = [
-      ...image_urls.map(url => ({
-        type: "image_url" as const,
-        image_url: { url, detail: "high" as const },
-      })),
+      ...imageparts,
       {
         type: "text" as const,
         text: `Here are the questions and marking schemes:\n\n${questionsBlock}\n\nEvaluate the student's handwritten answers from the image(s) above.`,
