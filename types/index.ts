@@ -123,6 +123,36 @@ export interface MCQFeedbackItem {
   explanation:   string;
 }
 
+export type WrittenSection = "A" | "B" | "C";
+
+export interface WrittenQuestion {
+  id:              string;
+  section:         WrittenSection;
+  marks:           number;
+  question:        string;
+  expected_answer: string;   // used server-side only for GPT-4o prompt
+  marking_scheme:  string;   // used server-side only
+}
+
+export interface WrittenFeedbackItem {
+  score:    number;
+  max:      number;
+  feedback: string;
+}
+
+export interface WrittenAttempt {
+  id:                string;
+  profile_id:        string;
+  question_paper_id: string;
+  question_ids:      string[];
+  image_urls:        string[];
+  score?:            number;
+  max_score?:        number;
+  feedback?:         Record<string, WrittenFeedbackItem>;
+  time_taken_secs?:  number;
+  submitted_at:      string;
+}
+
 // ── ChatRequest ───────────────────────────────────────────────────────────────
 
 export interface ChatRequest {

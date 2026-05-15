@@ -67,7 +67,20 @@ export async function GET(req: Request) {
 
     const allQuestions: any[] = paper.questions as any[];
 
-    // Randomly pick the subset for this attempt
+    if (type === "written") {
+      // Written papers: return all questions, strip server-only fields
+      const clientQuestions = allQuestions.map(
+        ({ expected_answer: _ea, marking_scheme: _ms, ...q }) => q
+      );
+      return Response.json({
+        paper_id:    paper.id,
+        questions:   clientQuestions,
+        total_marks: paper.total_marks,
+        chapter,
+      });
+    }
+
+    // MCQ: randomly pick the subset for this attempt
     const easy   = pickRandom(allQuestions.filter(q => q.difficulty === "easy"),   EASY_COUNT);
     const medium = pickRandom(allQuestions.filter(q => q.difficulty === "medium"), MEDIUM_COUNT);
     const hard   = pickRandom(allQuestions.filter(q => q.difficulty === "hard"),   HARD_COUNT);
