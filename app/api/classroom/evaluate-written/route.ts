@@ -108,7 +108,7 @@ The feedback should be specific — mention what the student got right and what 
     ];
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user",   content: orderedContent },
