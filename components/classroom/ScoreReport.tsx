@@ -18,29 +18,29 @@ const DIFF_COLORS = {
 
 function ScoreRing({ score, max }: { score: number; max: number }) {
   const pct   = max > 0 ? score / max : 0;
-  const r     = 44;
+  const r     = 52;
   const circ  = 2 * Math.PI * r;
   const dash  = circ * pct;
 
   const color = pct >= 0.8 ? "#00FF94" : pct >= 0.5 ? "#FFB800" : "#FF2D78";
 
   return (
-    <div className="relative w-28 h-28 flex items-center justify-center">
-      <svg width="112" height="112" viewBox="0 0 112 112" className="-rotate-90">
-        <circle cx="56" cy="56" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="8" />
+    <div className="relative w-36 h-36 flex items-center justify-center">
+      <svg width="144" height="144" viewBox="0 0 144 144" className="-rotate-90">
+        <circle cx="72" cy="72" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
         <circle
-          cx="56" cy="56" r={r} fill="none"
-          stroke={color} strokeWidth="8"
+          cx="72" cy="72" r={r} fill="none"
+          stroke={color} strokeWidth="10"
           strokeDasharray={`${dash} ${circ}`}
           strokeLinecap="round"
-          style={{ transition: "stroke-dasharray 1s cubic-bezier(0.16,1,0.3,1)", filter: `drop-shadow(0 0 8px ${color})` }}
+          style={{ transition: "stroke-dasharray 1.2s cubic-bezier(0.16,1,0.3,1)", filter: `drop-shadow(0 0 12px ${color})` }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display font-black text-2xl" style={{ color }}>
+        <span className="font-display font-black text-3xl leading-none" style={{ color }}>
           {score}
         </span>
-        <span className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.4)" }}>
+        <span className="text-sm font-mono mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
           / {max}
         </span>
       </div>
@@ -68,50 +68,71 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
   };
 
   const diffScore = (qs: MCQQuestion[]) => qs.filter(q => feedback[q.id]?.correct).length;
+  const correct   = questions.filter(q => feedback[q.id]?.correct).length;
+  const incorrect = questions.length - correct;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
 
       {/* ── Hero ── */}
       <div
-        className="flex-shrink-0 flex flex-col items-center gap-4 py-8 px-6"
+        className="flex-shrink-0 flex flex-col items-center gap-5 pt-8 pb-6 px-6"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <div className="flex items-center gap-2 opacity-60">
+        <div className="flex items-center gap-2">
           <Trophy className="w-4 h-4" style={{ color: "#00D4FF" }} />
-          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "#00D4FF" }}>
-            Results — {chapterTitle}
+          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+            MCQ Results
+          </span>
+          <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: "rgba(0,212,255,0.1)", color: "#00D4FF" }}>
+            {chapterTitle}
           </span>
         </div>
 
         <ScoreRing score={score} max={max_score} />
 
         <div className="text-center">
-          <p className="font-display font-black text-2xl" style={{ color: grade.color }}>
+          <p className="font-display font-black text-3xl leading-none" style={{ color: grade.color }}>
             {grade.label}
           </p>
-          <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.45)" }}>
-            {Math.round(pct * 100)}% — {score} out of {max_score} marks
+          <p className="text-sm mt-2" style={{ color: "rgba(255,255,255,0.4)" }}>
+            {Math.round(pct * 100)}% · {score} / {max_score} marks
           </p>
         </div>
 
+        {/* Quick stats row */}
+        <div className="flex gap-3 w-full max-w-xs">
+          <div className="flex-1 rounded-xl p-3 text-center"
+            style={{ background: "rgba(0,255,148,0.06)", border: "1px solid rgba(0,255,148,0.15)" }}>
+            <p className="font-display font-black text-xl" style={{ color: "#00FF94" }}>{correct}</p>
+            <p className="text-[10px] font-mono mt-0.5" style={{ color: "rgba(0,255,148,0.6)" }}>Correct</p>
+          </div>
+          <div className="flex-1 rounded-xl p-3 text-center"
+            style={{ background: "rgba(255,45,120,0.06)", border: "1px solid rgba(255,45,120,0.15)" }}>
+            <p className="font-display font-black text-xl" style={{ color: "#FF2D78" }}>{incorrect}</p>
+            <p className="text-[10px] font-mono mt-0.5" style={{ color: "rgba(255,45,120,0.6)" }}>Incorrect</p>
+          </div>
+        </div>
+
         {/* Difficulty breakdown */}
-        <div className="flex gap-3 mt-1">
+        <div className="flex gap-2 w-full max-w-xs">
           {(["easy", "medium", "hard"] as const).map(d => {
             const qs = byDiff[d];
             if (!qs.length) return null;
             const s  = diffScore(qs);
             const dc = DIFF_COLORS[d];
+            const p  = qs.length > 0 ? s / qs.length : 0;
             return (
-              <div
-                key={d}
-                className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-              >
-                <span className="text-xs font-mono uppercase" style={{ color: dc.text, opacity: 0.8 }}>{d}</span>
-                <span className="font-display font-black text-base" style={{ color: dc.text }}>
+              <div key={d} className="flex-1 rounded-xl p-2.5"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <span className="text-[10px] font-mono uppercase block mb-1.5" style={{ color: dc.text, opacity: 0.75 }}>{d}</span>
+                <span className="font-display font-black text-sm block" style={{ color: dc.text }}>
                   {s}/{qs.length}
                 </span>
+                <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${p * 100}%`, background: dc.text }} />
+                </div>
               </div>
             );
           })}
@@ -119,10 +140,10 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
       </div>
 
       {/* ── Per-question review ── */}
-      <div className="flex-1 px-4 py-4 space-y-3">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="flex-1 px-4 py-5 space-y-3">
+        <div className="flex items-center gap-2 mb-2">
           <TrendingUp className="w-4 h-4" style={{ color: "#00D4FF" }} />
-          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
             Question Review
           </span>
         </div>
@@ -136,82 +157,89 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
           return (
             <div
               key={q.id}
-              className="rounded-2xl p-4"
+              className="rounded-2xl overflow-hidden"
               style={{
-                background: correct ? "rgba(0,255,148,0.04)" : "rgba(255,45,120,0.04)",
-                border:     correct ? "1px solid rgba(0,255,148,0.15)" : "1px solid rgba(255,45,120,0.15)",
+                background: correct ? "rgba(0,255,148,0.03)" : "rgba(255,45,120,0.03)",
+                border:     correct ? "1px solid rgba(0,255,148,0.13)" : "1px solid rgba(255,45,120,0.13)",
               }}
             >
-              <div className="flex items-start gap-3">
+              {/* Question top bar */}
+              <div className="flex items-center gap-2.5 px-4 py-2.5"
+                style={{ background: correct ? "rgba(0,255,148,0.05)" : "rgba(255,45,120,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                 {correct
-                  ? <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "#00FF94" }} />
-                  : <XCircle      className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "#FF2D78" }} />
+                  ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#00FF94" }} />
+                  : <XCircle      className="w-4 h-4 flex-shrink-0" style={{ color: "#FF2D78" }} />
                 }
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.3)" }}>Q{idx + 1}</span>
-                    <span
-                      className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded"
-                      style={{ background: "rgba(255,255,255,0.05)", color: diff.text }}
-                    >
-                      {q.difficulty}
-                    </span>
-                  </div>
-                  <p className="text-sm leading-relaxed mb-2" style={{ color: "rgba(255,255,255,0.85)" }}>
-                    {q.question}
-                  </p>
+                <span className="text-xs font-mono font-bold" style={{ color: correct ? "#00FF94" : "#FF2D78" }}>
+                  Q{idx + 1}
+                </span>
+                <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-full"
+                  style={{ background: "rgba(255,255,255,0.06)", color: diff.text }}>
+                  {q.difficulty}
+                </span>
+                <span className="ml-auto text-xs font-mono" style={{ color: correct ? "#00FF94" : "#FF2D78" }}>
+                  {correct ? "+1" : "0"}/1
+                </span>
+              </div>
 
-                  {/* Options */}
-                  <div className="space-y-1">
-                    {q.options.map((opt, optIdx) => {
-                      const isCorrect = optIdx === fb?.correct_index;
-                      const isChosen  = optIdx === chosen;
-                      let bg = "transparent";
-                      let color = "rgba(255,255,255,0.4)";
-                      if (isCorrect) { bg = "rgba(0,255,148,0.1)"; color = "#00FF94"; }
-                      else if (isChosen && !isCorrect) { bg = "rgba(255,45,120,0.1)"; color = "#FF2D78"; }
+              <div className="p-4">
+                <p className="text-sm leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.85)" }}>
+                  {q.question}
+                </p>
 
-                      return (
-                        <div
-                          key={optIdx}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm"
-                          style={{ background: bg, color }}
-                        >
-                          {isCorrect && <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />}
-                          {isChosen && !isCorrect && <XCircle className="w-3.5 h-3.5 flex-shrink-0" />}
-                          {!isCorrect && !isChosen && <span className="w-3.5 h-3.5 flex-shrink-0" />}
-                          <span>{opt}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                {/* Options */}
+                <div className="space-y-1.5">
+                  {q.options.map((opt, optIdx) => {
+                    const isCorrect = optIdx === fb?.correct_index;
+                    const isChosen  = optIdx === chosen;
+                    let bg = "transparent";
+                    let color = "rgba(255,255,255,0.35)";
+                    if (isCorrect) { bg = "rgba(0,255,148,0.09)"; color = "#00FF94"; }
+                    else if (isChosen && !isCorrect) { bg = "rgba(255,45,120,0.09)"; color = "#FF2D78"; }
 
-                  {/* Explanation */}
-                  {fb?.explanation && (
-                    <p className="text-xs mt-2 leading-relaxed"
-                      style={{ color: "rgba(255,255,255,0.45)", borderLeft: "2px solid rgba(0,212,255,0.3)", paddingLeft: 8 }}>
+                    return (
+                      <div
+                        key={optIdx}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm"
+                        style={{ background: bg, color, border: `1px solid ${isCorrect ? "rgba(0,255,148,0.15)" : isChosen && !isCorrect ? "rgba(255,45,120,0.15)" : "transparent"}` }}
+                      >
+                        {isCorrect && <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />}
+                        {isChosen && !isCorrect && <XCircle className="w-3.5 h-3.5 flex-shrink-0" />}
+                        {!isCorrect && !isChosen && <span className="w-3.5 h-3.5 flex-shrink-0" />}
+                        <span>{opt}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Explanation */}
+                {fb?.explanation && (
+                  <div className="mt-3 px-3 py-2.5 rounded-xl"
+                    style={{ background: "rgba(0,212,255,0.05)", borderLeft: "2px solid rgba(0,212,255,0.35)" }}>
+                    <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
                       {fb.explanation}
                     </p>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
+        <div className="h-2" />
       </div>
 
       {/* ── Retry ── */}
-      <div className="flex-shrink-0 px-6 py-5" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+      <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.01)" }}>
         <button
           onClick={onRetry}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-display font-bold text-sm transition-all"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-display font-bold text-sm transition-all"
           style={{
-            background: "rgba(0,212,255,0.1)",
-            border:     "1px solid rgba(0,212,255,0.25)",
+            background: "rgba(0,212,255,0.08)",
+            border:     "1px solid rgba(0,212,255,0.22)",
             color:      "#00D4FF",
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,212,255,0.18)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,212,255,0.1)"; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,212,255,0.16)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.35)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,212,255,0.08)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.22)"; }}
         >
           <RotateCcw className="w-4 h-4" />
           Try Again with New Questions
