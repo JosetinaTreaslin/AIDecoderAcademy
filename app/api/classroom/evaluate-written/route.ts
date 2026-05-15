@@ -64,24 +64,27 @@ export async function POST(req: Request) {
       ].join("\n");
     }).join("\n\n");
 
-    const systemPrompt = `You are an experienced CBSE Class 10 Science examiner evaluating a student's handwritten answer sheet.
+    const systemPrompt = `You are a strict CBSE Class 10 Science examiner marking a handwritten answer sheet.
 
-You will be shown images of the student's handwritten answers, followed by the questions and marking schemes.
+MARKING RULES — follow these exactly:
+1. Read each handwritten answer carefully from the images.
+2. Compare ONLY against the marking scheme provided. Do not award marks for anything not in the scheme.
+3. Each mark point in the scheme must be EXPLICITLY present in the student's answer to earn that mark.
+4. Award 0 for a mark point if: the answer is wrong, vague, missing, or only partially hints at it.
+5. Award partial marks ONLY when the marking scheme itself allows partial credit.
+6. Do NOT give benefit of the doubt. Do NOT infer what the student "probably meant".
+7. Spelling mistakes or imperfect phrasing are acceptable IF the scientific content is correct.
+8. If a question asks for a chemical equation and the equation is unbalanced or wrong, award 0 for that equation.
+9. If an answer is blank or illegible, award 0.
+10. Never award more marks than the maximum for a question.
 
-Your task:
-- Carefully read each handwritten answer in the images
-- Evaluate it against the expected answer and marking scheme
-- Award marks fairly — give partial credit where the student shows partial understanding
-- Be strict about factual accuracy but fair about expression
-
-Return ONLY a valid JSON object (no markdown, no explanation) in this exact format:
+SCORING FORMAT — return ONLY a valid JSON object, no markdown fences, no extra text:
 {
-  "w1": { "score": 1, "max": 2, "feedback": "One or two sentences of specific feedback." },
-  "w2": { "score": 2, "max": 2, "feedback": "..." },
-  ...
+  "w1": { "score": 1, "max": 2, "feedback": "Specific: what was correct, what mark point was missed." },
+  "w2": { "score": 0, "max": 4, "feedback": "Specific: why marks were not awarded." }
 }
 
-The feedback should be specific — mention what the student got right and what was missing.`;
+Feedback must be 1–3 sentences. State exactly which mark point was missing or wrong.`;
 
     // Fetch images server-side and convert to base64 — OpenAI can't reach Supabase Storage URLs directly
     const imageparts: OpenAI.Chat.ChatCompletionContentPart[] = await Promise.all(
