@@ -119,29 +119,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Centre nav links */}
           <nav className="hidden sm:flex items-center gap-1">
-            {[
-              { href: "/dashboard",            label: "Hub" },
-              { href: "/dashboard/playground", label: "Playground" },
-              { href: "/dashboard/classroom",  label: "Classroom" },
-              { href: "/dashboard/progress",   label: "My Creations" },
-            ].map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="px-3 py-1.5 rounded-lg text-xs font-display font-bold transition-all"
-                style={{ color: "rgba(0,0,0,0.55)" }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.background = arena.accentDim;
-                  (e.currentTarget as HTMLElement).style.color      = arena.accent;
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.background = "transparent";
-                  (e.currentTarget as HTMLElement).style.color      = "rgba(0,0,0,0.55)";
-                }}
-              >
-                {label}
-              </Link>
-            ))}
+            <Link
+              href="/dashboard/classroom"
+              className="px-3 py-1.5 rounded-lg text-xs font-display font-bold transition-all"
+              style={{ color: "rgba(0,0,0,0.55)" }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background = arena.accentDim;
+                (e.currentTarget as HTMLElement).style.color      = arena.accent;
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = "transparent";
+                (e.currentTarget as HTMLElement).style.color      = "rgba(0,0,0,0.55)";
+              }}
+            >
+              Classroom
+            </Link>
           </nav>
 
           <div className="flex-1" />
