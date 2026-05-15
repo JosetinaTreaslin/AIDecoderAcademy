@@ -66,25 +66,32 @@ export async function POST(req: Request) {
 
     const systemPrompt = `You are a strict CBSE Class 10 Science examiner marking a handwritten answer sheet.
 
-MARKING RULES — follow these exactly:
-1. Read each handwritten answer carefully from the images.
-2. Compare ONLY against the marking scheme provided. Do not award marks for anything not in the scheme.
-3. Each mark point in the scheme must be EXPLICITLY present in the student's answer to earn that mark.
-4. Award 0 for a mark point if: the answer is wrong, vague, missing, or only partially hints at it.
-5. Award partial marks ONLY when the marking scheme itself allows partial credit.
-6. Do NOT give benefit of the doubt. Do NOT infer what the student "probably meant".
-7. Spelling mistakes or imperfect phrasing are acceptable IF the scientific content is correct.
-8. If a question asks for a chemical equation and the equation is unbalanced or wrong, award 0 for that equation.
-9. If an answer is blank or illegible, award 0.
-10. Never award more marks than the maximum for a question.
+YOU MUST FOLLOW THIS TWO-STEP PROCESS FOR EVERY QUESTION:
 
-SCORING FORMAT — return ONLY a valid JSON object, no markdown fences, no extra text:
+STEP 1 — TRANSCRIBE: Read the student's handwriting carefully and write out word-for-word exactly what the student has written for that question. For chemical equations, copy each equation exactly as written, one by one. Do not paraphrase. Do not assume. If something is illegible, write "[illegible]".
+
+STEP 2 — SCORE: Based ONLY on your transcription, compare against the marking scheme and award marks.
+
+STRICT RULES:
+- For list-based questions (equations, points, methods): count your transcribed items first. The score CANNOT exceed the number of items you transcribed. If you transcribed 3 equations, maximum score is 3.
+- Each mark point must be EXPLICITLY present in your transcription to earn that mark.
+- Do NOT award marks for anything not in your transcription.
+- Do NOT give benefit of the doubt or infer meaning.
+- A chemical equation is correct only if the formulae AND balancing are both right. If it is unbalanced, award 0 for that equation.
+- Blank or illegible answers = 0.
+- Never award more than the stated maximum.
+
+RESPONSE FORMAT — return ONLY a valid JSON object, no markdown, no extra text:
 {
-  "w1": { "score": 1, "max": 2, "feedback": "Specific: what was correct, what mark point was missed." },
-  "w2": { "score": 0, "max": 4, "feedback": "Specific: why marks were not awarded." }
+  "w1": {
+    "read": "Exactly what the student wrote for question w1.",
+    "score": 1,
+    "max": 2,
+    "feedback": "1-3 sentences: what was correct and exactly which mark point was missing."
+  }
 }
 
-Feedback must be 1–3 sentences. State exactly which mark point was missing or wrong.`;
+The "read" field is mandatory. It anchors the score — your score must be consistent with what you wrote in "read".`;
 
     // Fetch images server-side and convert to base64 — OpenAI can't reach Supabase Storage URLs directly
     const imageparts: OpenAI.Chat.ChatCompletionContentPart[] = await Promise.all(
@@ -122,12 +129,25 @@ Feedback must be 1–3 sentences. State exactly which mark point was missing or 
     const raw = completion.choices[0].message.content ?? "{}";
     const clean = raw.replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim();
 
-    let feedback: Record<string, WrittenFeedbackItem>;
+    let rawFeedback: Record<string, any>;
     try {
-      feedback = JSON.parse(clean);
+      rawFeedback = JSON.parse(clean);
     } catch {
       console.error("[evaluate-written] Failed to parse GPT response:", raw.slice(0, 300));
       return new Response("Evaluation parsing failed", { status: 500 });
+    }
+
+    // Strip the "read" field from the response (internal reasoning, not shown to student)
+    // and cap score at max per question as a server-side safety net
+    const feedback: Record<string, WrittenFeedbackItem> = {};
+    for (const q of questions) {
+      const fb = rawFeedback[q.id];
+      if (!fb) continue;
+      feedback[q.id] = {
+        score:    Math.min(Math.max(0, fb.score ?? 0), q.marks),
+        max:      q.marks,
+        feedback: fb.feedback ?? "",
+      };
     }
 
     // Calculate total score
@@ -136,7 +156,7 @@ Feedback must be 1–3 sentences. State exactly which mark point was missing or 
     for (const q of questions) {
       const fb = feedback[q.id];
       if (fb) {
-        score    += Math.min(fb.score ?? 0, q.marks);
+        score    += fb.score;
         maxScore += q.marks;
       }
     }
