@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:classroom": "npx tsx --env-file=.env.local scripts/seed-classroom.ts"
   },
   "dependencies": {
     "@aws-sdk/client-polly": "^3.1024.0",

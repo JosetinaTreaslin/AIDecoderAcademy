@@ -70,6 +70,61 @@ export interface Project {
   created_at:      string;
 }
 
+// ── Classroom ─────────────────────────────────────────────────────────────────
+
+export interface Chapter {
+  id:             string;
+  subject:        string;
+  chapter_number: number;
+  chapter_title:  string;
+  grade:          number;
+  board:          string;
+  created_at:     string;
+}
+
+export type MCQDifficulty = "easy" | "medium" | "hard";
+
+export interface MCQQuestion {
+  id:           string;
+  difficulty:   MCQDifficulty;
+  marks:        number;
+  question:     string;
+  options:      string[];   // 4 items, labelled "A) ..." already
+  // correct_index and explanation are stripped before sending to client
+  correct_index?: number;
+  explanation?:   string;
+}
+
+export interface QuestionPaper {
+  id:          string;
+  chapter_id:  string;
+  type:        "mcq" | "written";
+  questions:   MCQQuestion[];
+  total_marks: number;
+  created_at:  string;
+}
+
+export interface MCQAttempt {
+  id:                string;
+  profile_id:        string;
+  question_paper_id: string;
+  question_ids:      string[];
+  answers:           Record<string, number>;   // qId → chosen option index
+  score?:            number;
+  max_score?:        number;
+  feedback?:         Record<string, MCQFeedbackItem>;
+  time_taken_secs?:  number;
+  submitted_at:      string;
+}
+
+export interface MCQFeedbackItem {
+  correct:       boolean;
+  correct_index: number;
+  explanation:   string;
+}
+
+// ── ChatRequest ───────────────────────────────────────────────────────────────
+
 export interface ChatRequest {
   message:      string;
   sessionId:    string;
