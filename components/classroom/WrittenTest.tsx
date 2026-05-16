@@ -146,8 +146,8 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
           style={{ borderBottom: "1px solid rgba(15,28,77,0.07)" }}>
           <button onClick={onBack}
             className="flex items-center gap-1.5 text-sm transition-all px-3 py-1.5 rounded-lg"
-            style={{ color: "rgba(15,28,77,0.45)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.9)"; }}
+            style={{ color: "rgba(15,28,77,0.45)", background: "rgba(15,28,77,0.05)", border: "1px solid rgba(15,28,77,0.1)" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(15,28,77,0.9)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(15,28,77,0.45)"; }}>
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
@@ -187,7 +187,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
                 <div key={sec} className="rounded-xl overflow-hidden"
                   style={{ background: "rgba(255,255,255,0.9)", border: "1px solid rgba(15,28,77,0.07)" }}>
                   <div className="flex items-center justify-between px-4 py-2.5"
-                    style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                    style={{ background: "rgba(15,28,77,0.03)", borderBottom: "1px solid rgba(15,28,77,0.06)" }}>
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-mono font-bold"
                         style={{ background: `${secColor}22`, color: secColor }}>
@@ -291,15 +291,15 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
             <button
               onClick={() => changePhase("upload")}
               className="text-xs font-display font-bold px-3 py-1.5 rounded-lg transition-all"
-              style={{ background: "rgba(15,28,77,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.1)" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#fff"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.55)"; (e.currentTarget as HTMLElement).style.background = "rgba(15,28,77,0.06)"; }}
+              style={{ background: "rgba(15,28,77,0.06)", color: "rgba(15,28,77,0.6)", border: "1px solid rgba(15,28,77,0.12)" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(15,28,77,0.9)"; (e.currentTarget as HTMLElement).style.background = "rgba(15,28,77,0.08)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(15,28,77,0.6)"; (e.currentTarget as HTMLElement).style.background = "rgba(15,28,77,0.05)"; }}
             >
               I&apos;m Done
             </button>
           </div>
           {/* Timer drain bar */}
-          <div className="h-0.5 w-full" style={{ background: "rgba(255,255,255,0.04)" }}>
+          <div className="h-0.5 w-full" style={{ background: "rgba(15,28,77,0.06)" }}>
             <div className="h-full transition-all duration-1000"
               style={{
                 width: `${timerPct * 100}%`,
@@ -344,7 +344,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full"
-                                style={{ background: "rgba(15,28,77,0.06)", color: "rgba(15,28,77,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                style={{ background: "rgba(15,28,77,0.06)", color: "rgba(15,28,77,0.4)", border: "1px solid rgba(15,28,77,0.1)" }}>
                                 {q.marks} mark{q.marks > 1 ? "s" : ""}
                               </span>
                             </div>
@@ -378,8 +378,8 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
             className="flex items-center gap-1.5 text-sm transition-all px-3 py-1.5 rounded-lg"
             style={{
               color: "rgba(15,28,77,0.45)",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(15,28,77,0.06)",
+              border: "1px solid rgba(15,28,77,0.1)",
               pointerEvents: uploading ? "none" : "auto",
               opacity: uploading ? 0.4 : 1,
             }}
@@ -486,8 +486,8 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
             disabled={!images.length || uploading}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-display font-bold text-sm transition-all"
             style={{
-              background: images.length && !uploading ? "linear-gradient(135deg, #FFB800, #FF8C00)" : "rgba(255,255,255,0.05)",
-              color:      images.length && !uploading ? "#08080F" : "rgba(255,255,255,0.2)",
+              background: images.length && !uploading ? "linear-gradient(135deg, #2563eb, #1a4db5)" : "rgba(15,28,77,0.06)",
+              color:      images.length && !uploading ? "#ffffff" : "rgba(15,28,77,0.3)",
               cursor:     images.length && !uploading ? "pointer" : "not-allowed",
               boxShadow:  images.length && !uploading ? "0 0 30px rgba(255,184,0,0.3)" : "none",
             }}

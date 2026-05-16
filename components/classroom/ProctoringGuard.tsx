@@ -109,7 +109,7 @@ export function ProctoringGuard({ active, onDisqualify, children }: Props) {
       {showWarning && (
         <div
           className="fixed inset-0 flex items-center justify-center"
-          style={{ zIndex: 9999, background: "rgba(8,8,15,0.96)", backdropFilter: "blur(16px)" }}
+          style={{ zIndex: 9999, background: "rgba(240,244,255,0.92)", backdropFilter: "blur(24px)" }}
         >
           <div className="flex flex-col items-center gap-6 max-w-xs text-center px-6">
 
@@ -126,10 +126,10 @@ export function ProctoringGuard({ active, onDisqualify, children }: Props) {
               <p className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: accent }}>
                 Proctoring Violation · {violations} / {MAX_WARNINGS + 1}
               </p>
-              <h2 className="font-display font-black text-2xl mb-3" style={{ color: "#fff" }}>
+              <h2 className="font-display font-black text-2xl mb-3" style={{ color: "#0f1c4d" }}>
                 {isLastWarning ? "Final Warning!" : "Warning!"}
               </h2>
-              <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+              <p className="text-sm leading-relaxed" style={{ color: "rgba(15,28,77,0.55)" }}>
                 {isLastWarning
                   ? "One more violation will immediately end your test and you will receive 0 marks. Please stay in fullscreen."
                   : "You left fullscreen or switched tabs. This test must be completed in fullscreen mode without switching away."}
@@ -142,7 +142,7 @@ export function ProctoringGuard({ active, onDisqualify, children }: Props) {
                 <div
                   key={i}
                   className="w-3 h-3 rounded-full transition-all duration-300"
-                  style={{ background: i < violations ? accent : "rgba(255,255,255,0.12)" }}
+                  style={{ background: i < violations ? accent : "rgba(15,28,77,0.12)" }}
                 />
               ))}
             </div>
@@ -163,7 +163,7 @@ export function ProctoringGuard({ active, onDisqualify, children }: Props) {
 
             {/* Fullscreen not supported notice */}
             {!fsSupported && (
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+              <p className="text-xs" style={{ color: "rgba(15,28,77,0.4)" }}>
                 Fullscreen was blocked. Tab switching is still monitored.
               </p>
             )}

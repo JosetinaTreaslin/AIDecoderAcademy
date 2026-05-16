@@ -22,7 +22,7 @@ export interface SubmitResult {
 }
 
 const DIFF_COLORS = {
-  easy:   { bg: "rgba(0,255,148,0.12)", text: "#16a34a", border: "rgba(0,255,148,0.25)" },
+  easy:   { bg: "rgba(22,163,74,0.1)", text: "#16a34a", border: "rgba(22,163,74,0.25)" },
   medium: { bg: "rgba(255,184,0,0.12)", text: "#FFB800", border: "rgba(255,184,0,0.25)" },
   hard:   { bg: "rgba(255,45,120,0.12)", text: "#FF2D78",  border: "rgba(255,45,120,0.25)" },
 };
@@ -90,8 +90,8 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
           <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold"
             style={{
-              background: allDone ? "rgba(0,255,148,0.12)" : "rgba(37,99,235,0.1)",
-              border:     `1px solid ${allDone ? "rgba(0,255,148,0.3)" : "rgba(37,99,235,0.2)"}`,
+              background: allDone ? "rgba(22,163,74,0.1)" : "rgba(37,99,235,0.1)",
+              border:     `1px solid ${allDone ? "rgba(22,163,74,0.3)" : "rgba(37,99,235,0.2)"}`,
               color:      allDone ? "#16a34a" : "#2563eb",
             }}
           >
@@ -107,7 +107,7 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
               background: allDone
                 ? "linear-gradient(90deg, #16a34a, #2563eb)"
                 : "linear-gradient(90deg, #2563eb, #2563eb)",
-              boxShadow: allDone ? "0 0 8px rgba(0,255,148,0.6)" : "0 0 8px rgba(0,212,255,0.5)",
+              boxShadow: allDone ? "0 0 8px rgba(22,163,74,0.5)" : "0 0 8px rgba(37,99,235,0.3)",
             }}
           />
         </div>
@@ -172,23 +172,23 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
                       onClick={() => choose(q.id, optIdx)}
                       className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all"
                       style={{
-                        background: isChosen ? "rgba(37,99,235,0.1)" : "rgba(255,255,255,0.9)",
-                        border:     isChosen ? "1px solid rgba(0,212,255,0.4)" : "1px solid rgba(15,28,77,0.06)",
-                        color:      isChosen ? "#ffffff" : "rgba(255,255,255,0.6)",
+                        background: isChosen ? "rgba(37,99,235,0.09)" : "rgba(255,255,255,0.85)",
+                        border:     isChosen ? "1.5px solid rgba(37,99,235,0.4)" : "1px solid rgba(15,28,77,0.1)",
+                        color:      isChosen ? "#1a3a9e" : "rgba(15,28,77,0.75)",
                       }}
-                      onMouseEnter={e => { if (!isChosen) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.95)"; }}
-                      onMouseLeave={e => { if (!isChosen) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.9)"; }}
+                      onMouseEnter={e => { if (!isChosen) { (e.currentTarget as HTMLElement).style.background = "#fff"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(37,99,235,0.25)"; } }}
+                      onMouseLeave={e => { if (!isChosen) { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.85)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(15,28,77,0.1)"; } }}
                     >
                       <div
                         className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
                         style={{
                           background: isChosen ? "#2563eb" : "transparent",
-                          border:     isChosen ? "none" : "1.5px solid rgba(255,255,255,0.2)",
+                          border:     isChosen ? "none" : "1.5px solid rgba(15,28,77,0.2)",
                         }}
                       >
-                        {isChosen && <div className="w-2 h-2 rounded-full bg-[#031024]" />}
+                        {isChosen && <div className="w-2 h-2 rounded-full bg-white" />}
                       </div>
-                      <span className="text-sm">{opt}</span>
+                      <span className="text-sm font-medium">{opt}</span>
                     </button>
                   );
                 })}
@@ -224,11 +224,11 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-display font-bold text-sm transition-all"
           style={{
             background: allDone && !submitting
-              ? "linear-gradient(135deg, #2563eb, #0284C7)"
-              : "rgba(255,255,255,0.95)",
-            color:     allDone && !submitting ? "#031024" : "rgba(255,255,255,0.2)",
+              ? "linear-gradient(135deg, #2563eb, #1a4db5)"
+              : "rgba(15,28,77,0.06)",
+            color:     allDone && !submitting ? "#ffffff" : "rgba(15,28,77,0.3)",
             cursor:    allDone && !submitting ? "pointer" : "not-allowed",
-            boxShadow: allDone && !submitting ? "0 0 28px rgba(0,212,255,0.35)" : "none",
+            boxShadow: allDone && !submitting ? "0 0 28px rgba(37,99,235,0.3)" : "none",
           }}
         >
           {submitting
