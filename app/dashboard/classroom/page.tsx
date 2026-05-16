@@ -47,6 +47,7 @@ export default function ClassroomPage() {
   const [writtenResult, setWrittenResult]= useState<WrittenResult | null>(null);
   const [loadError,     setLoadError]    = useState<string | null>(null);
   const [loadingMsg,    setLoadingMsg]   = useState("");
+  const [writtenPhase,  setWrittenPhase] = useState<string>("intro");
 
   const handleChapterSelect = (chapter: Chapter) => {
     setChapter(chapter);
@@ -69,6 +70,7 @@ export default function ClassroomPage() {
         chapter:     data.chapter,
         type,
       });
+      setWrittenPhase("intro");
       setView(type === "mcq" ? "mcq-test" : "written-test");
     } catch (e: any) {
       setLoadError(e.message ?? "Failed to load paper. Please try again.");
@@ -118,7 +120,8 @@ export default function ClassroomPage() {
     }
   }, [paper]);
 
-  const proctoringActive = view === "mcq-test" || view === "written-test";
+  // Proctoring is active only during actual writing — not intro/upload/evaluating
+  const proctoringActive = view === "mcq-test" || (view === "written-test" && writtenPhase === "test");
   const currentStep      = viewToStep(view);
 
   return (
@@ -257,6 +260,7 @@ export default function ClassroomPage() {
                     chapter={paper.chapter}
                     onComplete={handleWrittenComplete}
                     onBack={() => setView("select-type")}
+                    onPhaseChange={setWrittenPhase}
                   />
                 </motion.div>
               )}

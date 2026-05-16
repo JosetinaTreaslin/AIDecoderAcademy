@@ -8,11 +8,12 @@ import {
 import type { WrittenQuestion, WrittenFeedbackItem, Chapter } from "@/types";
 
 interface Props {
-  paperId:   string;
-  questions: WrittenQuestion[];
-  chapter:   Chapter;
-  onComplete: (result: WrittenResult) => void;
-  onBack:    () => void;
+  paperId:       string;
+  questions:     WrittenQuestion[];
+  chapter:       Chapter;
+  onComplete:    (result: WrittenResult) => void;
+  onBack:        () => void;
+  onPhaseChange?: (phase: string) => void;
 }
 
 export interface WrittenResult {
@@ -36,9 +37,12 @@ const SECTION_LABELS: Record<string, string> = {
   C: "Section C — Long Answer (5 marks each)",
 };
 
-export function WrittenTest({ paperId, questions, chapter, onBack, onComplete }: Props) {
+export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, onPhaseChange }: Props) {
   type Phase = "intro" | "test" | "upload" | "evaluating";
   const [phase,       setPhase]       = useState<Phase>("intro");
+
+  // Notify parent whenever phase changes so proctoring can be paused/resumed
+  const changePhase = (p: Phase) => { setPhase(p); onPhaseChange?.(p); };
   const [timeLeft,    setTimeLeft]    = useState(DURATION_SECS);
   const [timesUp,     setTimesUp]     = useState(false);
   const [images,      setImages]      = useState<{ file: File; preview: string; url?: string }[]>([]);
@@ -56,7 +60,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete }:
         if (prev <= 1) {
           clearInterval(timerRef.current!);
           setTimesUp(true);
-          setPhase("upload");
+          changePhase("upload");
           return 0;
         }
         return prev - 1;
@@ -67,7 +71,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete }:
 
   const startTest = () => {
     setStartTime(Date.now());
-    setPhase("test");
+    changePhase("test");
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,7 +92,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete }:
     if (!images.length) { setError("Upload at least one photo of your answer sheet."); return; }
     setUploading(true);
     setError(null);
-    setPhase("evaluating");
+    changePhase("evaluating");
 
     try {
       // Upload all images
@@ -114,7 +118,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete }:
       onComplete({ ...data, questions });
     } catch (e: any) {
       setError(e.message ?? "Evaluation failed. Please try again.");
-      setPhase("upload");
+      changePhase("upload");
     } finally {
       setUploading(false);
     }
@@ -285,7 +289,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete }:
               </span>
             </div>
             <button
-              onClick={() => setPhase("upload")}
+              onClick={() => changePhase("upload")}
               className="text-xs font-display font-bold px-3 py-1.5 rounded-lg transition-all"
               style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.1)" }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#fff"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)"; }}
@@ -370,7 +374,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete }:
         <div className="flex-shrink-0 flex items-center justify-between px-6 py-3.5"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
           <button
-            onClick={() => { if (!uploading) setPhase("test"); }}
+            onClick={() => { if (!uploading) changePhase("test"); }}
             className="flex items-center gap-1.5 text-sm transition-all px-3 py-1.5 rounded-lg"
             style={{
               color: "rgba(255,255,255,0.45)",
