@@ -1,125 +1,147 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookOpen, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronRight, Loader2, BookOpen, FlaskConical, Leaf } from "lucide-react";
 import type { Chapter } from "@/types";
 
 interface Props {
   onSelect: (chapter: Chapter) => void;
 }
 
+const NAVY = "#0f1c4d";
+const GOLD = "#C8A84B";
+
+const SUBJECT_ICONS: Record<string, React.ReactNode> = {
+  Science:  <FlaskConical className="w-4 h-4" />,
+  Maths:    <span className="text-sm font-black">∑</span>,
+  Biology:  <Leaf className="w-4 h-4" />,
+  Default:  <BookOpen className="w-4 h-4" />,
+};
+
 export function ChapterPicker({ onSelect }: Props) {
-  const [chapters, setChapters]   = useState<Chapter[]>([]);
-  const [grouped,  setGrouped]    = useState<Record<string, Chapter[]>>({});
-  const [loading,  setLoading]    = useState(true);
-  const [expanded, setExpanded]   = useState<Record<string, boolean>>({});
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [grouped,  setGrouped]  = useState<Record<string, Chapter[]>>({});
+  const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
     fetch("/api/classroom/chapters")
       .then(r => r.json())
       .then(({ chapters: ch, grouped: gr }) => {
-        setChapters(ch);
-        setGrouped(gr);
-        // Auto-expand first subject
-        const firstSubject = Object.keys(gr)[0];
-        if (firstSubject) setExpanded({ [firstSubject]: true });
+        // Filter out test/debug chapters (chapter_number >= 90)
+        const real = (ch as Chapter[]).filter(c => c.chapter_number < 90);
+        const realGrouped: Record<string, Chapter[]> = {};
+        for (const [subj, chs] of Object.entries(gr as Record<string, Chapter[]>)) {
+          const filtered = chs.filter(c => c.chapter_number < 90);
+          if (filtered.length) realGrouped[subj] = filtered;
+        }
+        setChapters(real);
+        setGrouped(realGrouped);
       })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 gap-3">
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#00D4FF" }} />
-        <p className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.25)" }}>Loading chapters…</p>
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <Loader2 className="w-6 h-6 animate-spin" style={{ color: GOLD }} />
+        <p className="text-xs font-mono" style={{ color: `${NAVY}60` }}>Loading chapters…</p>
       </div>
     );
   }
 
   if (chapters.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 gap-3">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-          style={{ background: "rgba(0,212,255,0.07)", border: "1px solid rgba(0,212,255,0.15)" }}>
-          <BookOpen className="w-7 h-7 opacity-40" style={{ color: "#00D4FF" }} />
-        </div>
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
-          No chapters available yet.
-        </p>
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <BookOpen className="w-8 h-8 opacity-30" style={{ color: NAVY }} />
+        <p className="text-sm" style={{ color: `${NAVY}60` }}>No chapters available yet.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {Object.entries(grouped).map(([subject, chs]) => (
-        <div key={subject} className="rounded-2xl overflow-hidden"
-          style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.015)" }}>
-          {/* Subject header */}
-          <button
-            onClick={() => setExpanded(prev => ({ ...prev, [subject]: !prev[subject] }))}
-            className="w-full flex items-center justify-between px-4 py-3.5 text-left transition-all"
-            style={{ background: expanded[subject] ? "rgba(0,212,255,0.07)" : "transparent" }}
-            onMouseEnter={e => { if (!expanded[subject]) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.025)"; }}
-            onMouseLeave={e => { if (!expanded[subject]) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(0,212,255,0.12)", border: "1px solid rgba(0,212,255,0.2)" }}>
-                <BookOpen className="w-4 h-4" style={{ color: "#00D4FF" }} />
+    <div className="space-y-5 pb-4">
+      {Object.entries(grouped).map(([subject, chs]) => {
+        const SubjectIcon = SUBJECT_ICONS[subject] ?? SUBJECT_ICONS.Default;
+        return (
+          <div key={subject}>
+            {/* Subject label */}
+            <div className="flex items-center gap-2 mb-3 px-1">
+              <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+                style={{ background: `rgba(200,168,75,0.15)`, color: GOLD }}>
+                {SubjectIcon}
               </div>
-              <div>
-                <span className="font-display font-bold text-sm" style={{ color: expanded[subject] ? "#00D4FF" : "rgba(255,255,255,0.85)" }}>
-                  {subject}
-                </span>
-                <span className="text-xs font-mono ml-2" style={{ color: "rgba(255,255,255,0.28)" }}>
-                  {chs.length} chapter{chs.length !== 1 ? "s" : ""}
-                </span>
-              </div>
+              <span className="text-xs font-mono font-bold uppercase tracking-widest" style={{ color: GOLD }}>
+                {subject}
+              </span>
+              <div className="h-px flex-1" style={{ background: `rgba(200,168,75,0.2)` }} />
+              <span className="text-[10px] font-mono" style={{ color: `${NAVY}40` }}>
+                {chs.length} chapter{chs.length !== 1 ? "s" : ""}
+              </span>
             </div>
-            {expanded[subject]
-              ? <ChevronDown className="w-4 h-4" style={{ color: "rgba(0,212,255,0.6)" }} />
-              : <ChevronRight className="w-4 h-4" style={{ color: "rgba(255,255,255,0.25)" }} />
-            }
-          </button>
 
-          {/* Chapter list */}
-          {expanded[subject] && (
-            <div className="border-t divide-y" style={{ borderColor: "rgba(255,255,255,0.06)", "--tw-divide-opacity": 1 } as any}>
+            {/* Chapter cards */}
+            <div className="space-y-2">
               {chs.map(ch => (
                 <button
                   key={ch.id}
                   onClick={() => onSelect(ch)}
-                  className="w-full flex items-center gap-4 px-4 py-3.5 text-left transition-all group"
-                  style={{ background: "transparent" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,212,255,0.05)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                  className="w-full text-left"
                 >
-                  {/* Chapter number badge */}
                   <div
-                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-xs font-mono font-bold"
-                    style={{ background: "rgba(0,212,255,0.1)", color: "#00D4FF", border: "1px solid rgba(0,212,255,0.18)" }}
+                    className="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200"
+                    style={{
+                      background: "rgba(255,255,255,0.88)",
+                      border:     "1px solid rgba(255,255,255,0.7)",
+                      boxShadow:  "0 2px 12px rgba(15,28,77,0.06)",
+                    }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.boxShadow = "0 6px 24px rgba(15,28,77,0.12)";
+                      (e.currentTarget as HTMLElement).style.transform  = "translateY(-1px)";
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 12px rgba(15,28,77,0.06)";
+                      (e.currentTarget as HTMLElement).style.transform  = "translateY(0)";
+                    }}
                   >
-                    {ch.chapter_number}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-snug" style={{ color: "rgba(255,255,255,0.9)" }}>
-                      {ch.chapter_title}
-                    </p>
-                    <p className="text-[11px] mt-0.5 font-mono" style={{ color: "rgba(255,255,255,0.28)" }}>
-                      {ch.board} · Grade {ch.grade}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] font-mono" style={{ color: "#00D4FF" }}>Start</span>
-                    <ChevronRight className="w-3.5 h-3.5" style={{ color: "#00D4FF" }} />
+                    {/* Chapter number badge */}
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-mono font-black flex-shrink-0"
+                      style={{ background: "linear-gradient(135deg, #2563eb, #1a4db5)", color: "#fff", boxShadow: "0 2px 10px rgba(37,99,235,0.3)" }}
+                    >
+                      {ch.chapter_number}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-display font-bold text-sm truncate" style={{ color: NAVY }}>
+                        {ch.chapter_title}
+                      </p>
+                      <p className="text-[11px] mt-0.5 font-mono" style={{ color: `${NAVY}50` }}>
+                        {ch.board} · Grade {ch.grade}
+                      </p>
+                    </div>
+
+                    {/* Badges + chevron */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="hidden sm:flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full"
+                          style={{ background: "rgba(37,99,235,0.08)", color: "#2563eb", border: "1px solid rgba(37,99,235,0.15)" }}>
+                          MCQ
+                        </span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full"
+                          style={{ background: `rgba(200,168,75,0.1)`, color: GOLD, border: `1px solid rgba(200,168,75,0.2)` }}>
+                          Written
+                        </span>
+                      </div>
+                      <ChevronRight className="w-4 h-4" style={{ color: `${NAVY}25` }} />
+                    </div>
                   </div>
                 </button>
               ))}
             </div>
-          )}
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

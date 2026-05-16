@@ -1,162 +1,172 @@
 "use client";
 
-import { Brain, PenLine, Clock, BarChart3, ChevronLeft } from "lucide-react";
+import {
+  Brain, PenLine, Clock, BarChart2, ChevronRight, ChevronLeft,
+  ClipboardList, FileEdit, Sparkles, Star,
+} from "lucide-react";
 import type { Chapter } from "@/types";
 
 interface Props {
-  chapter: Chapter;
+  chapter:  Chapter;
   onSelect: (type: "mcq" | "written") => void;
   onBack:   () => void;
 }
 
+const NAVY = "#0f1c4d";
+const GOLD = "#C8A84B";
+
 export function TestTypeSelector({ chapter, onSelect, onBack }: Props) {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex-1 flex flex-col overflow-y-auto">
 
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between px-6 py-4"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+      {/* ── Back + breadcrumb ────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 px-5 pt-5 pb-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm transition-all px-3 py-1.5 rounded-lg"
-          style={{ color: "rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.9)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.5)"; }}
+          className="flex items-center gap-1.5 text-xs font-mono transition-opacity hover:opacity-100 opacity-60"
+          style={{ color: NAVY }}
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3.5 h-3.5" />
           Back
         </button>
-        <div className="text-center">
-          <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "rgba(0,212,255,0.6)" }}>
-            Chapter {chapter.chapter_number}
-          </p>
-          <p className="text-sm font-display font-bold mt-0.5 max-w-[200px] truncate" style={{ color: "rgba(255,255,255,0.92)" }}>
-            {chapter.chapter_title}
-          </p>
-        </div>
-        <div className="w-20" />
+        <span className="text-xs font-mono opacity-30" style={{ color: NAVY }}>·</span>
+        <span className="text-xs font-mono" style={{ color: `${NAVY}60` }}>
+          Ch. {chapter.chapter_number} — {chapter.chapter_title}
+        </span>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-6 gap-4">
-        <div className="text-center mb-1">
-          <p className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>
-            Choose your test type
-          </p>
-        </div>
+      {/* ── CHOOSE TEST TYPE divider ─────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 px-5 mb-4">
+        <div className="h-px flex-1" style={{ background: `rgba(200,168,75,0.3)` }} />
+        <span className="text-[10px] font-mono font-bold uppercase tracking-[0.25em]" style={{ color: GOLD }}>
+          Choose Test Type
+        </span>
+        <div className="h-px flex-1" style={{ background: `rgba(200,168,75,0.3)` }} />
+      </div>
 
-        {/* MCQ card */}
-        <button
-          onClick={() => onSelect("mcq")}
-          className="w-full rounded-2xl p-6 text-left transition-all"
-          style={{
-            background: "rgba(0,212,255,0.04)",
-            border:     "1px solid rgba(0,212,255,0.18)",
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.background  = "rgba(0,212,255,0.09)";
-            (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.38)";
-            (e.currentTarget as HTMLElement).style.boxShadow   = "0 0 40px rgba(0,212,255,0.1), inset 0 1px 0 rgba(0,212,255,0.12)";
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.background  = "rgba(0,212,255,0.04)";
-            (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.18)";
-            (e.currentTarget as HTMLElement).style.boxShadow   = "none";
-          }}
-        >
-          <div className="flex items-start gap-5">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, rgba(0,212,255,0.2), rgba(0,212,255,0.06))", border: "1px solid rgba(0,212,255,0.3)", boxShadow: "0 0 20px rgba(0,212,255,0.15)" }}>
-              <Brain className="w-6 h-6" style={{ color: "#00D4FF" }} />
+      {/* ── Cards ───────────────────────────────────────────────────────────── */}
+      <div className="px-5 space-y-3 pb-4">
+
+        {/* MCQ Card */}
+        <button onClick={() => onSelect("mcq")} className="w-full text-left">
+          <div
+            className="flex items-center gap-4 p-5 rounded-2xl transition-all duration-200"
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              border:     "1px solid rgba(255,255,255,0.7)",
+              boxShadow:  "0 4px 20px rgba(15,28,77,0.07), 0 1px 4px rgba(15,28,77,0.04)",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px rgba(15,28,77,0.12), 0 2px 8px rgba(15,28,77,0.06)";
+              (e.currentTarget as HTMLElement).style.transform  = "translateY(-1px)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(15,28,77,0.07), 0 1px 4px rgba(15,28,77,0.04)";
+              (e.currentTarget as HTMLElement).style.transform  = "translateY(0)";
+            }}
+          >
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "linear-gradient(135deg, #2563eb, #1a4db5)", boxShadow: "0 4px 16px rgba(37,99,235,0.35)" }}>
+              <Brain className="w-7 h-7 text-white" />
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2.5 mb-2">
-                <h3 className="font-display font-black text-base" style={{ color: "#ffffff" }}>MCQ Test</h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(0,212,255,0.15)", color: "#00D4FF", border: "1px solid rgba(0,212,255,0.25)" }}>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-display font-bold text-base" style={{ color: NAVY }}>MCQ Test</span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(37,99,235,0.1)", color: "#2563eb", border: "1px solid rgba(37,99,235,0.2)" }}>
                   Phase 1
                 </span>
               </div>
-              <p className="text-sm leading-relaxed mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
+              <p className="text-xs mb-3 leading-relaxed" style={{ color: `${NAVY}70` }}>
                 15 multiple-choice questions randomly selected from a bank of 40.
               </p>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <BarChart3 className="w-3 h-3" style={{ color: "rgba(0,212,255,0.5)" }} />
-                  <span className="text-[11px] font-mono" style={{ color: "rgba(255,255,255,0.45)" }}>
-                    7 easy · 5 medium · 3 hard
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <Clock className="w-3 h-3" style={{ color: "rgba(0,212,255,0.5)" }} />
-                  <span className="text-[11px] font-mono" style={{ color: "rgba(255,255,255,0.45)" }}>~20 min</span>
-                </div>
+              <div className="flex items-center gap-3 text-[11px]" style={{ color: `${NAVY}55` }}>
+                <span className="flex items-center gap-1"><BarChart2 className="w-3 h-3" />7 easy · 5 medium · 3 hard</span>
+                <span className="w-px h-3 bg-current opacity-30" />
+                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />~20 min</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <ClipboardList className="w-10 h-10" style={{ color: "rgba(15,28,77,0.08)" }} />
+              <div className="w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.15)" }}>
+                <ChevronRight className="w-4 h-4" style={{ color: "#2563eb" }} />
               </div>
             </div>
           </div>
         </button>
 
-        {/* Divider */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
-          <span className="text-[10px] font-mono uppercase" style={{ color: "rgba(255,255,255,0.2)" }}>or</span>
-          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
-        </div>
-
-        {/* Written card */}
-        <button
-          onClick={() => onSelect("written")}
-          className="w-full rounded-2xl p-6 text-left transition-all"
-          style={{
-            background: "rgba(255,184,0,0.04)",
-            border:     "1px solid rgba(255,184,0,0.18)",
-          }}
-          onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.background  = "rgba(255,184,0,0.09)";
-            (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,184,0,0.38)";
-            (e.currentTarget as HTMLElement).style.boxShadow   = "0 0 40px rgba(255,184,0,0.1), inset 0 1px 0 rgba(255,184,0,0.1)";
-          }}
-          onMouseLeave={e => {
-            (e.currentTarget as HTMLElement).style.background  = "rgba(255,184,0,0.04)";
-            (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,184,0,0.18)";
-            (e.currentTarget as HTMLElement).style.boxShadow   = "none";
-          }}
-        >
-          <div className="flex items-start gap-5">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, rgba(255,184,0,0.2), rgba(255,184,0,0.06))", border: "1px solid rgba(255,184,0,0.3)", boxShadow: "0 0 20px rgba(255,184,0,0.12)" }}>
-              <PenLine className="w-6 h-6" style={{ color: "#FFB800" }} />
+        {/* Written Card */}
+        <button onClick={() => onSelect("written")} className="w-full text-left">
+          <div
+            className="flex items-center gap-4 p-5 rounded-2xl transition-all duration-200"
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              border:     "1px solid rgba(255,255,255,0.7)",
+              boxShadow:  "0 4px 20px rgba(15,28,77,0.07), 0 1px 4px rgba(15,28,77,0.04)",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px rgba(15,28,77,0.12), 0 2px 8px rgba(15,28,77,0.06)";
+              (e.currentTarget as HTMLElement).style.transform  = "translateY(-1px)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(15,28,77,0.07), 0 1px 4px rgba(15,28,77,0.04)";
+              (e.currentTarget as HTMLElement).style.transform  = "translateY(0)";
+            }}
+          >
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "linear-gradient(135deg, #d4a017, #a87c20)", boxShadow: "0 4px 16px rgba(200,168,75,0.4)" }}>
+              <PenLine className="w-7 h-7 text-white" />
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2.5 mb-2">
-                <h3 className="font-display font-black text-base" style={{ color: "#ffffff" }}>Written Test</h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(255,184,0,0.15)", color: "#FFB800", border: "1px solid rgba(255,184,0,0.25)" }}>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-display font-bold text-base" style={{ color: NAVY }}>Written Test</span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(200,168,75,0.12)", color: GOLD, border: `1px solid rgba(200,168,75,0.25)` }}>
                   Phase 2
                 </span>
               </div>
-              <p className="text-sm leading-relaxed mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
-                CBSE-style question paper. Write on paper, then upload photos for AI evaluation.
+              <p className="text-xs mb-3 leading-relaxed" style={{ color: `${NAVY}70` }}>
+                CBSE-style question paper. Write on paper, upload photos for AI evaluation.
               </p>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <BarChart3 className="w-3 h-3" style={{ color: "rgba(255,184,0,0.5)" }} />
-                  <span className="text-[11px] font-mono" style={{ color: "rgba(255,255,255,0.45)" }}>
-                    24 marks · Sec A / B / C
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <Clock className="w-3 h-3" style={{ color: "rgba(255,184,0,0.5)" }} />
-                  <span className="text-[11px] font-mono" style={{ color: "rgba(255,255,255,0.45)" }}>45 min</span>
-                </div>
+              <div className="flex items-center gap-3 text-[11px]" style={{ color: `${NAVY}55` }}>
+                <span className="flex items-center gap-1"><BarChart2 className="w-3 h-3" />24 marks · Sec A / B / C</span>
+                <span className="w-px h-3 bg-current opacity-30" />
+                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />45 min</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <FileEdit className="w-10 h-10" style={{ color: "rgba(15,28,77,0.08)" }} />
+              <div className="w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(200,168,75,0.08)", border: `1px solid rgba(200,168,75,0.2)` }}>
+                <ChevronRight className="w-4 h-4" style={{ color: GOLD }} />
               </div>
             </div>
           </div>
         </button>
+      </div>
+
+      {/* ── Bottom feature bar ───────────────────────────────────────────────── */}
+      <div className="mt-auto mx-5 mb-5 rounded-2xl px-4 py-3"
+        style={{ background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.8)", backdropFilter: "blur(12px)" }}>
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { icon: <Sparkles className="w-3.5 h-3.5" />, label: "AI-Powered",    sub: "Instant. Accurate.",  color: "#2563eb" },
+            { icon: <ClipboardList className="w-3.5 h-3.5" />, label: "CBSE Aligned", sub: "100% curriculum",  color: GOLD },
+            { icon: <BarChart2 className="w-3.5 h-3.5" />, label: "Track Progress", sub: "Analyse. Improve.", color: "#16a34a" },
+            { icon: <Star className="w-3.5 h-3.5" />,     label: "Top Learners",  sub: "Excellence. daily.", color: "#dc2626" },
+          ].map(({ icon, label, sub, color }) => (
+            <div key={label} className="flex flex-col items-center text-center gap-1 py-1">
+              <div style={{ color }}>{icon}</div>
+              <span className="text-[10px] font-bold leading-none" style={{ color: NAVY }}>{label}</span>
+              <span className="text-[9px] leading-tight" style={{ color: `${NAVY}50` }}>{sub}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
