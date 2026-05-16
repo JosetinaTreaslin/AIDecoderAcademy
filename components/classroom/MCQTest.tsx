@@ -22,7 +22,7 @@ export interface SubmitResult {
 }
 
 const DIFF_COLORS = {
-  easy:   { bg: "rgba(0,255,148,0.12)", text: "#00FF94", border: "rgba(0,255,148,0.25)" },
+  easy:   { bg: "rgba(0,255,148,0.12)", text: "#16a34a", border: "rgba(0,255,148,0.25)" },
   medium: { bg: "rgba(255,184,0,0.12)", text: "#FFB800", border: "rgba(255,184,0,0.25)" },
   hard:   { bg: "rgba(255,45,120,0.12)", text: "#FF2D78",  border: "rgba(255,45,120,0.25)" },
 };
@@ -64,24 +64,24 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
     <div className="flex flex-col h-full">
 
       {/* ── Header ── */}
-      <div className="flex-shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+      <div className="flex-shrink-0" style={{ borderBottom: "1px solid rgba(15,28,77,0.07)" }}>
         <div className="flex items-center justify-between px-6 py-3.5">
           <button
             onClick={onBack}
             className="flex items-center gap-1.5 text-sm transition-all px-3 py-1.5 rounded-lg"
-            style={{ color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.9)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
+            style={{ color: "rgba(15,28,77,0.45)", background: "rgba(15,28,77,0.06)", border: "1px solid rgba(15,28,77,0.08)" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(15,28,77,0.9)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(15,28,77,0.45)"; }}
           >
             <ChevronLeft className="w-4 h-4" />
             Back
           </button>
 
           <div className="text-center">
-            <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "rgba(0,212,255,0.6)" }}>
+            <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "rgba(37,99,235,0.7)" }}>
               {chapter.subject} · Ch. {chapter.chapter_number}
             </p>
-            <p className="text-sm font-display font-bold mt-0.5 max-w-[200px] truncate" style={{ color: "rgba(255,255,255,0.92)" }}>
+            <p className="text-sm font-display font-bold mt-0.5 max-w-[200px] truncate" style={{ color: "rgba(15,28,77,0.92)" }}>
               {chapter.chapter_title}
             </p>
           </div>
@@ -90,23 +90,23 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
           <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-bold"
             style={{
-              background: allDone ? "rgba(0,255,148,0.12)" : "rgba(0,212,255,0.10)",
-              border:     `1px solid ${allDone ? "rgba(0,255,148,0.3)" : "rgba(0,212,255,0.2)"}`,
-              color:      allDone ? "#00FF94" : "#00D4FF",
+              background: allDone ? "rgba(0,255,148,0.12)" : "rgba(37,99,235,0.1)",
+              border:     `1px solid ${allDone ? "rgba(0,255,148,0.3)" : "rgba(37,99,235,0.2)"}`,
+              color:      allDone ? "#16a34a" : "#2563eb",
             }}
           >
             {answered}<span style={{ opacity: 0.5 }}>/{total}</span>
           </div>
         </div>
         {/* Animated fill progress bar */}
-        <div className="h-0.5 w-full" style={{ background: "rgba(255,255,255,0.04)" }}>
+        <div className="h-0.5 w-full" style={{ background: "rgba(15,28,77,0.06)" }}>
           <div
             className="h-full transition-all duration-500"
             style={{
               width: `${total > 0 ? (answered / total) * 100 : 0}%`,
               background: allDone
-                ? "linear-gradient(90deg, #00FF94, #00D4FF)"
-                : "linear-gradient(90deg, #00D4FF, #7C3AED)",
+                ? "linear-gradient(90deg, #16a34a, #2563eb)"
+                : "linear-gradient(90deg, #2563eb, #2563eb)",
               boxShadow: allDone ? "0 0 8px rgba(0,255,148,0.6)" : "0 0 8px rgba(0,212,255,0.5)",
             }}
           />
@@ -125,8 +125,8 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
               key={q.id}
               className="rounded-2xl overflow-hidden transition-all duration-200"
               style={{
-                background: isAnswered ? "rgba(0,212,255,0.03)" : "rgba(255,255,255,0.025)",
-                border:     isAnswered ? "1px solid rgba(0,212,255,0.2)" : "1px solid rgba(255,255,255,0.07)",
+                background: isAnswered ? "rgba(37,99,235,0.04)" : "rgba(255,255,255,0.9)",
+                border:     isAnswered ? "1px solid rgba(37,99,235,0.2)" : "1px solid rgba(15,28,77,0.07)",
               }}
             >
               {/* Question header */}
@@ -134,9 +134,9 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
                 <div
                   className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-xs font-mono font-bold mt-0.5"
                   style={{
-                    background: isAnswered ? "rgba(0,212,255,0.18)" : "rgba(255,255,255,0.07)",
-                    color:      isAnswered ? "#00D4FF" : "rgba(255,255,255,0.45)",
-                    border:     isAnswered ? "1px solid rgba(0,212,255,0.25)" : "1px solid rgba(255,255,255,0.1)",
+                    background: isAnswered ? "rgba(37,99,235,0.18)" : "rgba(15,28,77,0.07)",
+                    color:      isAnswered ? "#2563eb" : "rgba(15,28,77,0.45)",
+                    border:     isAnswered ? "1px solid rgba(37,99,235,0.25)" : "1px solid rgba(15,28,77,0.1)",
                   }}
                 >
                   {idx + 1}
@@ -149,14 +149,14 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
                     >
                       {q.difficulty}
                     </span>
-                    <span className="text-[10px] font-mono" style={{ color: "rgba(255,255,255,0.25)" }}>
+                    <span className="text-[10px] font-mono" style={{ color: "rgba(15,28,77,0.25)" }}>
                       1 mark
                     </span>
                     {isAnswered && (
-                      <CheckCircle className="w-3.5 h-3.5 ml-auto" style={{ color: "rgba(0,212,255,0.6)" }} />
+                      <CheckCircle className="w-3.5 h-3.5 ml-auto" style={{ color: "rgba(37,99,235,0.7)" }} />
                     )}
                   </div>
-                  <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.88)" }}>
+                  <p className="text-sm leading-relaxed" style={{ color: "rgba(15,28,77,0.88)" }}>
                     {q.question}
                   </p>
                 </div>
@@ -172,17 +172,17 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
                       onClick={() => choose(q.id, optIdx)}
                       className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all"
                       style={{
-                        background: isChosen ? "rgba(0,212,255,0.12)" : "rgba(255,255,255,0.025)",
-                        border:     isChosen ? "1px solid rgba(0,212,255,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                        background: isChosen ? "rgba(37,99,235,0.1)" : "rgba(255,255,255,0.9)",
+                        border:     isChosen ? "1px solid rgba(0,212,255,0.4)" : "1px solid rgba(15,28,77,0.06)",
                         color:      isChosen ? "#ffffff" : "rgba(255,255,255,0.6)",
                       }}
-                      onMouseEnter={e => { if (!isChosen) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
-                      onMouseLeave={e => { if (!isChosen) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.025)"; }}
+                      onMouseEnter={e => { if (!isChosen) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.95)"; }}
+                      onMouseLeave={e => { if (!isChosen) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.9)"; }}
                     >
                       <div
                         className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
                         style={{
-                          background: isChosen ? "#00D4FF" : "transparent",
+                          background: isChosen ? "#2563eb" : "transparent",
                           border:     isChosen ? "none" : "1.5px solid rgba(255,255,255,0.2)",
                         }}
                       >
@@ -202,7 +202,7 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
       {/* ── Footer ── */}
       <div
         className="flex-shrink-0 px-6 py-4 flex flex-col gap-3"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.01)" }}
+        style={{ borderTop: "1px solid rgba(15,28,77,0.07)", background: "rgba(255,255,255,0.01)" }}
       >
         {error && (
           <div className="flex items-center gap-2 text-sm px-3 py-2.5 rounded-xl"
@@ -213,7 +213,7 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
         )}
 
         {!allDone && (
-          <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.25)" }}>
+          <p className="text-xs text-center" style={{ color: "rgba(15,28,77,0.25)" }}>
             {total - answered} question{total - answered !== 1 ? "s" : ""} remaining
           </p>
         )}
@@ -224,8 +224,8 @@ export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, 
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-display font-bold text-sm transition-all"
           style={{
             background: allDone && !submitting
-              ? "linear-gradient(135deg, #00D4FF, #0284C7)"
-              : "rgba(255,255,255,0.05)",
+              ? "linear-gradient(135deg, #2563eb, #0284C7)"
+              : "rgba(255,255,255,0.95)",
             color:     allDone && !submitting ? "#031024" : "rgba(255,255,255,0.2)",
             cursor:    allDone && !submitting ? "pointer" : "not-allowed",
             boxShadow: allDone && !submitting ? "0 0 28px rgba(0,212,255,0.35)" : "none",

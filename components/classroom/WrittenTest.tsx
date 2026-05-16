@@ -137,23 +137,23 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
     const SECTION_COLORS: Record<string, string> = {
       A: "#FFB800",
       B: "#FF6B2B",
-      C: "#FF2D78",
+      C: "#dc2626",
     };
 
     return (
       <div className="flex flex-col h-full">
         <div className="flex-shrink-0 flex items-center justify-between px-6 py-3.5"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+          style={{ borderBottom: "1px solid rgba(15,28,77,0.07)" }}>
           <button onClick={onBack}
             className="flex items-center gap-1.5 text-sm transition-all px-3 py-1.5 rounded-lg"
-            style={{ color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ color: "rgba(15,28,77,0.45)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.9)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}>
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(15,28,77,0.45)"; }}>
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
           <div className="text-center">
             <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "rgba(255,184,0,0.6)" }}>Written Test</p>
-            <p className="text-sm font-display font-bold mt-0.5 max-w-[200px] truncate" style={{ color: "rgba(255,255,255,0.92)" }}>{chapter.chapter_title}</p>
+            <p className="text-sm font-display font-bold mt-0.5 max-w-[200px] truncate" style={{ color: "rgba(15,28,77,0.92)" }}>{chapter.chapter_title}</p>
           </div>
           <div className="w-20" />
         </div>
@@ -170,13 +170,13 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
                 style={{ background: "rgba(255,184,0,0.05)", border: "1px solid rgba(255,184,0,0.15)" }}>
                 <p className="text-lg mb-0.5">{icon}</p>
                 <p className="font-display font-black text-xl" style={{ color: "#FFB800" }}>{value}</p>
-                <p className="text-[10px] font-mono mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>{label}</p>
+                <p className="text-[10px] font-mono mt-0.5" style={{ color: "rgba(15,28,77,0.3)" }}>{label}</p>
               </div>
             ))}
           </div>
 
           {/* Section structure */}
-          <p className="text-[10px] font-mono uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.25)" }}>
+          <p className="text-[10px] font-mono uppercase tracking-widest mb-3" style={{ color: "rgba(15,28,77,0.25)" }}>
             Paper Structure
           </p>
           <div className="space-y-2 mb-7">
@@ -185,7 +185,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
               const totalMarks = qs.reduce((s, q) => s + q.marks, 0);
               return (
                 <div key={sec} className="rounded-xl overflow-hidden"
-                  style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  style={{ background: "rgba(255,255,255,0.9)", border: "1px solid rgba(15,28,77,0.07)" }}>
                   <div className="flex items-center justify-between px-4 py-2.5"
                     style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                     <div className="flex items-center gap-2">
@@ -197,13 +197,13 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
                         {SECTION_LABELS[sec]?.split("—")[1]?.trim()}
                       </span>
                     </div>
-                    <span className="text-[10px] font-mono" style={{ color: "rgba(255,255,255,0.3)" }}>
+                    <span className="text-[10px] font-mono" style={{ color: "rgba(15,28,77,0.3)" }}>
                       {totalMarks} marks
                     </span>
                   </div>
                   <div className="px-4 py-2.5 space-y-1.5">
                     {qs.map((q, i) => (
-                      <p key={q.id} className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+                      <p key={q.id} className="text-xs leading-relaxed" style={{ color: "rgba(15,28,77,0.45)" }}>
                         <span className="font-mono mr-1.5" style={{ color: `${secColor}88` }}>Q{i+1}.</span>
                         {q.question.slice(0, 85)}{q.question.length > 85 ? "…" : ""}
                       </p>
@@ -215,7 +215,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
           </div>
 
           {/* Instructions */}
-          <p className="text-[10px] font-mono uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.25)" }}>
+          <p className="text-[10px] font-mono uppercase tracking-widest mb-3" style={{ color: "rgba(15,28,77,0.25)" }}>
             Instructions
           </p>
           <div className="rounded-xl p-4 space-y-2.5"
@@ -232,13 +232,13 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
                   style={{ background: "rgba(255,184,0,0.15)", color: "#FFB800" }}>
                   {i + 1}
                 </div>
-                <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>{text}</p>
+                <p className="text-xs leading-relaxed" style={{ color: "rgba(15,28,77,0.5)" }}>{text}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.01)" }}>
+        <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: "1px solid rgba(15,28,77,0.07)", background: "rgba(255,255,255,0.01)" }}>
           <button onClick={startTest}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-display font-bold text-sm transition-all"
             style={{
@@ -271,10 +271,10 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
         <div className="flex-shrink-0"
           style={{
             background:   isUrgent ? "rgba(255,45,120,0.06)" : "rgba(255,184,0,0.04)",
-            borderBottom: `1px solid ${isUrgent ? "rgba(255,45,120,0.2)" : "rgba(255,184,0,0.15)"}`,
+            borderBottom: `1px solid ${isUrgent ? "rgba(220,38,38,0.2)" : "rgba(255,184,0,0.15)"}`,
           }}>
           <div className="flex items-center justify-between px-6 py-3">
-            <p className="text-xs font-mono truncate max-w-[140px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <p className="text-xs font-mono truncate max-w-[140px]" style={{ color: "rgba(15,28,77,0.35)" }}>
               {chapter.chapter_title}
             </p>
             <div className="flex items-center gap-2.5 px-4 py-1.5 rounded-full"
@@ -282,18 +282,18 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
                 background: isUrgent ? "rgba(255,45,120,0.12)" : "rgba(255,184,0,0.1)",
                 border: `1px solid ${isUrgent ? "rgba(255,45,120,0.3)" : "rgba(255,184,0,0.25)"}`,
               }}>
-              <Clock className="w-3.5 h-3.5" style={{ color: isUrgent ? "#FF2D78" : "#FFB800" }} />
+              <Clock className="w-3.5 h-3.5" style={{ color: isUrgent ? "#dc2626" : "#FFB800" }} />
               <span className="font-mono font-bold text-base tabular-nums"
-                style={{ color: isUrgent ? "#FF2D78" : "#FFB800" }}>
+                style={{ color: isUrgent ? "#dc2626" : "#FFB800" }}>
                 {formatTime(timeLeft)}
               </span>
             </div>
             <button
               onClick={() => changePhase("upload")}
               className="text-xs font-display font-bold px-3 py-1.5 rounded-lg transition-all"
-              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{ background: "rgba(15,28,77,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.1)" }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#fff"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.1)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.55)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.55)"; (e.currentTarget as HTMLElement).style.background = "rgba(15,28,77,0.06)"; }}
             >
               I&apos;m Done
             </button>
@@ -303,7 +303,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
             <div className="h-full transition-all duration-1000"
               style={{
                 width: `${timerPct * 100}%`,
-                background: isUrgent ? "#FF2D78" : "#FFB800",
+                background: isUrgent ? "#dc2626" : "#FFB800",
                 boxShadow: isUrgent ? "0 0 8px rgba(255,45,120,0.6)" : "0 0 8px rgba(255,184,0,0.5)",
               }} />
           </div>
@@ -312,7 +312,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
         {/* Questions */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-7">
           {Object.entries(bySection).map(([sec, qs]) => {
-            const secColors: Record<string, string> = { A: "#FFB800", B: "#FF6B2B", C: "#FF2D78" };
+            const secColors: Record<string, string> = { A: "#FFB800", B: "#FF6B2B", C: "#dc2626" };
             const secColor = secColors[sec] ?? "#FFB800";
             return (
               <div key={sec}>
@@ -335,7 +335,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
                     qCounter++;
                     return (
                       <div key={q.id} className="rounded-2xl p-4"
-                        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        style={{ background: "rgba(255,255,255,0.9)", border: "1px solid rgba(15,28,77,0.07)" }}>
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-xs font-mono font-bold mt-0.5"
                             style={{ background: `${secColor}15`, color: secColor, border: `1px solid ${secColor}25` }}>
@@ -344,11 +344,11 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full"
-                                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                style={{ background: "rgba(15,28,77,0.06)", color: "rgba(15,28,77,0.4)", border: "1px solid rgba(255,255,255,0.08)" }}>
                                 {q.marks} mark{q.marks > 1 ? "s" : ""}
                               </span>
                             </div>
-                            <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.88)" }}>
+                            <p className="text-sm leading-relaxed" style={{ color: "rgba(15,28,77,0.88)" }}>
                               {q.question}
                             </p>
                           </div>
@@ -372,28 +372,28 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
     return (
       <div className="flex flex-col h-full">
         <div className="flex-shrink-0 flex items-center justify-between px-6 py-3.5"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+          style={{ borderBottom: "1px solid rgba(15,28,77,0.07)" }}>
           <button
             onClick={() => { if (!uploading) changePhase("test"); }}
             className="flex items-center gap-1.5 text-sm transition-all px-3 py-1.5 rounded-lg"
             style={{
-              color: "rgba(255,255,255,0.45)",
+              color: "rgba(15,28,77,0.45)",
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.08)",
               pointerEvents: uploading ? "none" : "auto",
               opacity: uploading ? 0.4 : 1,
             }}
             onMouseEnter={e => { if (!uploading) (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.9)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(15,28,77,0.45)"; }}
           >
             <ChevronLeft className="w-4 h-4" />
             {timesUp ? "Time's Up" : "Back to Paper"}
           </button>
           <div className="text-center">
-            <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: timesUp ? "#FF2D78" : "rgba(255,184,0,0.7)" }}>
+            <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color: timesUp ? "#dc2626" : "rgba(255,184,0,0.7)" }}>
               {timesUp ? "⏱ Time's Up" : "Upload Answers"}
             </p>
-            <p className="text-sm font-display font-bold mt-0.5" style={{ color: "rgba(255,255,255,0.8)" }}>
+            <p className="text-sm font-display font-bold mt-0.5" style={{ color: "rgba(15,28,77,0.8)" }}>
               {images.length}/5 photos
             </p>
           </div>
@@ -401,7 +401,7 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          <p className="text-sm mb-5 leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+          <p className="text-sm mb-5 leading-relaxed" style={{ color: "rgba(15,28,77,0.45)" }}>
             Take clear photos of your written answer sheets. Make sure all answers are legible.
           </p>
 
@@ -466,21 +466,21 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
 
           {error && (
             <div className="flex items-center gap-2 text-xs px-3 py-2.5 rounded-xl mb-3"
-              style={{ background: "rgba(255,45,120,0.08)", color: "#FF2D78", border: "1px solid rgba(255,45,120,0.18)" }}>
+              style={{ background: "rgba(255,45,120,0.08)", color: "#dc2626", border: "1px solid rgba(255,45,120,0.18)" }}>
               <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
             </div>
           )}
 
           {images.length > 0 && (
             <div className="flex items-center gap-2 text-xs px-3 py-2.5 rounded-xl"
-              style={{ background: "rgba(0,255,148,0.05)", color: "rgba(0,255,148,0.75)", border: "1px solid rgba(0,255,148,0.14)" }}>
+              style={{ background: "rgba(22,163,74,0.06)", color: "rgba(0,255,148,0.75)", border: "1px solid rgba(0,255,148,0.14)" }}>
               <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
               {images.length} photo{images.length > 1 ? "s" : ""} ready to submit
             </div>
           )}
         </div>
 
-        <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.01)" }}>
+        <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: "1px solid rgba(15,28,77,0.07)", background: "rgba(255,255,255,0.01)" }}>
           <button
             onClick={submitAnswers}
             disabled={!images.length || uploading}
@@ -517,10 +517,10 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
       </div>
 
       <div className="text-center max-w-xs">
-        <p className="font-display font-bold text-base mb-2" style={{ color: "rgba(255,255,255,0.85)" }}>
+        <p className="font-display font-bold text-base mb-2" style={{ color: "rgba(15,28,77,0.85)" }}>
           Evaluating your answers
         </p>
-        <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.35)" }}>
+        <p className="text-sm leading-relaxed" style={{ color: "rgba(15,28,77,0.35)" }}>
           AI is reading your handwriting and scoring each answer against the marking scheme. This takes 20–40 seconds.
         </p>
       </div>
@@ -528,19 +528,19 @@ export function WrittenTest({ paperId, questions, chapter, onBack, onComplete, o
       <div className="flex flex-col gap-2 w-full max-w-xs">
         {["Reading handwriting…", "Matching to marking scheme…", "Generating feedback…"].map((step, i) => (
           <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-xl"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            style={{ background: "rgba(255,255,255,0.92)", border: "1px solid rgba(15,28,77,0.06)" }}>
             <div className="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center"
               style={{ background: "rgba(255,184,0,0.15)", border: "1px solid rgba(255,184,0,0.25)" }}>
               <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#FFB800", animationDelay: `${i * 0.3}s` }} />
             </div>
-            <span className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.4)" }}>{step}</span>
+            <span className="text-xs font-mono" style={{ color: "rgba(15,28,77,0.4)" }}>{step}</span>
           </div>
         ))}
       </div>
 
       {error && (
         <div className="flex items-center gap-2 text-xs px-4 py-2.5 rounded-xl max-w-sm"
-          style={{ background: "rgba(255,45,120,0.08)", color: "#FF2D78", border: "1px solid rgba(255,45,120,0.18)" }}>
+          style={{ background: "rgba(255,45,120,0.08)", color: "#dc2626", border: "1px solid rgba(255,45,120,0.18)" }}>
           <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
         </div>
       )}

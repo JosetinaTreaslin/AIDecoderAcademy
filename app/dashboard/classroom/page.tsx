@@ -26,8 +26,7 @@ interface PaperData {
   chapter: Chapter; type: "mcq" | "written";
 }
 
-// Light-theme views use background image; test/result views use dark focus mode
-const LIGHT_VIEWS: View[] = ["pick", "select-type", "loading"];
+// All views use the light glass panel — consistent with background image theme
 
 const FADE = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -10 }, transition: { duration: 0.22 } };
 
@@ -41,7 +40,7 @@ export default function ClassroomPage() {
   const [loadingMsg,     setLoadingMsg]    = useState("");
   const [writtenPhase,   setWrittenPhase]  = useState("intro");
 
-  const isLight = LIGHT_VIEWS.includes(view);
+  const isLight = true; // always light
 
   const handleChapterSelect = (ch: Chapter) => { setChapter(ch); setLoadError(null); setView("select-type"); };
 
@@ -98,23 +97,11 @@ export default function ClassroomPage() {
         position:           "relative",
       }}
     >
-      {/* ── Overlay — light for pick/select, dark for test/result ── */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={isLight ? "light" : "dark"}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{    opacity: 0 }}
-          transition={{ duration: 0.4 }}
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: isLight
-              ? "linear-gradient(160deg, rgba(230,238,255,0.25) 0%, rgba(210,225,255,0.15) 100%)"
-              : "linear-gradient(160deg, rgba(4,6,22,0.88) 0%, rgba(6,8,28,0.84) 100%)",
-            zIndex: 0,
-          }}
-        />
-      </AnimatePresence>
+      {/* ── Light overlay — brightens the image slightly ── */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: "linear-gradient(160deg, rgba(230,238,255,0.2) 0%, rgba(210,225,255,0.1) 100%)",
+        zIndex: 0,
+      }} />
 
       {/* ── Vignette ── */}
       <div className="absolute inset-0 pointer-events-none" style={{
@@ -197,6 +184,38 @@ export default function ClassroomPage() {
                   </motion.div>
                 )}
 
+                {/* MCQ test */}
+                {view === "mcq-test" && paper && paper.type === "mcq" && (
+                  <motion.div key="mcq-test" {...FADE} className="flex-1 overflow-hidden flex flex-col">
+                    <MCQTest paperId={paper.paperId} questionIds={paper.questionIds}
+                      questions={paper.questions as MCQQuestion[]} chapter={paper.chapter}
+                      onComplete={handleMcqComplete} onBack={() => setView("select-type")} />
+                  </motion.div>
+                )}
+
+                {/* Written test */}
+                {view === "written-test" && paper && paper.type === "written" && (
+                  <motion.div key="written-test" {...FADE} className="flex-1 overflow-hidden flex flex-col">
+                    <WrittenTest paperId={paper.paperId} questions={paper.questions as WrittenQuestion[]}
+                      chapter={paper.chapter} onComplete={handleWrittenComplete}
+                      onBack={() => setView("select-type")} onPhaseChange={setWrittenPhase} />
+                  </motion.div>
+                )}
+
+                {/* MCQ result */}
+                {view === "mcq-result" && mcqResult && paper && (
+                  <motion.div key="mcq-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
+                    <ScoreReport result={mcqResult} chapterTitle={paper.chapter.chapter_title} onRetry={retryMcq} />
+                  </motion.div>
+                )}
+
+                {/* Written result */}
+                {view === "written-result" && writtenResult && paper && (
+                  <motion.div key="written-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
+                    <WrittenScoreReport result={writtenResult} chapterTitle={paper.chapter.chapter_title} onRetry={retryWritten} />
+                  </motion.div>
+                )}
+
               </AnimatePresence>
 
               {/* Bottom shimmer */}
@@ -206,59 +225,8 @@ export default function ClassroomPage() {
             </div>
           )}
 
-          {/* Dark views — focused test panel */}
-          {!isLight && (
-            <div className="flex-1 flex flex-col overflow-hidden max-w-2xl mx-auto w-full rounded-2xl"
-              style={{
-                background:     "rgba(6,8,20,0.82)",
-                border:         "1px solid rgba(200,168,75,0.18)",
-                backdropFilter: "blur(28px)",
-                boxShadow:      "0 24px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(200,168,75,0.12)",
-              }}>
-              {/* Gold shimmer top */}
-              <div className="h-px w-full flex-shrink-0" style={{
-                background: `linear-gradient(90deg, transparent, ${GOLD}, #00D4FF, ${GOLD}, transparent)`,
-                opacity: 0.5,
-              }} />
-
-              <AnimatePresence mode="wait">
-
-                {view === "mcq-test" && paper && paper.type === "mcq" && (
-                  <motion.div key="mcq-test" {...FADE} className="flex-1 overflow-hidden flex flex-col">
-                    <MCQTest paperId={paper.paperId} questionIds={paper.questionIds}
-                      questions={paper.questions as MCQQuestion[]} chapter={paper.chapter}
-                      onComplete={handleMcqComplete} onBack={() => setView("select-type")} />
-                  </motion.div>
-                )}
-
-                {view === "written-test" && paper && paper.type === "written" && (
-                  <motion.div key="written-test" {...FADE} className="flex-1 overflow-hidden flex flex-col">
-                    <WrittenTest paperId={paper.paperId} questions={paper.questions as WrittenQuestion[]}
-                      chapter={paper.chapter} onComplete={handleWrittenComplete}
-                      onBack={() => setView("select-type")} onPhaseChange={setWrittenPhase} />
-                  </motion.div>
-                )}
-
-                {view === "mcq-result" && mcqResult && paper && (
-                  <motion.div key="mcq-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
-                    <ScoreReport result={mcqResult} chapterTitle={paper.chapter.chapter_title} onRetry={retryMcq} />
-                  </motion.div>
-                )}
-
-                {view === "written-result" && writtenResult && paper && (
-                  <motion.div key="written-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
-                    <WrittenScoreReport result={writtenResult} chapterTitle={paper.chapter.chapter_title} onRetry={retryWritten} />
-                  </motion.div>
-                )}
-
-              </AnimatePresence>
-
-              {/* Gold shimmer bottom */}
-              <div className="h-px w-full flex-shrink-0" style={{
-                background: `linear-gradient(90deg, transparent, rgba(200,168,75,0.3), transparent)`,
-              }} />
-            </div>
-          )}
+          {/* Test / result views inside the same light glass panel */}
+          {!isLight && null /* never reached — kept for type safety */}
 
         </div>
       </ProctoringGuard>

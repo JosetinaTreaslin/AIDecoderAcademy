@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronRight, Loader2, BookOpen, FlaskConical, Leaf } from "lucide-react";
+import { ChevronRight, ChevronLeft, Loader2, BookOpen, FlaskConical, Leaf } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { Chapter } from "@/types";
 
 interface Props {
@@ -22,20 +23,14 @@ export function ChapterPicker({ onSelect }: Props) {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [grouped,  setGrouped]  = useState<Record<string, Chapter[]>>({});
   const [loading,  setLoading]  = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     fetch("/api/classroom/chapters")
       .then(r => r.json())
       .then(({ chapters: ch, grouped: gr }) => {
-        // Filter out test/debug chapters (chapter_number >= 90)
-        const real = (ch as Chapter[]).filter(c => c.chapter_number < 90);
-        const realGrouped: Record<string, Chapter[]> = {};
-        for (const [subj, chs] of Object.entries(gr as Record<string, Chapter[]>)) {
-          const filtered = chs.filter(c => c.chapter_number < 90);
-          if (filtered.length) realGrouped[subj] = filtered;
-        }
-        setChapters(real);
-        setGrouped(realGrouped);
+        setChapters(ch);
+        setGrouped(gr);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -60,6 +55,16 @@ export function ChapterPicker({ onSelect }: Props) {
 
   return (
     <div className="space-y-5 pb-4">
+      {/* Back to hub */}
+      <button
+        onClick={() => router.push("/dashboard")}
+        className="flex items-center gap-1.5 text-xs font-mono mb-1 transition-opacity hover:opacity-100 opacity-50"
+        style={{ color: NAVY }}
+      >
+        <ChevronLeft className="w-3.5 h-3.5" />
+        Back to Hub
+      </button>
+
       {Object.entries(grouped).map(([subject, chs]) => {
         const SubjectIcon = SUBJECT_ICONS[subject] ?? SUBJECT_ICONS.Default;
         return (

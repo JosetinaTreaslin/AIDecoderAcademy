@@ -27,7 +27,7 @@ function ScoreRing({ score, max }: { score: number; max: number }) {
   return (
     <div className="relative w-36 h-36 flex items-center justify-center">
       <svg width="144" height="144" viewBox="0 0 144 144" className="-rotate-90">
-        <circle cx="72" cy="72" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
+        <circle cx="72" cy="72" r={r} fill="none" stroke="rgba(15,28,77,0.06)" strokeWidth="10" />
         <circle
           cx="72" cy="72" r={r} fill="none"
           stroke={color} strokeWidth="10"
@@ -40,7 +40,7 @@ function ScoreRing({ score, max }: { score: number; max: number }) {
         <span className="font-display font-black text-3xl leading-none" style={{ color }}>
           {score}
         </span>
-        <span className="text-sm font-mono mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+        <span className="text-sm font-mono mt-0.5" style={{ color: "rgba(15,28,77,0.35)" }}>
           / {max}
         </span>
       </div>
@@ -77,11 +77,11 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
       {/* ── Hero ── */}
       <div
         className="flex-shrink-0 flex flex-col items-center gap-5 pt-8 pb-6 px-6"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+        style={{ borderBottom: "1px solid rgba(15,28,77,0.07)" }}
       >
         <div className="flex items-center gap-2">
           <Trophy className="w-4 h-4" style={{ color: "#00D4FF" }} />
-          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(15,28,77,0.35)" }}>
             MCQ Results
           </span>
           <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: "rgba(0,212,255,0.1)", color: "#00D4FF" }}>
@@ -95,7 +95,7 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
           <p className="font-display font-black text-3xl leading-none" style={{ color: grade.color }}>
             {grade.label}
           </p>
-          <p className="text-sm mt-2" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <p className="text-sm mt-2" style={{ color: "rgba(15,28,77,0.4)" }}>
             {Math.round(pct * 100)}% · {score} / {max_score} marks
           </p>
         </div>
@@ -124,12 +124,12 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
             const p  = qs.length > 0 ? s / qs.length : 0;
             return (
               <div key={d} className="flex-1 rounded-xl p-2.5"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                style={{ background: "rgba(255,255,255,0.92)", border: "1px solid rgba(15,28,77,0.07)" }}>
                 <span className="text-[10px] font-mono uppercase block mb-1.5" style={{ color: dc.text, opacity: 0.75 }}>{d}</span>
                 <span className="font-display font-black text-sm block" style={{ color: dc.text }}>
                   {s}/{qs.length}
                 </span>
-                <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
+                <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ background: "rgba(15,28,77,0.07)" }}>
                   <div className="h-full rounded-full transition-all duration-700"
                     style={{ width: `${p * 100}%`, background: dc.text }} />
                 </div>
@@ -143,7 +143,7 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
       <div className="flex-1 px-4 py-5 space-y-3">
         <div className="flex items-center gap-2 mb-2">
           <TrendingUp className="w-4 h-4" style={{ color: "#00D4FF" }} />
-          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(15,28,77,0.35)" }}>
             Question Review
           </span>
         </div>
@@ -165,7 +165,7 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
             >
               {/* Question top bar */}
               <div className="flex items-center gap-2.5 px-4 py-2.5"
-                style={{ background: correct ? "rgba(0,255,148,0.05)" : "rgba(255,45,120,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                style={{ background: correct ? "rgba(0,255,148,0.05)" : "rgba(255,45,120,0.05)", borderBottom: "1px solid rgba(255,255,255,0.95)" }}>
                 {correct
                   ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#00FF94" }} />
                   : <XCircle      className="w-4 h-4 flex-shrink-0" style={{ color: "#FF2D78" }} />
@@ -174,7 +174,7 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
                   Q{idx + 1}
                 </span>
                 <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-full"
-                  style={{ background: "rgba(255,255,255,0.06)", color: diff.text }}>
+                  style={{ background: "rgba(15,28,77,0.06)", color: diff.text }}>
                   {q.difficulty}
                 </span>
                 <span className="ml-auto text-xs font-mono" style={{ color: correct ? "#00FF94" : "#FF2D78" }}>
@@ -183,7 +183,7 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
               </div>
 
               <div className="p-4">
-                <p className="text-sm leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.85)" }}>
+                <p className="text-sm leading-relaxed mb-3" style={{ color: "rgba(15,28,77,0.85)" }}>
                   {q.question}
                 </p>
 
@@ -193,7 +193,7 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
                     const isCorrect = optIdx === fb?.correct_index;
                     const isChosen  = optIdx === chosen;
                     let bg = "transparent";
-                    let color = "rgba(255,255,255,0.35)";
+                    let color = "rgba(15,28,77,0.35)";
                     if (isCorrect) { bg = "rgba(0,255,148,0.09)"; color = "#00FF94"; }
                     else if (isChosen && !isCorrect) { bg = "rgba(255,45,120,0.09)"; color = "#FF2D78"; }
 
@@ -216,7 +216,7 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
                 {fb?.explanation && (
                   <div className="mt-3 px-3 py-2.5 rounded-xl"
                     style={{ background: "rgba(0,212,255,0.05)", borderLeft: "2px solid rgba(0,212,255,0.35)" }}>
-                    <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    <p className="text-xs leading-relaxed" style={{ color: "rgba(15,28,77,0.5)" }}>
                       {fb.explanation}
                     </p>
                   </div>
@@ -229,7 +229,7 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
       </div>
 
       {/* ── Retry ── */}
-      <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.01)" }}>
+      <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: "1px solid rgba(15,28,77,0.07)", background: "rgba(255,255,255,0.01)" }}>
         <button
           onClick={onRetry}
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-display font-bold text-sm transition-all"

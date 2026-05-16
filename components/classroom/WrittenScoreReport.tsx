@@ -26,7 +26,7 @@ function ScoreRing({ score, max }: { score: number; max: number }) {
   return (
     <div className="relative w-36 h-36 flex items-center justify-center">
       <svg width="144" height="144" viewBox="0 0 144 144" className="-rotate-90">
-        <circle cx="72" cy="72" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
+        <circle cx="72" cy="72" r={r} fill="none" stroke="rgba(15,28,77,0.06)" strokeWidth="10" />
         <circle cx="72" cy="72" r={r} fill="none" stroke={color} strokeWidth="10"
           strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
           style={{ transition: "stroke-dasharray 1.2s cubic-bezier(0.16,1,0.3,1)", filter: `drop-shadow(0 0 12px ${color})` }}
@@ -34,7 +34,7 @@ function ScoreRing({ score, max }: { score: number; max: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display font-black text-3xl leading-none" style={{ color }}>{score}</span>
-        <span className="text-sm font-mono mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>/ {max}</span>
+        <span className="text-sm font-mono mt-0.5" style={{ color: "rgba(15,28,77,0.35)" }}>/ {max}</span>
       </div>
     </div>
   );
@@ -53,7 +53,7 @@ function ScoreBar({ score, max }: { score: number; max: number }) {
   const color = pct >= 0.75 ? "#00FF94" : pct >= 0.5 ? "#FFB800" : "#FF2D78";
   return (
     <div className="flex items-center gap-2 mt-1.5">
-      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(15,28,77,0.06)" }}>
         <div className="h-full rounded-full transition-all duration-700"
           style={{ width: `${pct * 100}%`, background: color, boxShadow: `0 0 6px ${color}` }} />
       </div>
@@ -84,10 +84,10 @@ export function WrittenScoreReport({ result, chapterTitle, onRetry }: Props) {
 
       {/* Hero */}
       <div className="flex-shrink-0 flex flex-col items-center gap-5 pt-8 pb-6 px-6"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+        style={{ borderBottom: "1px solid rgba(15,28,77,0.07)" }}>
         <div className="flex items-center gap-2">
           <Trophy className="w-4 h-4" style={{ color: "#FFB800" }} />
-          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(15,28,77,0.35)" }}>
             Written Test Results
           </span>
           <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: "rgba(255,184,0,0.1)", color: "#FFB800" }}>
@@ -99,7 +99,7 @@ export function WrittenScoreReport({ result, chapterTitle, onRetry }: Props) {
 
         <div className="text-center">
           <p className="font-display font-black text-3xl leading-none" style={{ color: grade.color }}>{grade.label}</p>
-          <p className="text-sm mt-2" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <p className="text-sm mt-2" style={{ color: "rgba(15,28,77,0.4)" }}>
             {Math.round(pct * 100)}% · {score} / {max_score} marks
           </p>
         </div>
@@ -112,7 +112,7 @@ export function WrittenScoreReport({ result, chapterTitle, onRetry }: Props) {
             const secColor = SECTION_COLORS[sec] ?? "#FFB800";
             return (
               <div key={sec} className="rounded-xl px-4 py-3"
-                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                style={{ background: "rgba(255,255,255,0.9)", border: "1px solid rgba(15,28,77,0.07)" }}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-mono font-bold"
@@ -138,7 +138,7 @@ export function WrittenScoreReport({ result, chapterTitle, onRetry }: Props) {
       <div className="flex-1 px-4 py-5 space-y-5">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4" style={{ color: "#FFB800" }} />
-          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <span className="text-xs font-mono uppercase tracking-widest" style={{ color: "rgba(15,28,77,0.35)" }}>
             Question-by-Question Feedback
           </span>
         </div>
@@ -177,13 +177,13 @@ export function WrittenScoreReport({ result, chapterTitle, onRetry }: Props) {
                       }}>
                       {/* Question header */}
                       <div className="flex items-center justify-between px-4 py-2.5"
-                        style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.95)" }}>
                         <div className="flex items-center gap-2">
                           <Icon className="w-4 h-4 flex-shrink-0" style={{ color }} />
                           <span className="text-xs font-mono font-bold" style={{ color }}>Q{qCounter}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-16 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
+                          <div className="h-1.5 w-16 rounded-full overflow-hidden" style={{ background: "rgba(15,28,77,0.07)" }}>
                             <div className="h-full rounded-full" style={{ width: `${pctQ * 100}%`, background: color }} />
                           </div>
                           <span className="text-xs font-mono font-bold" style={{ color }}>
@@ -198,8 +198,8 @@ export function WrittenScoreReport({ result, chapterTitle, onRetry }: Props) {
                         </p>
                         {fb?.feedback && (
                           <div className="px-3 py-2.5 rounded-xl"
-                            style={{ background: "rgba(255,255,255,0.03)", borderLeft: `2px solid ${color}50` }}>
-                            <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+                            style={{ background: "rgba(255,255,255,0.92)", borderLeft: `2px solid ${color}50` }}>
+                            <p className="text-xs leading-relaxed" style={{ color: "rgba(15,28,77,0.5)" }}>
                               {fb.feedback}
                             </p>
                           </div>
@@ -216,7 +216,7 @@ export function WrittenScoreReport({ result, chapterTitle, onRetry }: Props) {
       </div>
 
       {/* Retry */}
-      <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.01)" }}>
+      <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: "1px solid rgba(15,28,77,0.07)", background: "rgba(255,255,255,0.01)" }}>
         <button onClick={onRetry}
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-display font-bold text-sm transition-all"
           style={{ background: "rgba(255,184,0,0.08)", border: "1px solid rgba(255,184,0,0.22)", color: "#FFB800" }}
