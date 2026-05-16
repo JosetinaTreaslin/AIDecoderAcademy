@@ -28,10 +28,10 @@ const DIFF_COLORS = {
 };
 
 export function MCQTest({ paperId, questionIds, questions, chapter, onComplete, onBack }: Props) {
-  const [answers,     setAnswers]     = useState<Record<string, number>>({});
-  const [submitting,  setSubmitting]  = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
-  const [startTime]                   = useState(() => Date.now());
+  const [answers,    setAnswers]    = useState<Record<string, number>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+  const [startTime]                 = useState(() => Date.now());
 
   const answered = Object.keys(answers).length;
   const total    = questions.length;
