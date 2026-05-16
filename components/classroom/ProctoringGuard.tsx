@@ -102,7 +102,7 @@ export function ProctoringGuard({ active, onDisqualify, children }: Props) {
   const accentBorder  = isLastWarning ? "rgba(255,45,120,0.4)"  : "rgba(255,184,0,0.35)";
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative flex-1 flex flex-col overflow-hidden">
       {children}
 
       {/* ── Warning overlay ─────────────────────────────────────────────────── */}
