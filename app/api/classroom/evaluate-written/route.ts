@@ -2,8 +2,10 @@
  * POST /api/classroom/evaluate-written
  * Body: { paper_id, image_urls: string[], time_taken_secs?: number }
  *
- * Gate 1: Validates the image is actually a handwritten answer sheet.
- * Gate 2: Transcribe-first strict evaluation with GPT-4o-mini vision.
+ * Gate 1 — rejects non-answer-sheet images immediately (0 for all).
+ * Gate 2 — evaluates each question with its own focused API call so the
+ *           model only needs to find ONE answer at a time, making partial
+ *           submissions (e.g. only Q2 uploaded) work correctly.
  */
 
 import { auth } from "@clerk/nextjs/server";
@@ -16,20 +18,17 @@ export const maxDuration = 120;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// ── Fetch and convert a URL to a base64 image part ───────────────────────────
+// ── Convert a Supabase URL to a base64 image part ────────────────────────────
 async function toBase64Part(url: string): Promise<OpenAI.Chat.ChatCompletionContentPart> {
   const res    = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch image: ${url}`);
   const buffer = await res.arrayBuffer();
   const mime   = res.headers.get("content-type") ?? "image/jpeg";
   const b64    = Buffer.from(buffer).toString("base64");
-  return {
-    type:      "image_url",
-    image_url: { url: `data:${mime};base64,${b64}`, detail: "high" },
-  };
+  return { type: "image_url", image_url: { url: `data:${mime};base64,${b64}`, detail: "high" } };
 }
 
-// ── Gate 1: Is this actually a handwritten answer sheet? ─────────────────────
+// ── Gate 1: reject non-answer-sheet images ───────────────────────────────────
 async function validateAnswerSheet(
   imageParts: OpenAI.Chat.ChatCompletionContentPart[]
 ): Promise<{ valid: boolean; reason: string }> {
@@ -42,13 +41,10 @@ async function validateAnswerSheet(
         {
           type: "text",
           text: `Look at this image carefully.
-
-Does this image show a handwritten answer sheet — i.e., paper with handwritten text that appears to be exam answers or science notes?
-
+Does it show a handwritten answer sheet — paper with handwritten text that appears to be exam answers?
 Answer with JSON only, no markdown:
 { "is_answer_sheet": true/false, "reason": "one sentence describing what you actually see" }
-
-Be strict. If you see a photograph, scenery, food, printed text only, a blank page, or anything other than handwritten exam answers on paper — answer false.`,
+Be strict. Photograph, scenery, food, printed text only, blank page = false.`,
         },
       ],
     }],
@@ -56,49 +52,77 @@ Be strict. If you see a photograph, scenery, food, printed text only, a blank pa
     temperature: 0,
   });
 
-  const raw   = res.choices[0].message.content ?? "{}";
-  const clean = raw.replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim();
+  const raw = res.choices[0].message.content ?? "{}";
   try {
-    const parsed = JSON.parse(clean);
+    const parsed = JSON.parse(raw.replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim());
     return { valid: !!parsed.is_answer_sheet, reason: parsed.reason ?? "" };
   } catch {
     return { valid: false, reason: "Could not parse validation response." };
   }
 }
 
-// ── Gate 2: Strict transcribe-first evaluation ───────────────────────────────
-const EVAL_SYSTEM = `You are a strict CBSE Class 10 Science examiner marking a handwritten answer sheet.
+// ── Gate 2: one focused API call per question ────────────────────────────────
+async function evaluateOneQuestion(
+  q: any,
+  imageParts: OpenAI.Chat.ChatCompletionContentPart[]
+): Promise<WrittenFeedbackItem> {
+  const prompt = `You are a strict CBSE Class 10 Science examiner.
 
-CRITICAL — SEARCHING FOR ANSWERS:
-- The student may have answered ALL questions or only SOME questions across one or more pages.
-- Do NOT assume answers appear in question order. Page 1 might contain Q3's answer; a single page might only have Q2's answer.
-- For EACH question, search through ALL images carefully for that question's answer. Look for:
-  * Question numbers or labels written by the student (e.g. "Q1", "Q2", "1.", "2.", "Answer 1")
-  * The content of the answer itself matching the question topic
-- If a question's answer is NOT found in any image, transcribe it as "[Not attempted]" and award 0.
-- Never penalise a correctly answered question just because other questions are unanswered.
+You are evaluating ONE specific question from a student's handwritten answer sheet.
 
-TWO-STEP PROCESS FOR EVERY QUESTION:
+QUESTION ID: ${q.id}
+QUESTION (${q.marks} marks): ${q.question}
+EXPECTED ANSWER: ${q.expected_answer}
+MARKING SCHEME: ${q.marking_scheme}
 
-STEP 1 — FIND & TRANSCRIBE: Search all images for this question's answer. Write out word-for-word exactly what the student wrote. For equations, copy each one exactly. If illegible write "[illegible]". If not found in any image, write "[Not attempted]".
+INSTRUCTIONS:
+1. Search ALL images carefully for the student's answer to THIS question.
+   - The student may have written answers to multiple questions — only focus on this one.
+   - Look for question numbers, labels, or the answer content matching this topic.
+2. TRANSCRIBE exactly what the student wrote for this question. Do not paraphrase.
+   - If the answer is NOT present in any image, write "[Not attempted]".
+   - If illegible, write "[illegible]".
+3. SCORE based ONLY on your transcription against the marking scheme.
+   - For list-based questions (equations, points): score cannot exceed the count of items transcribed.
+   - Each mark point must be explicitly in the transcription.
+   - Do NOT give benefit of the doubt. Unbalanced equations = 0 for that equation.
+   - "[Not attempted]" or "[illegible]" = 0.
 
-STEP 2 — SCORE: Based ONLY on your transcription, compare against the marking scheme and award marks.
-
-STRICT MARKING RULES:
-- For list-based questions (equations, points): count transcribed items first. Score CANNOT exceed that count.
-- Each mark point must be EXPLICITLY present in your transcription to earn that mark.
-- Do NOT award marks for anything not in your transcription.
-- Do NOT give benefit of the doubt or infer meaning.
-- A chemical equation is correct only if formulae AND balancing are both right. Unbalanced = 0.
-- "[Not attempted]" or "[illegible]" = 0. Never exceed the stated maximum.
-
-RESPONSE FORMAT — valid JSON only, no markdown:
+Return JSON only, no markdown:
 {
-  "w1": { "read": "Exactly what student wrote, or [Not attempted].", "score": 1, "max": 2, "feedback": "What was correct and what mark point was missing." }
+  "read": "exact transcription of what student wrote, or [Not attempted]",
+  "score": <number 0 to ${q.marks}>,
+  "feedback": "1-3 sentences: what was correct and what specific mark point was missing or wrong"
+}`;
+
+  const res = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{
+      role: "user",
+      content: [
+        ...imageParts,
+        { type: "text", text: prompt },
+      ],
+    }],
+    max_tokens: 400,
+    temperature: 0.1,
+  });
+
+  const raw = res.choices[0].message.content ?? "{}";
+  try {
+    const parsed = JSON.parse(raw.replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim());
+    return {
+      score:    Math.min(Math.max(0, parsed.score ?? 0), q.marks),
+      max:      q.marks,
+      feedback: parsed.feedback ?? "",
+    };
+  } catch {
+    console.error(`[evaluate-written] Parse failed for ${q.id}:`, raw.slice(0, 200));
+    return { score: 0, max: q.marks, feedback: "Evaluation failed for this question." };
+  }
 }
 
-The "read" field is mandatory and anchors the score.`;
-
+// ── Main handler ─────────────────────────────────────────────────────────────
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
@@ -124,104 +148,49 @@ export async function POST(req: Request) {
     if (!paper) return new Response("Paper not found", { status: 404 });
 
     const questions: any[] = paper.questions as any[];
+    const maxScore = questions.reduce((s: number, q: any) => s + q.marks, 0);
 
-    // Convert all images to base64 once — reused across both calls
+    // Convert all images to base64 once — reused across all calls
     const imageParts = await Promise.all(image_urls.map(toBase64Part));
 
-    // ── Gate 1: reject non-answer-sheet images immediately ───────────────────
+    // ── Gate 1: reject non-answer-sheet images ────────────────────────────────
     const { valid, reason } = await validateAnswerSheet(imageParts);
 
     if (!valid) {
-      // Build zero-score feedback for every question
-      const maxScore = questions.reduce((s: number, q: any) => s + q.marks, 0);
       const feedback: Record<string, WrittenFeedbackItem> = {};
       for (const q of questions) {
         feedback[q.id] = {
           score:    0,
           max:      q.marks,
-          feedback: `No handwritten answers detected. The uploaded image does not appear to be an answer sheet (${reason}). Please upload a clear photo of your written answers.`,
+          feedback: `No handwritten answers detected (${reason}). Please upload a clear photo of your written answers.`,
         };
       }
-
       await supabase.from("student_attempts").insert({
-        profile_id:        profileRow.id,
-        question_paper_id: paper_id,
-        question_ids:      questions.map((q: any) => q.id),
-        answers:           { image_urls },
-        score:             0,
-        max_score:         maxScore,
-        feedback,
-        time_taken_secs:   time_taken_secs ?? null,
+        profile_id: profileRow.id, question_paper_id: paper_id,
+        question_ids: questions.map((q: any) => q.id),
+        answers: { image_urls }, score: 0, max_score: maxScore, feedback,
+        time_taken_secs: time_taken_secs ?? null,
       });
-
       return Response.json({ score: 0, max_score: maxScore, feedback });
     }
 
-    // ── Gate 2: full evaluation ───────────────────────────────────────────────
-    const questionsBlock = questions.map((q: any) => [
-      `[${q.id} | Section ${q.section} | ${q.marks} marks]`,
-      `Question: ${q.question}`,
-      `Expected answer: ${q.expected_answer}`,
-      `Marking scheme: ${q.marking_scheme}`,
-    ].join("\n")).join("\n\n");
+    // ── Gate 2: evaluate each question independently in parallel ──────────────
+    const results = await Promise.all(
+      questions.map((q: any) => evaluateOneQuestion(q, imageParts))
+    );
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: EVAL_SYSTEM },
-        {
-          role: "user",
-          content: [
-            ...imageParts,
-            {
-              type: "text",
-              text: `Questions and marking schemes:\n\n${questionsBlock}\n\nEvaluate the handwritten answers from the image(s) above.`,
-            },
-          ],
-        },
-      ],
-      max_tokens: 2000,
-      temperature: 0.2,
+    const feedback: Record<string, WrittenFeedbackItem> = {};
+    let score = 0;
+    questions.forEach((q: any, i: number) => {
+      feedback[q.id] = results[i]!;
+      score += results[i]!.score;
     });
 
-    const raw   = completion.choices[0].message.content ?? "{}";
-    const clean = raw.replace(/^```json\s*/m, "").replace(/```\s*$/m, "").trim();
-
-    let rawFeedback: Record<string, any>;
-    try {
-      rawFeedback = JSON.parse(clean);
-    } catch {
-      console.error("[evaluate-written] Parse failed:", raw.slice(0, 300));
-      return new Response("Evaluation parsing failed", { status: 500 });
-    }
-
-    // Strip "read" field, cap score at question max
-    const feedback: Record<string, WrittenFeedbackItem> = {};
-    for (const q of questions) {
-      const fb = rawFeedback[q.id];
-      if (!fb) continue;
-      feedback[q.id] = {
-        score:    Math.min(Math.max(0, fb.score ?? 0), q.marks),
-        max:      q.marks,
-        feedback: fb.feedback ?? "",
-      };
-    }
-
-    let score = 0, maxScore = 0;
-    for (const q of questions) {
-      const fb = feedback[q.id];
-      if (fb) { score += fb.score; maxScore += q.marks; }
-    }
-
     await supabase.from("student_attempts").insert({
-      profile_id:        profileRow.id,
-      question_paper_id: paper_id,
-      question_ids:      questions.map((q: any) => q.id),
-      answers:           { image_urls },
-      score,
-      max_score:         maxScore,
-      feedback,
-      time_taken_secs:   time_taken_secs ?? null,
+      profile_id: profileRow.id, question_paper_id: paper_id,
+      question_ids: questions.map((q: any) => q.id),
+      answers: { image_urls }, score, max_score: maxScore, feedback,
+      time_taken_secs: time_taken_secs ?? null,
     });
 
     return Response.json({ score, max_score: maxScore, feedback });
