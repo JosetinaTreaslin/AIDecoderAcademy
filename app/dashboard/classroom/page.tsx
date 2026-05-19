@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BookOpenCheck, Loader2 } from "lucide-react";
 import { ChapterPicker }      from "@/components/classroom/ChapterPicker";
 import { ChapterMapPage }    from "@/components/classroom/ChapterMapPage";
+import { ObjectivePage }    from "@/components/classroom/ObjectivePage";
 import { TestTypeSelector } from "@/components/classroom/TestTypeSelector";
 import { MCQTest, type SubmitResult as MCQResult } from "@/components/classroom/MCQTest";
 import { ScoreReport }      from "@/components/classroom/ScoreReport";
@@ -314,7 +315,7 @@ function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-type View = "landing" | "chapters" | "pick" | "select-type" | "loading"
+type View = "landing" | "chapters" | "objective" | "pick" | "select-type" | "loading"
           | "mcq-test" | "written-test" | "mcq-result" | "written-result";
 
 interface PaperData {
@@ -393,8 +394,19 @@ export default function ClassroomPage() {
   if (view === "chapters") {
     return (
       <ChapterMapPage
-        onChapterSelect={(ch) => { setChapter(ch); setView("select-type"); }}
+        onChapterSelect={(ch) => { setChapter(ch); setView("objective"); }}
         onBack={() => setView("landing")}
+      />
+    );
+  }
+
+  // ── Objective page — full viewport ────────────────────────────────────────
+  if (view === "objective" && selectedChapter) {
+    return (
+      <ObjectivePage
+        chapter={selectedChapter}
+        onSelectTest={(type) => loadPaper(selectedChapter, type)}
+        onBack={() => setView("chapters")}
       />
     );
   }

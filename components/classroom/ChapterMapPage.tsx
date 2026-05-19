@@ -322,7 +322,7 @@ export function ChapterMapPage({ onChapterSelect, onBack }: Props) {
         {/* Leaderboard panel — matches hub page exactly */}
         <motion.div initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }}
           transition={{ duration:0.45 }}
-          style={{ position:"absolute", top:12, right:12, height:"75%", width:280, zIndex:5,
+          style={{ position:"absolute", top:80, right:20, height:"60%", width:320, zIndex:5,
             display:"flex", flexDirection:"column", borderRadius:16, overflow:"hidden",
             background:"rgba(255,255,255,0.90)", backdropFilter:"blur(20px)",
             boxShadow:"0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
