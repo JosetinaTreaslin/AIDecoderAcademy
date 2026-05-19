@@ -6,6 +6,7 @@ import { BookOpenCheck, Loader2 } from "lucide-react";
 import { ChapterPicker }      from "@/components/classroom/ChapterPicker";
 import { ChapterMapPage }    from "@/components/classroom/ChapterMapPage";
 import { ObjectivePage }    from "@/components/classroom/ObjectivePage";
+import { ClassroomArena }  from "@/components/classroom/ClassroomArena";
 import { TestTypeSelector } from "@/components/classroom/TestTypeSelector";
 import { MCQTest, type SubmitResult as MCQResult } from "@/components/classroom/MCQTest";
 import { ScoreReport }      from "@/components/classroom/ScoreReport";
@@ -315,7 +316,7 @@ function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-type View = "landing" | "chapters" | "objective" | "pick" | "select-type" | "loading"
+type View = "landing" | "chapters" | "objective" | "arena" | "pick" | "select-type" | "loading"
           | "mcq-test" | "written-test" | "mcq-result" | "written-result";
 
 interface PaperData {
@@ -407,6 +408,17 @@ export default function ClassroomPage() {
         chapter={selectedChapter}
         onSelectTest={(type) => loadPaper(selectedChapter, type)}
         onBack={() => setView("chapters")}
+        onEnterArena={() => setView("arena")}
+      />
+    );
+  }
+
+  // ── Classroom arena — full viewport ───────────────────────────────────────
+  if (view === "arena" && selectedChapter) {
+    return (
+      <ClassroomArena
+        chapter={selectedChapter}
+        onBack={() => setView("objective")}
       />
     );
   }

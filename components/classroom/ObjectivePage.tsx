@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import type { Chapter } from "@/types";
 
 interface Props {
-  chapter:      Chapter;
-  onSelectTest: (type: "mcq" | "written") => void;
-  onBack:       () => void;
+  chapter:       Chapter;
+  onSelectTest:  (type: "mcq" | "written") => void;
+  onBack:        () => void;
+  onEnterArena?: () => void;
 }
 
 // ── Lock medallion (same as arena / chapter map) ──────────────────────────────
@@ -92,7 +93,7 @@ const BOARD_CARDS = [
 ] as const;
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function ObjectivePage({ chapter, onSelectTest, onBack }: Props) {
+export function ObjectivePage({ chapter, onSelectTest, onBack, onEnterArena }: Props) {
   const router = useRouter();
 
   return (
@@ -147,9 +148,9 @@ export function ObjectivePage({ chapter, onSelectTest, onBack }: Props) {
         </div>
       ))}
 
-      {/* "Enter Classroom" button — center circle, ~top:61% left:35% */}
+      {/* "Enter Classroom" button — center circle */}
       <motion.button
-        onClick={() => router.push("/dashboard/playground")}
+        onClick={() => onEnterArena ? onEnterArena() : router.push("/dashboard/playground")}
         className="absolute rounded-2xl"
         style={{ top: "64%", left: "33%", width: "14%", height: "6%", zIndex: 10, cursor: "pointer" }}
         whileHover={{ background: "rgba(124,58,237,0.18)", boxShadow: "0 0 24px rgba(124,58,237,0.4)" }}
