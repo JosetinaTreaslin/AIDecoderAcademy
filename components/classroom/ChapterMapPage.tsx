@@ -25,29 +25,27 @@ const PODIUM_META = [
 ];
 
 // ── Chapter tiles: positioned in a pentagon around the center ─────────────────
-// Center of pentagon is at (47%, 50%) of the body div.
-// Radius = 250px. All positions are top-left corner of the 290×145 tile.
+// Center at (47%, 50%) of body. Radius = 290px. Tile size 300×145.
 const TILES = [
   { key:"chemical", src:"/classroom/chapter/chemical.png", num:1, locked:false,
-    style:{ top:"calc(50% - 322px)", left:"calc(47% - 145px)" } },
+    style:{ top:"calc(50% - 362px)", left:"calc(47% - 150px)" } },
   { key:"acids",    src:"/classroom/chapter/acids.png",    num:2, locked:true,
-    style:{ top:"calc(50% - 149px)", left:"calc(47% + 93px)" } },
+    style:{ top:"calc(50% - 162px)", left:"calc(47% + 131px)" } },
   { key:"metals",   src:"/classroom/chapter/metals.png",   num:3, locked:true,
-    style:{ top:"calc(50% + 130px)", left:"calc(47% + 2px)" } },
+    style:{ top:"calc(50% + 163px)", left:"calc(47% + 25px)" } },
   { key:"carbon",   src:"/classroom/chapter/carbon.png",   num:4, locked:true,
-    style:{ top:"calc(50% + 130px)", left:"calc(47% - 292px)" } },
+    style:{ top:"calc(50% + 163px)", left:"calc(47% - 315px)" } },
   { key:"periodic", src:"/classroom/chapter/periodic.png", num:5, locked:true,
-    style:{ top:"calc(50% - 149px)", left:"calc(47% - 383px)" } },
+    style:{ top:"calc(50% - 162px)", left:"calc(47% - 421px)" } },
 ] as const;
 
-// SVG connector coordinates (viewBox 0 0 100 100, preserveAspectRatio="none")
-// Each line goes from pentagon center (47,50) to each tile center
+// SVG connectors — from pentagon center (47,50) to each tile center
 const CONNECTORS = [
-  { id:"c1", x1:47, y1:50, x2:47,   y2:16 },  // → chemical (top)
-  { id:"c2", x1:47, y1:50, x2:63.5, y2:40 },  // → acids    (right)
-  { id:"c3", x1:47, y1:50, x2:57,   y2:77 },  // → metals   (bottom-right)
-  { id:"c4", x1:47, y1:50, x2:37,   y2:77 },  // → carbon   (bottom-left)
-  { id:"c5", x1:47, y1:50, x2:30.5, y2:40 },  // → periodic (left)
+  { id:"c1", x1:47, y1:50, x2:47,   y2:11  },  // → chemical (top)
+  { id:"c2", x1:47, y1:50, x2:66,   y2:38  },  // → acids    (right)
+  { id:"c3", x1:47, y1:50, x2:59,   y2:82  },  // → metals   (bottom-right)
+  { id:"c4", x1:47, y1:50, x2:35,   y2:82  },  // → carbon   (bottom-left)
+  { id:"c5", x1:47, y1:50, x2:28,   y2:38  },  // → periodic (left)
 ];
 
 // ── Lock icon (reused from arena style) ───────────────────────────────────────
@@ -244,24 +242,24 @@ export function ChapterMapPage({ onChapterSelect, onBack }: Props) {
           ))}
         </svg>
 
-        {/* Center exam circle */}
+        {/* Center exam circle — 300px, lock centered over image */}
         <motion.div initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }}
           transition={{ duration:0.5, delay:0.1 }}
           className="absolute"
-          style={{ width:260, height:260, zIndex:3,
-            top:"calc(50% - 130px)", left:"calc(47% - 130px)" }}>
+          style={{ width:300, height:300, zIndex:3,
+            top:"calc(50% - 150px)", left:"calc(47% - 150px)" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/classroom/chapter/mid_term_exam.png" alt="Integrated Exam Practice"
             className="w-full h-full object-contain select-none" draggable={false} />
-          {/* Lock at bottom-center of image */}
-          <div className="absolute flex items-center justify-center"
-            style={{ bottom:8, left:"50%", transform:"translateX(-50%)" }}>
+          {/* Lock centered over the image */}
+          <div className="absolute inset-0 flex items-center justify-center"
+            style={{ paddingTop:80 /* push below the title text in the image */ }}>
             <div className="flex items-center justify-center rounded-full"
-              style={{ width:36, height:36,
+              style={{ width:40, height:40,
                 background:"linear-gradient(180deg,#0B1A2F,#050E1F)",
                 border:"1.5px solid rgba(125,211,252,0.65)",
-                boxShadow:"0 0 16px rgba(0,212,255,0.5), inset 0 0 8px rgba(0,212,255,0.18)" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                boxShadow:"0 0 18px rgba(0,212,255,0.55), inset 0 0 10px rgba(0,212,255,0.2)" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <rect x="5" y="11" width="14" height="10" rx="2" stroke="#E8F4FF" strokeWidth="1.8"/>
                 <path d="M8 11V8a4 4 0 1 1 8 0v3" stroke="#E8F4FF" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
@@ -273,7 +271,7 @@ export function ChapterMapPage({ onChapterSelect, onBack }: Props) {
         {TILES.map((tile, i) => (
           <motion.div key={tile.key}
             className="absolute"
-            style={{ ...tile.style, width:290, zIndex:4, cursor:tile.locked?"not-allowed":"pointer" }}
+            style={{ ...tile.style, width:300, zIndex:4, cursor:tile.locked?"not-allowed":"pointer" }}
             initial={{ opacity:0, scale:0.88 }} animate={{ opacity:1, scale:1 }}
             transition={{ duration:0.4, delay:0.2 + i*0.08 }}
             whileHover={!tile.locked ? { scale:1.04 } : {}}
@@ -321,21 +319,22 @@ export function ChapterMapPage({ onChapterSelect, onBack }: Props) {
           </div>
         </motion.div>
 
-        {/* Leaderboard panel — right */}
+        {/* Leaderboard panel — matches hub page exactly */}
         <motion.div initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }}
           transition={{ duration:0.45 }}
-          className="absolute flex flex-col rounded-2xl overflow-hidden"
-          style={{ top:16, right:16, bottom:16, width:290, zIndex:5,
-            background:"rgba(255,255,255,0.92)", backdropFilter:"blur(20px)",
-            border:"1px solid rgba(255,255,255,0.75)",
-            boxShadow:"0 8px 32px rgba(0,0,0,0.10)" }}>
+          style={{ position:"absolute", top:12, right:12, bottom:12, width:280, zIndex:5,
+            display:"flex", flexDirection:"column", borderRadius:16, overflow:"hidden",
+            background:"rgba(255,255,255,0.90)", backdropFilter:"blur(20px)",
+            boxShadow:"0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
+            border:"1px solid rgba(255,255,255,0.75)" }}>
 
           {/* Header */}
-          <div className="flex-shrink-0 flex items-center gap-2 px-4 py-3"
+          <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2.5"
             style={{ background:"linear-gradient(135deg,rgba(124,58,237,0.10),rgba(0,212,255,0.05))",
               borderBottom:"1px solid rgba(0,0,0,0.06)" }}>
-            <span style={{ fontSize:18 }}>🏆</span>
-            <span className="font-black tracking-tight flex-1" style={{ fontSize:14, color:"#1a1a2e" }}>
+            <span style={{ fontSize:16 }}>🏆</span>
+            <span className="font-black tracking-tight flex-1"
+              style={{ fontSize:13, color:"#1a1a2e", fontFamily:"var(--font-space-grotesk,'Space Grotesk',sans-serif)" }}>
               Leaderboard
             </span>
           </div>
