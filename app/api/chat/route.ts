@@ -4,7 +4,6 @@ import { createAdminClient } from "@/lib/supabase";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { ARENAS } from "@/lib/arenas";
 import type { ChatRequest, Profile } from "@/types";
-import { isEnabled } from "@/lib/featureFlags";
 import { buildPlaygroundSystemPrompt } from "@/lib/playgroundPersona";
 import { moderateContent } from "@/lib/aidaSafety";
 
@@ -81,7 +80,7 @@ export async function POST(req: Request) {
     const isInit = message === "__init__";
 
     // Pre-flight moderation (skip for __init__ pseudo-message)
-    if (!isInit && isEnabled("USE_NEW_AIDA_PROMPTS")) {
+    if (!isInit) {
       const verdict = await moderateContent(message);
       if (!verdict.allow) {
         console.warn("[chat] flagged input:", verdict.reason);
@@ -139,19 +138,13 @@ export async function POST(req: Request) {
     // Build system prompt
     const arena = ARENAS.find(a => a.id === (profile.active_arena ?? 1)) ?? ARENAS[0];
 
-    const fullSystem = isEnabled("USE_NEW_AIDA_PROMPTS")
-      ? buildPlaygroundSystemPrompt({
-          profile:           profile as Profile,
-          mode,
-          outputType,
-          arenaTutorPersona: arena.tutorPersona,
-          isObjectiveMode,
-        })
-      : (() => {
-          const systemPrompt = buildSystemPrompt(profile.age_group, mode, profile.display_name, profile.interests, arena.tutorPersona);
-          const outputInstruction = OUTPUT_INSTRUCTIONS[outputType] ?? OUTPUT_INSTRUCTIONS.text;
-          return `${systemPrompt}\n\nOUTPUT FORMAT: ${outputInstruction}`;
-        })();
+    const fullSystem = buildPlaygroundSystemPrompt({
+        profile:           profile as Profile,
+        mode,
+        outputType,
+        arenaTutorPersona: arena.tutorPersona,
+        isObjectiveMode,
+      })
 
     // ── Build message history for OpenAI ──────────────────────────────────
     // Each prior turn may include an outputType. We rebuild the history as

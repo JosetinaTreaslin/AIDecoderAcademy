@@ -22,3 +22,16 @@ docs/
 nul
 .DS_Store
 Thumbs.db
+
+# Local databases (RuVector knowledge graph)
+ruvector.db
+*.db-journal
+
+# Modal pipeline test artifacts — keep the .py source files, drop logs/binaries
+dev/test/*.log
+dev/test/*.mp4
+dev/test/*.pkl
+dev/test/__pycache__/
+modal_app/__pycache__/
+.modal_secrets.env
+.plan_cache_*.pkl

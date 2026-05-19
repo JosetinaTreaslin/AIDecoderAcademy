@@ -124,7 +124,7 @@ function PlaygroundInner() {
   const {
     messages, isStreaming, sessionId,
     startSession,
-    sendMessage, sendImage, sendAudio, sendSlides,
+    sendMessage, sendImage, sendAudio, sendSlides, sendVideo,
     reset,
   } = useChat(profile, mode, activeObjectiveId);
 
@@ -239,6 +239,9 @@ function PlaygroundInner() {
     } else if (outType === "slides") {
       await sendSlides(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, imgBubbleMeta);
       awardXP("generate_slides").then(handleXpResult);
+    } else if (outType === "video") {
+      await sendVideo(enrichedText, cleanDisplay, imgBubbleMeta, 20);
+      awardXP("generate_video").then(handleXpResult);
     } else {
       // Pass displayPrompt (6th arg) so the bubble shows the clean text, not the context marker
       await sendMessage(enrichedText, outType, [], undefined, imgBubbleMeta.length ? imgBubbleMeta : undefined, cleanDisplay);

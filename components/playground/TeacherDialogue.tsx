@@ -5,9 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { speakAsTeacher, type SpeakHandle } from "@/lib/teacherAudio";
 import type { ObjectiveRubric } from "@/lib/objectiveRubrics";
 import { pickTeacherOpeningLine } from "@/lib/teacherPersona";
-import { isEnabled } from "@/lib/featureFlags";
 
-// JRPG-style dialogue overlay for the Validator Teacher.
+// JRPG-style
 // Layout matches the user's reference image: large character portrait
 // bottom-left bleeding below the dialogue box, dark dialogue box with
 // purple-pink border + name plate, typewriter text, action buttons.
@@ -66,10 +65,14 @@ export function TeacherDialogue({ open, rubric, onClose, onValidate, onComplete 
     setResult(null);
     setAttemptId(null);
     setShowTaskText(false);
-    const greeting = isEnabled("USE_NEW_AIDA_PROMPTS")
-      ? pickTeacherOpeningLine(rubric.lmsId)
-      : `Ready when you are, ${rubric.title.split("—")[0].trim()}. Show me what you've made and I'll grade it for you.`;
-    speakLine(greeting);
+    const greeting = pickTeacherOpeningLine(rubric.lmsId);
+    // Build a contextual greeting: identify the objective + encourage
+    const taskBlurb = rubric.labTask.length > 120
+      ? rubric.labTask.slice(0, 117) + "..."
+      : rubric.labTask;
+    const taskEndsInPunct = /[.!?]$/.test(taskBlurb);
+    const contextualGreeting = `You're working on "${rubric.title}". ${taskBlurb}${taskEndsInPunct ? "" : "."} Take your time — come back when you're done and I'll check it.`;
+    speakLine(contextualGreeting);
     return () => stopSpeaking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, rubric.lmsId]);

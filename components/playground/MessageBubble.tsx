@@ -4,6 +4,17 @@ import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { AudioPlayer, type AudioData } from "./AudioPlayer";
 import { SlideCarousel, type SlideData } from "./SlideCarousel";
+import VideoPlayer from "./VideoPlayer";
+import VideoLoadingBubble from "./VideoLoadingBubble";
+
+interface VideoData {
+  videoUrl:         string;
+  title?:           string;
+  durationSeconds?: number;
+  shotCount?:       number;
+  modelUsed?:       string;
+  jobId?:           string;
+}
 import type { Message } from "./useChat";
 import type { OutputType } from "@/types";
 
@@ -242,6 +253,10 @@ function tryParseSlides(c: string): SlideData | null {
   try { const p = JSON.parse(c); if (p?.sections && p?.pptBase64) return p as SlideData; } catch {}
   return null;
 }
+function tryParseVideo(c: string): VideoData | null {
+  try { const p = JSON.parse(c); if (p?.videoUrl && typeof p.videoUrl === "string") return p as VideoData; } catch {}
+  return null;
+}
 function isImageUrl(c: string): boolean {
   return /^https?:\/\/.+\.(png|jpg|jpeg|webp|gif)(\?.*)?$/i.test(c.trim())
     || /^https?:\/\/.+supabase\.co.+images\/.+$/i.test(c.trim());
@@ -329,12 +344,13 @@ export function MessageBubble({
   const isLoading = !isUser && !!message.isLoading;
   const audioData = !isUser && !isLoading ? tryParseAudio(message.content)  : null;
   const slideData = !isUser && !isLoading ? tryParseSlides(message.content) : null;
+  const videoData = !isUser && !isLoading ? tryParseVideo(message.content)  : null;
   const isImage   = !isUser && !isLoading && isImageUrl(message.content);
   const isJson    = !isUser && !isLoading && message.outputType === "json";
   const isEmpty   = message.content === "" && isStreaming && !isLoading;
   // Show action footer for text/json/image; audio and slides handle their own actions internally
   const showActions = !isUser && !isLoading && !isEmpty && !!onSave && !!message.content
-    && !audioData && !slideData;
+    && !audioData && !slideData && !videoData;
 
   // Derive a readable text colour for the user bubble
   // Volt yellow and cyan are dark-text; others are white-text
@@ -366,13 +382,13 @@ export function MessageBubble({
 
         {/* Bubble */}
         <div className={cn(
-          !audioData && !slideData && !isImage && !isLoading && (
+          !audioData && !slideData && !videoData && !isImage && !isLoading && (
             isUser
               ? "px-3 py-2 sm:px-4 sm:py-2.5 rounded-[16px] rounded-br-[4px] text-xs leading-relaxed"
               : "px-3 py-2 sm:px-4 sm:py-2.5 rounded-[16px] rounded-bl-[4px] text-white text-xs leading-relaxed backdrop-blur-xl"
           )
         )}
-          style={!audioData && !slideData && !isImage && !isLoading ? (isUser ? {
+          style={!audioData && !slideData && !videoData && !isImage && !isLoading ? (isUser ? {
             background: `linear-gradient(135deg, ${arenaAccent}, ${arenaAccent}cc)`,
             color:      userTextColor,
             boxShadow:  `0 12px 40px -12px ${arenaAccentGlow}`,
@@ -397,7 +413,12 @@ export function MessageBubble({
           )}
 
           {/* Loading */}
-          {!isEmpty && isLoading && <LoadingBubble outputType={message.outputType} arenaId={arenaId} />}
+          {!isEmpty && isLoading && message.outputType === "video" && (
+            <VideoLoadingBubble arenaAccent={arenaAccent} arenaAccentGlow={arenaAccentGlow} />
+          )}
+          {!isEmpty && isLoading && message.outputType !== "video" && (
+            <LoadingBubble outputType={message.outputType} arenaId={arenaId} />
+          )}
 
           {/* Image */}
           {!isEmpty && isImage && (
@@ -424,13 +445,22 @@ export function MessageBubble({
             />
           )}
 
+          {/* Video */}
+          {!isEmpty && videoData && (
+            <VideoPlayer
+              payload={videoData}
+              arenaAccent={arenaAccent}
+              arenaAccentGlow={arenaAccentGlow}
+            />
+          )}
+
           {/* JSON output — pretty-printed, syntax-highlighted block (assistant only) */}
-          {!isEmpty && !isLoading && !isImage && !audioData && !slideData && !isUser && isJson && (
+          {!isEmpty && !isLoading && !isImage && !audioData && !slideData && !videoData && !isUser && isJson && (
             <JsonBlock raw={message.content} accent={arenaAccent} />
           )}
 
           {/* Plain text */}
-          {!isEmpty && !isLoading && !isImage && !audioData && !slideData && !(isJson && !isUser) && (
+          {!isEmpty && !isLoading && !isImage && !audioData && !slideData && !videoData && !(isJson && !isUser) && (
             isUser ? (
               <div>
                 <p className="whitespace-pre-wrap">{message.content}</p>

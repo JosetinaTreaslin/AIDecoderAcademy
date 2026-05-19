@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createAdminClient } from "@/lib/supabase";
 import { generateScene, type SceneInput } from "@/lib/audioGenerator";
-import { isEnabled } from "@/lib/featureFlags";
 import { classifyAudioRequest, generatePodcastEpisode } from "@/lib/podcastGenerator";
 import { moderateContent } from "@/lib/aidaSafety";
 import type { Profile, AgeGroup } from "@/types";
@@ -265,16 +264,14 @@ export async function POST(req: Request) {
     }
 
     // Pre-flight safety
-    if (isEnabled("USE_NEW_AIDA_PROMPTS")) {
-      const verdict = await moderateContent(promptForAudio);
-      if (!verdict.allow) {
-        return NextResponse.json({ error: verdict.suggestedReply }, { status: 200 });
-      }
+    const verdict = await moderateContent(promptForAudio);
+    if (!verdict.allow) {
+      return NextResponse.json({ error: verdict.suggestedReply }, { status: 200 });
     }
 
-    // New podcast routing path — only when flag is on AND no existing script
+    // New podcast routing path — only when no existing script
     // (modification mode keeps using legacy path).
-    if (isEnabled("USE_NEW_AIDA_PROMPTS") && !promptForAudio.includes('[Audio titled "')) {
+    if (!promptForAudio.includes('[Audio titled "')) {
       const intent = await classifyAudioRequest(prompt);
       if (intent === "multi_character") {
         try {

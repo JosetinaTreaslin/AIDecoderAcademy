@@ -3,7 +3,6 @@ import OpenAI from "openai";
 import { createAdminClient } from "@/lib/supabase";
 import { queryContext } from "@/lib/pinecone";
 import { getPageDoc } from "@/lib/aidaDocs";
-import { isEnabled } from "@/lib/featureFlags";
 import { buildAidaSystemPrompt } from "@/lib/aidaPersona";
 import { OBJECTIVES, toLmsId } from "@/lib/objectives";
 import { getRubric, getStagedRubric } from "@/lib/objectiveRubrics";
@@ -68,27 +67,25 @@ export async function POST(req: Request) {
 
     // ── Pre-flight safety check ──────────────────────────────────────────────
     let distressFlag = false;
-    if (isEnabled("USE_NEW_AIDA_PROMPTS")) {
-      const inputVerdict = await moderateContent(message);
-      if (!inputVerdict.allow) {
-        const refusal = getRefusalLine(profile.age_group as AgeGroup);
-        const encoder = new TextEncoder();
-        const readable = new ReadableStream({
-          start(controller) {
-            controller.enqueue(encoder.encode(refusal));
-            controller.close();
-          },
-        });
-        return new Response(readable, {
-          headers: {
-            "Content-Type":      "text/plain; charset=utf-8",
-            "Transfer-Encoding": "chunked",
-            "Cache-Control":     "no-cache",
-          },
-        });
-      }
-      distressFlag = detectDistress(message);
+    const inputVerdict = await moderateContent(message);
+    if (!inputVerdict.allow) {
+      const refusal = getRefusalLine(profile.age_group as AgeGroup);
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(refusal));
+          controller.close();
+        },
+      });
+      return new Response(readable, {
+        headers: {
+          "Content-Type":      "text/plain; charset=utf-8",
+          "Transfer-Encoding": "chunked",
+          "Cache-Control":     "no-cache",
+        },
+      });
     }
+    distressFlag = detectDistress(message);
 
     // ── Fetch student's profile ID from Supabase ─────────────────────────────
     const supabase = createAdminClient();
@@ -237,52 +234,17 @@ export async function POST(req: Request) {
       .map(o => `- ${o.id} · Arena ${o.arenaId} #${o.order} · ${o.emoji} ${o.title} (${o.outputType}, ${o.xpReward} XP)`)
       .join("\n");
 
-    const baseSystemPrompt = isEnabled("USE_NEW_AIDA_PROMPTS")
-      ? buildAidaSystemPrompt({
-          profile:           profile as Profile,
-          pageContext:       getPageDoc(pathname),
-          sessionContext:    sessionContext || undefined,
-          creationsContext:  creationsContext || undefined,
-          isVoiceMode,
-          interruptedContext,
-          isObjectiveMode,
-          activeObjective,
-          curriculumDigest,
-        })
-      : `You are AIDA, an AI assistant built into AI Decoder Academy — a creative AI learning platform for students aged 11–16.${interruptedContext ? `\n\nIMPORTANT: The student just interrupted you mid-response. You were in the middle of saying: "${interruptedContext.slice(0, 400)}". Acknowledge the new question briefly, answer it clearly, then offer to continue your previous explanation if it's still relevant.` : ""}
-
-About the student you're talking to:
-- Name: ${profile.display_name}
-- Age group: ${profile.age_group}
-- Interests: ${profile.interests?.join(", ") || "not set"}
-- XP: ${profile.xp}, Level: ${profile.level}, Streak: ${profile.streak_days} days
-- Current arena: ${arenaNames[profile.active_arena] ?? "AI Explorer Arena"}
-
-Current page context:
-${getPageDoc(pathname)}
-${creationsContext}
-${sessionContext}
-
-Instructions:
-- You are AIDA — friendly, warm, and encouraging. Adapt your language to the student's age group.
-- You can answer ANY question — school subjects, general knowledge, coding, creative ideas, or questions about this app. You are not restricted to any topic.
-- When answering questions about the student's creations or activity, use the context provided above.
-- Keep responses concise and easy to understand. Use simple language for younger students.
-- If the student asks about a feature or page in the app, use the page context to guide them accurately.
-${isOnPlayground && sessionContext ? `
-Playground coaching instructions (IMPORTANT — follow these when the student asks about their creations):
-- You can see everything the student generated in their current playground session above.
-- If the student asks "why did it turn out like this?" or "why didn't it work?", look at their prompt and the output type, then explain in simple terms what likely caused it — e.g., vague description, missing details, too many conflicting ideas, or unclear instructions.
-- For IMAGE prompts: look for missing details like style, lighting, colours, mood, or a clear subject.
-- For AUDIO prompts: look for whether they named characters, set a scene, gave emotions, or described the story clearly.
-- For SLIDES prompts: look for whether they gave a clear topic, structure, or level of detail.
-- For TEXT/JSON prompts: look at whether the instruction was clear, specific, and had enough context.
-- ALWAYS frame mistakes as learning moments — never criticise, always encourage.
-- Before giving the full answer, offer a choice: e.g., "Want me to just tell you what to fix, or would you prefer a hint so you can figure it out yourself?" Let the student decide.
-- If they want a hint: give one small clue, then ask if they want another.
-- If they want the full answer: explain clearly then offer to help rewrite the prompt together.
-- Keep explanations short, fun, and age-appropriate. Use analogies kids relate to.
-` : ""}`;
+    const baseSystemPrompt = buildAidaSystemPrompt({
+        profile:           profile as Profile,
+        pageContext:       getPageDoc(pathname),
+        sessionContext:    sessionContext || undefined,
+        creationsContext:  creationsContext || undefined,
+        isVoiceMode,
+        interruptedContext,
+        isObjectiveMode,
+        activeObjective,
+        curriculumDigest,
+      })
 
     const systemPrompt = channelExtras.length > 0
       ? `${baseSystemPrompt}\n\n${channelExtras.join("\n\n")}`
@@ -426,7 +388,7 @@ Playground coaching instructions (IMPORTANT — follow these when the student as
             controller.enqueue(encoder.encode(footer));
           }
           // Defensive post-hoc moderation on the assistant response (fire-and-forget)
-          if (isEnabled("USE_NEW_AIDA_PROMPTS") && fullText) {
+          if (fullText) {
             moderateContent(fullText).then(v => {
               if (!v.allow) {
                 console.warn("[aida] post-hoc moderation flagged assistant output:", v.reason);

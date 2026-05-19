@@ -1,7 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { getRubric, genericRubric, type ObjectiveRubric } from "@/lib/objectiveRubrics";
-import { isEnabled } from "@/lib/featureFlags";
 import { buildTeacherSystemPrompt } from "@/lib/teacherPersona";
 import { moderateContent } from "@/lib/aidaSafety";
 import { applyCopyMode } from "@/lib/validatorCopyMode";
@@ -49,55 +48,6 @@ interface ValidatorJSON {
   hintForRetry: string | null;
 }
 
-function buildSystemPrompt(rubric: ObjectiveRubric, profile: ValidateRequest["profile"]): string {
-  return `
-You are the Validator Teacher at AI Decoder Academy. Your job is to evaluate
-ONE specific lab objective the student has just attempted in the playground.
-
-OBJECTIVE: ${rubric.title} (${rubric.lmsId})
-TIER: ${rubric.tier}
-EXPECTED TASK:
-${rubric.labTask}
-
-SUBMIT REQUIREMENT:
-${rubric.submitRequirements}
-
-RUBRIC — apply STRICTLY:
-- DISTINCTION (100): ${rubric.distinctionCriteria}
-- MERIT (90):        ${rubric.meritCriteria}
-- PASS (80):         ${rubric.passCriteria}
-- FAIL (<80):        outputs missing, wrong tool used, or task not followed.
-
-TEACHER CHECKLIST:
-${rubric.teacherChecklist.map(c => `- ${c}`).join("\n")}
-
-CORRECTIVE HINTS YOU MAY USE WHEN APPROPRIATE:
-${rubric.correctiveHints.map(h => `- ${h}`).join("\n")}
-
-STUDENT PROFILE:
-- Name: ${profile.display_name}
-- Age group: ${profile.age_group}
-Adapt your vocabulary and tone to a student in this age group. Be encouraging
-but truthful. ALWAYS speak directly to the student ("you did…", not "the
-student did…"). Keep sentences short and friendly.
-
-INSTRUCTIONS:
-1. Read the chat below — that's what the student produced.
-2. Score 0-100 against the rubric.
-3. Determine tier: distinction (100) | merit (90-99) | pass (80-89) | fail (<80).
-4. Output STRICT JSON, no prose, no code fences. Schema:
-   {
-     "score":        <number 0-100>,
-     "tier":         "distinction" | "merit" | "pass" | "fail",
-     "passed":       <true if score >= 80, else false>,
-     "summary":      "<1-2 short sentences spoken aloud to the student>",
-     "strengths":    ["<2-3 bullets, what worked>"],
-     "improvements": ["<2-3 bullets, mostly used on fail/pass>"],
-     "hintForRetry": "<single helpful sentence for fail, else null>"
-   }
-`.trim();
-}
-
 function serializeMessages(messages: ValidateRequest["messages"]): string {
   if (!messages.length) return "(student has not yet produced any work)";
   return messages.map((m, i) => {
@@ -141,12 +91,10 @@ export async function POST(req: Request) {
       console.warn("[validate] attempts count failed, defaulting to 0:", err);
     }
 
-    const baseSystemPrompt = isEnabled("USE_NEW_AIDA_PROMPTS")
-      ? buildTeacherSystemPrompt({
-          rubric,
-          profile: { display_name: profile.display_name, age_group: profile.age_group as AgeGroup },
-        })
-      : buildSystemPrompt(rubric, profile);
+    const baseSystemPrompt = buildTeacherSystemPrompt({
+        rubric,
+        profile: { display_name: profile.display_name, age_group: profile.age_group as AgeGroup },
+      })
 
     const systemPrompt = applyCopyMode(baseSystemPrompt, attemptCount, profile.display_name);
 
