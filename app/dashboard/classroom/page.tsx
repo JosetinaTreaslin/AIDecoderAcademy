@@ -230,7 +230,7 @@ function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter
         .cl-grid { grid-template-columns: 23fr 34fr 23fr 20fr; }
         .cl-spacer { height: 18%; }
         .cl-col-left  { padding-left:12px; padding-top:60px; transform:translateX(120px); overflow:hidden; }
-        .cl-col-right { padding-right:12px; padding-top:60px; transform:translateX(-120px); overflow:hidden; }
+        .cl-col-right { padding-right:12px; padding-top:60px; transform:translateX(-60px); overflow:hidden; }
         .cl-img { display:block; width:100%; height:calc((100dvh - 38dvh - 68px) / 4); margin:0; padding:0; }
         .cl-leaderboard {}
         @media (max-width:1280px) { .cl-grid { grid-template-columns:25fr 30fr 25fr 20fr; } }
