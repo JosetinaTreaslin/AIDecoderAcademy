@@ -127,7 +127,7 @@ export function ObjectivePage({ chapter, onSelectTest, onBack }: Props) {
       {MCQ_CARDS.map(card => (
         <div key={`mcq-${card.level}`}
           className="absolute"
-          style={{ top: card.top, left: "2.5%", width: "24.5%", height: "10%", zIndex: 10 }}>
+          style={{ top: card.top, left: "3%", width: "22%", height: "10%", zIndex: 10 }}>
           {card.locked
             ? <LockedCard />
             : <Hotspot onClick={() => onSelectTest("mcq")} color={card.color} label="MCQ" />
@@ -139,7 +139,7 @@ export function ObjectivePage({ chapter, onSelectTest, onBack }: Props) {
       {BOARD_CARDS.map(card => (
         <div key={`board-${card.level}`}
           className="absolute"
-          style={{ top: card.top, left: "54%", width: "24.5%", height: "10%", zIndex: 10 }}>
+          style={{ top: card.top, left: "55%", width: "21%", height: "10%", zIndex: 10 }}>
           {card.locked
             ? <LockedCard />
             : <Hotspot onClick={() => onSelectTest("written")} color={card.color} label="Board" />
@@ -151,7 +151,7 @@ export function ObjectivePage({ chapter, onSelectTest, onBack }: Props) {
       <motion.button
         onClick={() => router.push("/dashboard/playground")}
         className="absolute rounded-2xl"
-        style={{ top: "64%", left: "22%", width: "14%", height: "6%", zIndex: 10, cursor: "pointer" }}
+        style={{ top: "64%", left: "33%", width: "14%", height: "6%", zIndex: 10, cursor: "pointer" }}
         whileHover={{ background: "rgba(124,58,237,0.18)", boxShadow: "0 0 24px rgba(124,58,237,0.4)" }}
         transition={{ duration: 0.15 }}
       />
