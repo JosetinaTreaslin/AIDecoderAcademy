@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { Chapter } from "@/types";
 
 interface Props {
@@ -75,23 +76,25 @@ function LockedCard() {
 // Each card height ~10%
 
 const MCQ_CARDS = [
-  { level: 1, locked: false, top: "20%",   color: "#2563eb" },
-  { level: 2, locked: true,  top: "31.5%", color: "#2563eb" },
-  { level: 3, locked: true,  top: "43%",   color: "#2563eb" },
-  { level: 4, locked: true,  top: "54.5%", color: "#2563eb" },
-  { level: 5, locked: true,  top: "66%",   color: "#2563eb" },
+  { level: 1, locked: false, top: "24%",   color: "#2563eb" },
+  { level: 2, locked: true,  top: "38%", color: "#2563eb" },
+  { level: 3, locked: true,  top: "52%",   color: "#2563eb" },
+  { level: 4, locked: true,  top: "65%", color: "#2563eb" },
+  { level: 5, locked: true,  top: "79%",   color: "#2563eb" },
 ] as const;
 
 const BOARD_CARDS = [
-  { level: 1, locked: false, top: "20%",   color: "#7C3AED" },
-  { level: 2, locked: true,  top: "31.5%", color: "#7C3AED" },
-  { level: 3, locked: true,  top: "43%",   color: "#7C3AED" },
-  { level: 4, locked: true,  top: "54.5%", color: "#7C3AED" },
-  { level: 5, locked: true,  top: "66%",   color: "#7C3AED" },
+  { level: 1, locked: false, top: "24%",   color: "#7C3AED" },
+  { level: 2, locked: true,  top: "38%", color: "#7C3AED" },
+  { level: 3, locked: true,  top: "52%",   color: "#7C3AED" },
+  { level: 4, locked: true,  top: "65%", color: "#7C3AED" },
+  { level: 5, locked: true,  top: "79%",   color: "#7C3AED" },
 ] as const;
 
 // ── Main component ────────────────────────────────────────────────────────────
 export function ObjectivePage({ chapter, onSelectTest, onBack }: Props) {
+  const router = useRouter();
+
   return (
     <div className="relative overflow-hidden select-none"
       style={{ height: "100dvh", fontFamily: "var(--font-dm-sans,'DM Sans',sans-serif)" }}>
@@ -143,6 +146,15 @@ export function ObjectivePage({ chapter, onSelectTest, onBack }: Props) {
           }
         </div>
       ))}
+
+      {/* "Enter Classroom" button — center circle, ~top:61% left:35% */}
+      <motion.button
+        onClick={() => router.push("/dashboard/playground")}
+        className="absolute rounded-2xl"
+        style={{ top: "61%", left: "35%", width: "13%", height: "6%", zIndex: 10, cursor: "pointer" }}
+        whileHover={{ background: "rgba(124,58,237,0.18)", boxShadow: "0 0 24px rgba(124,58,237,0.4)" }}
+        transition={{ duration: 0.15 }}
+      />
     </div>
   );
 }
