@@ -151,7 +151,7 @@ export function ObjectivePage({ chapter, onSelectTest, onBack }: Props) {
       <motion.button
         onClick={() => router.push("/dashboard/playground")}
         className="absolute rounded-2xl"
-        style={{ top: "61%", left: "35%", width: "13%", height: "6%", zIndex: 10, cursor: "pointer" }}
+        style={{ top: "64%", left: "22%", width: "14%", height: "6%", zIndex: 10, cursor: "pointer" }}
         whileHover={{ background: "rgba(124,58,237,0.18)", boxShadow: "0 0 24px rgba(124,58,237,0.4)" }}
         transition={{ duration: 0.15 }}
       />
