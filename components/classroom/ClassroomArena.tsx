@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { useChat }       from "@/components/playground/useChat";
 import { MessageBubble } from "@/components/playground/MessageBubble";
+import ReactMarkdown from "react-markdown";
 import type { Chapter, Profile, OutputType } from "@/types";
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
   onBack:  () => void;
 }
 
-interface SavedItem { id: string; title: string; preview: string; createdAt: number; }
+interface SavedItem { id: string; title: string; preview: string; content: string; createdAt: number; }
 
 // Left toolbar tile hotspot positions (% of viewport)
 const TILES = [
@@ -37,7 +38,8 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [profile,    setProfile]    = useState<Profile | null>(null);
   const [input,      setInput]      = useState("");
   const [activeHint, setActiveHint] = useState<string | null>(null);
-  const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
+  const [savedItems,   setSavedItems]   = useState<SavedItem[]>([]);
+  const [viewingItem,  setViewingItem]  = useState<SavedItem | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const taRef     = useRef<HTMLTextAreaElement>(null);
 
@@ -80,7 +82,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const handleSave = useCallback((content: string, outputType: OutputType) => {
     const title = `${chapter.chapter_title} — ${new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}`;
     const preview = content.replace(/[#*`_]/g, "").slice(0, 80);
-    setSavedItems(prev => [{ id: crypto.randomUUID(), title, preview, createdAt: Date.now() }, ...prev].slice(0, 10));
+    setSavedItems(prev => [{ id: crypto.randomUUID(), title, preview, content, createdAt: Date.now() }, ...prev].slice(0, 10));
     // Persist to creations (fire and forget)
     fetch("/api/creations", {
       method:  "POST",
@@ -141,28 +143,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         </div>
       </div>
 
-      {/* Left toolbar hotspots */}
-      {TILES.map(tile => (
-        <div key={tile.key} className="absolute"
-          style={{ top:tile.top, left:"0.5%", width:"11.5%", height:"9%", zIndex:20 }}>
-          {tile.active && (
-            <motion.button
-              onClick={() => handleTileClick(tile.key)}
-              className="w-full h-full rounded-xl relative"
-              style={{ cursor:"pointer", background:"transparent" }}
-              whileHover={{ background:"rgba(255,255,255,0.07)" }}
-              transition={{ duration:0.15 }}>
-              <AnimatePresence>
-                {activeHint === tile.key && (
-                  <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-                    className="absolute inset-0 rounded-xl"
-                    style={{ background:"rgba(255,255,255,0.15)", border:"1.5px solid rgba(255,255,255,0.4)" }} />
-                )}
-              </AnimatePresence>
-            </motion.button>
-          )}
-        </div>
-      ))}
+      {/* Left toolbar hotspots removed — tiles are visual only for now */}
 
       {/* ── My Creations thumbnails — overlaid on left wall panel ──────────── */}
       {/* The background has a tall white "My Creations" rectangle ~14–33% left */}
@@ -174,8 +155,10 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             <motion.div key={item.id}
               initial={{ opacity:0, y:-8, scale:0.95 }}
               animate={{ opacity:1, y:0,  scale:1 }}
-              transition={{ duration:0.25, delay: i === 0 ? 0 : 0 }}
-              className="rounded-xl p-2.5 mb-2 cursor-default"
+              transition={{ duration:0.25 }}
+              onClick={() => setViewingItem(item)}
+              className="rounded-xl p-2.5 mb-2 cursor-pointer"
+              whileHover={{ scale:1.02, boxShadow:"0 4px 16px rgba(37,99,235,0.2)" }}
               style={{ background:"rgba(255,255,255,0.88)",
                 border:"1px solid rgba(37,99,235,0.2)",
                 boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
@@ -289,6 +272,55 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Saved item viewer modal ─────────────────────────────────────────── */}
+      <AnimatePresence>
+        {viewingItem && (
+          <motion.div
+            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ zIndex:50, background:"rgba(0,0,0,0.6)", backdropFilter:"blur(6px)" }}
+            onClick={() => setViewingItem(null)}
+          >
+            <motion.div
+              initial={{ opacity:0, scale:0.95, y:12 }}
+              animate={{ opacity:1, scale:1,    y:0 }}
+              exit={{    opacity:0, scale:0.95, y:12 }}
+              transition={{ duration:0.22 }}
+              onClick={e => e.stopPropagation()}
+              className="flex flex-col"
+              style={{ width:"56%", maxHeight:"78vh",
+                background:"rgba(255,255,255,0.97)", backdropFilter:"blur(20px)",
+                borderRadius:20, overflow:"hidden",
+                boxShadow:"0 24px 64px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.9)" }}
+            >
+              {/* Modal header */}
+              <div className="flex-shrink-0 flex items-center gap-3 px-5 py-3.5"
+                style={{ borderBottom:"1px solid rgba(15,28,77,0.08)" }}>
+                <span className="text-base">📝</span>
+                <p className="flex-1 font-display font-bold text-sm truncate" style={{ color:"#0f1c4d" }}>
+                  {viewingItem.title}
+                </p>
+                <button
+                  onClick={() => setViewingItem(null)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-lg transition-colors hover:bg-gray-100"
+                  style={{ color:"rgba(15,28,77,0.4)", lineHeight:1 }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Modal content */}
+              <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4"
+                style={{ scrollbarWidth:"thin" }}>
+                <div className="prose prose-sm max-w-none" style={{ color:"#0f1c4d" }}>
+                  <ReactMarkdown>{viewingItem.content}</ReactMarkdown>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
