@@ -230,7 +230,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
         {/* ── Input bar — dark pill, Creator's Room style ────────────────────── */}
         <div style={{ flexShrink:0, padding:"0 4px 8px" }}>
-          <div style={{ display:"flex", alignItems:"flex-end", gap:8,
+          <div style={{ display:"flex", alignItems:"center", gap:8,
             background:"linear-gradient(180deg, rgba(18,28,72,0.92) 0%, rgba(10,16,52,0.95) 100%)",
             backdropFilter:"blur(24px)",
             borderRadius:16, padding:"10px 12px",
