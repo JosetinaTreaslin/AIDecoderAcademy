@@ -4,11 +4,18 @@ import { NextResponse } from "next/server";
 export const runtime     = "nodejs";
 export const maxDuration = 10;
 
-const MODAL_STATUS_URL    = process.env.MODAL_WORKER_URL!.replace("-submit.", "-status.");
-const MODAL_SHARED_SECRET = process.env.MODAL_WORKER_SHARED_SECRET!;
-
 export async function GET(req: Request) {
   try {
+    const submitUrl = process.env.MODAL_WORKER_URL;
+    const secret    = process.env.MODAL_WORKER_SHARED_SECRET;
+    if (!submitUrl || !secret) {
+      return NextResponse.json(
+        { error: "Video worker not configured (MODAL_WORKER_URL / MODAL_WORKER_SHARED_SECRET missing)" },
+        { status: 503 },
+      );
+    }
+    const modalStatusUrl = submitUrl.replace("-submit.", "-status.");
+
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -16,10 +23,10 @@ export async function GET(req: Request) {
     const callId = url.searchParams.get("callId");
     if (!callId) return NextResponse.json({ error: "Missing callId" }, { status: 400 });
 
-    const modalRes = await fetch(MODAL_STATUS_URL, {
+    const modalRes = await fetch(modalStatusUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ auth_token: MODAL_SHARED_SECRET, call_id: callId }),
+      body: JSON.stringify({ auth_token: secret, call_id: callId }),
     });
     const j = await modalRes.json().catch(() => ({}));
 

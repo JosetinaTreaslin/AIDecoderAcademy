@@ -7,11 +7,18 @@ export const runtime     = "nodejs";
 export const maxDuration = 10;
 
 const VIDEO_QUOTA_PER_ACCOUNT = 3;
-const MODAL_SUBMIT_URL    = process.env.MODAL_WORKER_URL!;
-const MODAL_SHARED_SECRET = process.env.MODAL_WORKER_SHARED_SECRET!;
 
 export async function POST(req: Request) {
   try {
+    const MODAL_SUBMIT_URL    = process.env.MODAL_WORKER_URL;
+    const MODAL_SHARED_SECRET = process.env.MODAL_WORKER_SHARED_SECRET;
+    if (!MODAL_SUBMIT_URL || !MODAL_SHARED_SECRET) {
+      return NextResponse.json(
+        { error: "Video worker not configured. Ask an admin to set MODAL_WORKER_URL and MODAL_WORKER_SHARED_SECRET in Vercel env." },
+        { status: 503 },
+      );
+    }
+
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
