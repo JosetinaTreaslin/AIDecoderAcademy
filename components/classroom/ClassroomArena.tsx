@@ -148,7 +148,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       {/* ── My Creations thumbnails — overlaid on left wall panel ──────────── */}
       {/* The background has a tall white "My Creations" rectangle ~14–33% left */}
       <div className="absolute overflow-y-auto"
-        style={{ left:"14.5%", top:"18%", width:"18%", height:"72%",
+        style={{ left:"15.5%", top:"15.5%", width:"17%", height:"72%",
           zIndex:18, scrollbarWidth:"none" }}>
         <AnimatePresence>
           {savedItems.map((item, i) => (
@@ -231,10 +231,11 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         {/* ── Input bar — dark pill, Creator's Room style ────────────────────── */}
         <div style={{ flexShrink:0, padding:"0 4px 8px" }}>
           <div style={{ display:"flex", alignItems:"flex-end", gap:8,
-            background:"rgba(12,12,28,0.82)", backdropFilter:"blur(20px)",
+            background:"linear-gradient(180deg, rgba(18,28,72,0.92) 0%, rgba(10,16,52,0.95) 100%)",
+            backdropFilter:"blur(24px)",
             borderRadius:16, padding:"10px 12px",
-            border:"1px solid rgba(255,255,255,0.12)",
-            boxShadow:"0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
+            border:"1px solid rgba(100,140,255,0.25)",
+            boxShadow:"0 0 0 1px rgba(100,140,255,0.08), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
 
             <textarea
               ref={taRef}
