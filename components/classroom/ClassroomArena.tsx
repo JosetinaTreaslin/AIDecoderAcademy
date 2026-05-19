@@ -12,6 +12,8 @@ interface Props {
   onBack:  () => void;
 }
 
+interface SavedItem { id: string; title: string; preview: string; createdAt: number; }
+
 // Left toolbar tile hotspot positions (% of viewport)
 const TILES = [
   { key:"notes",      label:"Notes",           active:true,  top:"11%" },
@@ -32,9 +34,10 @@ const ACCENT     = "#2563eb";
 const ACCENT_GLO = "rgba(37,99,235,0.35)";
 
 export function ClassroomArena({ chapter, onBack }: Props) {
-  const [profile,     setProfile]     = useState<Profile | null>(null);
-  const [input,       setInput]       = useState("");
-  const [activeHint,  setActiveHint]  = useState<string | null>(null);
+  const [profile,    setProfile]    = useState<Profile | null>(null);
+  const [input,      setInput]      = useState("");
+  const [activeHint, setActiveHint] = useState<string | null>(null);
+  const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const taRef     = useRef<HTMLTextAreaElement>(null);
 
@@ -47,7 +50,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
   const { messages, isStreaming, sendMessage } = useChat(profile, "free");
 
-  // Auto-scroll on new messages
+  // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
@@ -56,7 +59,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
     const t = text.trim();
     if (!t || !profile || isStreaming) return;
     setInput("");
-    if (taRef.current) { taRef.current.style.height = "auto"; }
+    if (taRef.current) taRef.current.style.height = "auto";
     await sendMessage(t, "text");
   }, [profile, isStreaming, sendMessage]);
 
@@ -72,6 +75,22 @@ export function ClassroomArena({ chapter, onBack }: Props) {
     setTimeout(() => setActiveHint(null), 900);
     sendMessage(buildPrompt(chapter.chapter_title), "text");
   }, [profile, isStreaming, sendMessage, chapter.chapter_title]);
+
+  // Called by MessageBubble's save button → adds thumbnail + persists to creations
+  const handleSave = useCallback((content: string, outputType: OutputType) => {
+    const title = `${chapter.chapter_title} — ${new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}`;
+    const preview = content.replace(/[#*`_]/g, "").slice(0, 80);
+    setSavedItems(prev => [{ id: crypto.randomUUID(), title, preview, createdAt: Date.now() }, ...prev].slice(0, 10));
+    // Persist to creations (fire and forget)
+    fetch("/api/creations", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        title, type:"chat", output_type: outputType, content,
+        tags: ["classroom", chapter.chapter_title],
+      }),
+    }).catch(() => {});
+  }, [chapter.chapter_title]);
 
   const canSend = input.trim().length > 0 && !isStreaming && !!profile;
 
@@ -106,14 +125,20 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         <ChevronLeft className="w-3.5 h-3.5" /> Back
       </button>
 
-      {/* Chapter label */}
-      <div className="absolute px-3 py-1 rounded-full"
-        style={{ top:12, left:"50%", transform:"translateX(-50%)", zIndex:25,
-          background:"rgba(0,0,0,0.45)", backdropFilter:"blur(10px)",
-          border:"1px solid rgba(255,255,255,0.12)" }}>
-        <p className="text-[11px] font-mono whitespace-nowrap" style={{ color:"rgba(255,255,255,0.65)" }}>
-          {chapter.chapter_title}
-        </p>
+      {/* ── Chapter title — bigger, centered top ─────────────────────────────── */}
+      <div className="absolute flex flex-col items-center"
+        style={{ top:10, left:"50%", transform:"translateX(-50%)", zIndex:25 }}>
+        <div className="px-5 py-2 rounded-2xl"
+          style={{ background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
+            border:"1px solid rgba(255,255,255,0.15)" }}>
+          <p className="font-display font-black text-base whitespace-nowrap"
+            style={{ color:"#fff", letterSpacing:"0.01em" }}>
+            {chapter.chapter_title}
+          </p>
+          <p className="text-[11px] font-mono text-center mt-0.5" style={{ color:"rgba(255,255,255,0.45)" }}>
+            CBSE Class 10 · Science
+          </p>
+        </div>
       </div>
 
       {/* Left toolbar hotspots */}
@@ -139,23 +164,54 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         </div>
       ))}
 
-      {/* ── Chat overlay on whiteboard ──────────────────────────────────────── */}
-      {/* Positioned over the white rectangle in the background image         */}
-      <div className="absolute flex flex-col overflow-hidden"
-        style={{ left:"24.5%", top:"13%", width:"51%", height:"79%", zIndex:15,
-          borderRadius:14,
-          background:"rgba(8,8,20,0.92)",
-          backdropFilter:"blur(12px)" }}>
+      {/* ── My Creations thumbnails — overlaid on left wall panel ──────────── */}
+      {/* The background has a tall white "My Creations" rectangle ~14–33% left */}
+      <div className="absolute overflow-y-auto"
+        style={{ left:"14.5%", top:"18%", width:"18%", height:"72%",
+          zIndex:18, scrollbarWidth:"none" }}>
+        <AnimatePresence>
+          {savedItems.map((item, i) => (
+            <motion.div key={item.id}
+              initial={{ opacity:0, y:-8, scale:0.95 }}
+              animate={{ opacity:1, y:0,  scale:1 }}
+              transition={{ duration:0.25, delay: i === 0 ? 0 : 0 }}
+              className="rounded-xl p-2.5 mb-2 cursor-default"
+              style={{ background:"rgba(255,255,255,0.88)",
+                border:"1px solid rgba(37,99,235,0.2)",
+                boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
+              <p className="text-[10px] font-bold leading-snug mb-1 truncate"
+                style={{ color:"#0f1c4d" }}>
+                {item.title}
+              </p>
+              <p className="text-[9px] leading-relaxed"
+                style={{ color:"rgba(15,28,77,0.5)", display:"-webkit-box",
+                  WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+                {item.preview}
+              </p>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        {savedItems.length === 0 && (
+          <p className="text-[10px] text-center pt-3 opacity-30"
+            style={{ color:"#0f1c4d" }}>
+            Saved items<br/>appear here
+          </p>
+        )}
+      </div>
 
-        {/* Message list */}
+      {/* ── Chat overlay — transparent bg, floats on whiteboard ────────────── */}
+      <div className="absolute flex flex-col"
+        style={{ left:"36%", top:"10%", width:"60%", height:"70%", zIndex:15 }}>
+
+        {/* Message list — no background, messages float on the whiteboard */}
         <div className="flex-1 min-h-0 overflow-y-auto"
           style={{ padding:"12px 14px 6px", display:"flex", flexDirection:"column",
             gap:8, scrollbarWidth:"none" }}>
 
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40 pointer-events-none">
-              <span style={{ fontSize:28 }}>✏️</span>
-              <p className="text-xs text-center font-medium" style={{ color:ACCENT, lineHeight:1.6 }}>
+            <div className="flex flex-col items-center justify-center h-full gap-3 opacity-35 pointer-events-none">
+              <span style={{ fontSize:32 }}>✏️</span>
+              <p className="text-sm text-center font-medium" style={{ color:"#1e3a8a", lineHeight:1.7 }}>
                 Click <strong>Notes</strong> or <strong>Flashcards</strong> on the left,<br/>
                 or type a question below
               </p>
@@ -171,6 +227,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               arenaAccent={ACCENT}
               arenaAccentGlow={ACCENT_GLO}
               arenaId={1}
+              onSave={handleSave}
             />
           ))}
 
@@ -188,46 +245,48 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           <div ref={bottomRef} />
         </div>
 
-        {/* Divider */}
-        <div style={{ height:1, background:"rgba(255,255,255,0.07)", flexShrink:0 }} />
+        {/* ── Input bar — dark pill, Creator's Room style ────────────────────── */}
+        <div style={{ flexShrink:0, padding:"0 4px 8px" }}>
+          <div style={{ display:"flex", alignItems:"flex-end", gap:8,
+            background:"rgba(12,12,28,0.82)", backdropFilter:"blur(20px)",
+            borderRadius:16, padding:"10px 12px",
+            border:"1px solid rgba(255,255,255,0.12)",
+            boxShadow:"0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
 
-        {/* Input bar */}
-        <div style={{ flexShrink:0, padding:"10px 12px",
-          display:"flex", alignItems:"flex-end", gap:10 }}>
+            <textarea
+              ref={taRef}
+              value={input}
+              onChange={e => {
+                setInput(e.target.value);
+                const t = e.target;
+                t.style.height = "auto";
+                t.style.height = Math.min(t.scrollHeight, 80) + "px";
+              }}
+              onKeyDown={handleKey}
+              placeholder="Ask anything about this chapter…"
+              rows={1}
+              disabled={!profile}
+              style={{ flex:1, resize:"none", border:"none", outline:"none",
+                background:"transparent", fontSize:13, fontWeight:500,
+                color:"rgba(255,255,255,0.92)", fontFamily:"inherit",
+                lineHeight:1.5, overflowY:"hidden",
+                caretColor:ACCENT, userSelect:"text" }}
+            />
 
-          <textarea
-            ref={taRef}
-            value={input}
-            onChange={e => {
-              setInput(e.target.value);
-              const t = e.target;
-              t.style.height = "auto";
-              t.style.height = Math.min(t.scrollHeight, 80) + "px";
-            }}
-            onKeyDown={handleKey}
-            placeholder="Ask anything about this chapter…"
-            rows={1}
-            disabled={!profile}
-            style={{ flex:1, resize:"none", border:"none", outline:"none",
-              background:"transparent", fontSize:13, fontWeight:500,
-              color:"rgba(255,255,255,0.9)", fontFamily:"inherit",
-              lineHeight:1.5, overflowY:"hidden",
-              caretColor:ACCENT, userSelect:"text" }}
-          />
-
-          <button onClick={() => send(input)} disabled={!canSend}
-            style={{ width:34, height:34, borderRadius:"50%", flexShrink:0,
-              background: canSend ? `rgba(37,99,235,0.9)` : "rgba(255,255,255,0.1)",
-              border:"none", cursor: canSend ? "pointer" : "not-allowed",
-              display:"flex", alignItems:"center", justifyContent:"center",
-              transition:"all 0.2s",
-              boxShadow: canSend ? `0 0 16px rgba(37,99,235,0.6)` : "none" }}>
-            <svg width="13" height="13" viewBox="0 0 18 18" fill="none">
-              <path d="M2 9h14M9 2l7 7-7 7"
-                stroke={canSend ? "#fff" : "rgba(255,255,255,0.25)"}
-                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
+            <button onClick={() => send(input)} disabled={!canSend}
+              style={{ width:34, height:34, borderRadius:"50%", flexShrink:0,
+                background: canSend ? `rgba(37,99,235,0.9)` : "rgba(255,255,255,0.08)",
+                border:"none", cursor: canSend ? "pointer" : "not-allowed",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                transition:"all 0.2s",
+                boxShadow: canSend ? `0 0 16px rgba(37,99,235,0.6)` : "none" }}>
+              <svg width="13" height="13" viewBox="0 0 18 18" fill="none">
+                <path d="M2 9h14M9 2l7 7-7 7"
+                  stroke={canSend ? "#fff" : "rgba(255,255,255,0.2)"}
+                  strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
