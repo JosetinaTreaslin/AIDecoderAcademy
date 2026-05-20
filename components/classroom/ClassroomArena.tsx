@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
-import { useChat }       from "@/components/playground/useChat";
 import { MessageBubble } from "@/components/playground/MessageBubble";
+import type { Message }  from "@/components/playground/useChat";
 import ReactMarkdown from "react-markdown";
 import type { Chapter, Profile, OutputType } from "@/types";
 
@@ -40,6 +40,8 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const [savedItems,   setSavedItems]   = useState<SavedItem[]>([]);
   const [viewingItem,  setViewingItem]  = useState<SavedItem | null>(null);
+  const [messages,     setMessages]     = useState<Message[]>([]);
+  const [isStreaming,  setIsStreaming]  = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const taRef     = useRef<HTMLTextAreaElement>(null);
 
@@ -50,7 +52,60 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       .catch(() => {});
   }, []);
 
-  const { messages, isStreaming, sendMessage } = useChat(profile, "free");
+  // Sends to the dedicated classroom chat route (NOT /api/chat)
+  const sendMessage = useCallback(async (text: string) => {
+    if (!profile || isStreaming || !text.trim()) return;
+
+    const userMsg: Message = { id: crypto.randomUUID(), role: "user",      content: text, outputType: "text", createdAt: new Date() };
+    const asstId = crypto.randomUUID();
+    const asstMsg: Message = { id: asstId,             role: "assistant", content: "",   outputType: "text", isLoading: true, createdAt: new Date() };
+
+    setMessages(prev => [...prev, userMsg, asstMsg]);
+    setIsStreaming(true);
+
+    try {
+      const history = messages.map(m => ({ role: m.role, content: m.content }));
+      const res = await fetch("/api/classroom/chat", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ message: text, chapterTitle: chapter.chapter_title, history }),
+      });
+
+      if (!res.ok || !res.body) throw new Error(await res.text());
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+          const data = line.slice(5).trim();
+          if (data === "[DONE]") break;
+          try {
+            const { content } = JSON.parse(data);
+            if (content) {
+              setMessages(prev => prev.map(m =>
+                m.id === asstId ? { ...m, content: m.content + content, isLoading: false } : m
+              ));
+            }
+          } catch { /* partial chunk */ }
+        }
+      }
+    } catch (e) {
+      console.error("[classroom/chat]", e);
+      setMessages(prev => prev.map(m =>
+        m.id === asstId ? { ...m, content: "Sorry, something went wrong. Please try again.", isLoading: false } : m
+      ));
+    } finally {
+      setIsStreaming(false);
+    }
+  }, [profile, isStreaming, messages, chapter.chapter_title]);
 
   // Auto-scroll
   useEffect(() => {
@@ -62,7 +117,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
     if (!t || !profile || isStreaming) return;
     setInput("");
     if (taRef.current) taRef.current.style.height = "auto";
-    await sendMessage(t, "text");
+    await sendMessage(t);
   }, [profile, isStreaming, sendMessage]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -75,7 +130,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
     if (!buildPrompt) return;
     setActiveHint(key);
     setTimeout(() => setActiveHint(null), 900);
-    sendMessage(buildPrompt(chapter.chapter_title), "text");
+    sendMessage(buildPrompt(chapter.chapter_title));
   }, [profile, isStreaming, sendMessage, chapter.chapter_title]);
 
   // Called by MessageBubble's save button → adds thumbnail + persists to creations
