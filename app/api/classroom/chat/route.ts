@@ -48,7 +48,8 @@ export async function POST(req: Request) {
     const profile = profileRow as Profile;
 
     // Build classroom-specific system prompt
-    const systemPrompt = buildClassroomSystemPrompt(profile, chapterTitle || "Science Chapter");
+    // chapterTitle is optional — when absent, the teacher answers across subjects.
+    const systemPrompt = buildClassroomSystemPrompt(profile, chapterTitle || undefined);
 
     // Build message history for OpenAI (last 20 turns max to keep context window lean)
     const recentHistory = history.slice(-20).map(m => ({

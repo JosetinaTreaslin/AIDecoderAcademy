@@ -13,7 +13,7 @@ import { ScoreReport }      from "@/components/classroom/ScoreReport";
 import { WrittenTest, type WrittenResult } from "@/components/classroom/WrittenTest";
 import { WrittenScoreReport } from "@/components/classroom/WrittenScoreReport";
 import { ProctoringGuard }  from "@/components/classroom/ProctoringGuard";
-import { TeacherPanel }     from "@/components/classroom/TeacherPanel";
+import { TeacherCharacter } from "@/components/classroom/TeacherCharacter";
 import type { Chapter, MCQQuestion, WrittenQuestion, WrittenFeedbackItem, Profile } from "@/types";
 
 const NAVY = "#0f1c4d";
@@ -187,7 +187,7 @@ function LeaderboardPanel() {
 
 // ── Subject tile ──────────────────────────────────────────────────────────────
 function SubjectTile({ src, name, hasData, onClick }: {
-  src: string; name: string; hasData: boolean; onClick: () => void;
+  src: string; name: string; hasData: boolean; onClick: (subject: string) => void;
 }) {
   return (
     <motion.div
@@ -197,7 +197,7 @@ function SubjectTile({ src, name, hasData, onClick }: {
       whileHover={hasData ? { scale:1.02 } : {}}
       whileTap={hasData ? { scale:0.98 } : {}}
       transition={{ duration:0.18, ease:[0.16,1,0.3,1] }}
-      onClick={hasData ? onClick : undefined}
+      onClick={hasData ? () => onClick(name) : undefined}
     >
       {/* Locked overlay — always visible, mirrors arena lock style */}
       {!hasData && (
@@ -224,7 +224,7 @@ function SubjectTile({ src, name, hasData, onClick }: {
 }
 
 // ── Classroom landing (hub layout) ────────────────────────────────────────────
-function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter: () => void }) {
+function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter: (subject: string) => void }) {
   const firstName = (profile?.display_name ?? "Explorer").split(" ")[0];
   return (
     <div className="relative w-full flex flex-col overflow-hidden"
@@ -329,8 +329,9 @@ interface PaperData {
 const FADE = { initial:{opacity:0,y:10}, animate:{opacity:1,y:0}, exit:{opacity:0,y:-10}, transition:{duration:0.22} };
 
 export default function ClassroomPage() {
-  const [view,           setView]          = useState<View>("landing");
-  const [profile,        setProfile]       = useState<Profile|null>(null);
+  const [view,             setView]          = useState<View>("landing");
+  const [selectedSubject,  setSelectedSubject] = useState<string | null>(null);
+  const [profile,          setProfile]       = useState<Profile|null>(null);
   const [selectedChapter,setChapter]       = useState<Chapter|null>(null);
   const [paper,          setPaper]         = useState<PaperData|null>(null);
   const [mcqResult,      setMcqResult]     = useState<MCQResult|null>(null);
@@ -390,13 +391,19 @@ export default function ClassroomPage() {
   // Teacher panel — hidden during proctored tests so it can't be used as
   // a workaround channel by the student under exam conditions.
   const teacherHidden = proctoringActive;
-  const teacher = <TeacherPanel profile={profile} hidden={teacherHidden} />;
+  const teacher = (
+    <TeacherCharacter
+      profile={profile}
+      hidden={teacherHidden}
+      chapterTitle={selectedChapter?.chapter_title}
+    />
+  );
 
   // ── Landing view — full viewport, hub style ────────────────────────────────
   if (view === "landing") {
     return (
       <>
-        <ClassroomLanding profile={profile} onEnter={() => setView("chapters")} />
+        <ClassroomLanding profile={profile} onEnter={(subject) => { setSelectedSubject(subject); setView("chapters"); }} />
         {teacher}
       </>
     );
