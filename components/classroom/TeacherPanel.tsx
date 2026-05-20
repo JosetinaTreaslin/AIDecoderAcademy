@@ -102,6 +102,7 @@ export function TeacherPanel({ profile, hidden, initialOpen }: TeacherPanelProps
   const [open, setOpen] = useState(initialOpen ?? true);
   const [playing, setPlaying] = useState(false);
   const [autoSpoken, setAutoSpoken] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Greeting is recomputed when profile / learner_model changes.
@@ -140,6 +141,7 @@ export function TeacherPanel({ profile, hidden, initialOpen }: TeacherPanelProps
 
   const speak = useCallback(async () => {
     if (playing) { stopAudio(); return; }
+    setVoiceError(null);
     try {
       setPlaying(true);
       const res = await fetch("/api/aida/tts", {
@@ -147,16 +149,33 @@ export function TeacherPanel({ profile, hidden, initialOpen }: TeacherPanelProps
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ text: greeting.spoken, role: "classroom" }),
       });
-      if (!res.ok) throw new Error("tts failed");
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        const detail = `TTS ${res.status}${text ? ` · ${text.slice(0, 80)}` : ""}`;
+        console.error("[TeacherPanel] tts failed:", detail);
+        throw new Error(detail);
+      }
       const blob = await res.blob();
+      if (blob.size === 0) throw new Error("TTS returned empty audio");
       const url  = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audioRef.current = audio;
       audio.onended = () => { setPlaying(false); URL.revokeObjectURL(url); };
-      audio.onerror = () => { setPlaying(false); URL.revokeObjectURL(url); };
-      await audio.play();
-    } catch {
+      audio.onerror = () => {
+        setPlaying(false);
+        setVoiceError("Audio failed to load. Try again.");
+        URL.revokeObjectURL(url);
+      };
+      try {
+        await audio.play();
+      } catch (playErr) {
+        console.error("[TeacherPanel] audio.play() rejected:", playErr);
+        setVoiceError("Browser blocked autoplay — click again.");
+        setPlaying(false);
+      }
+    } catch (e) {
       setPlaying(false);
+      setVoiceError((e as Error)?.message ?? "Voice unavailable");
     }
   }, [greeting.spoken, playing, stopAudio]);
 
@@ -215,15 +234,23 @@ export function TeacherPanel({ profile, hidden, initialOpen }: TeacherPanelProps
           style={{ background: "transparent" }}
         >
           <div
-            className="relative flex-shrink-0 rounded-2xl flex items-center justify-center"
+            className="relative flex-shrink-0 rounded-full overflow-hidden"
             style={{
-              width: 68, height: 68,
+              width:  "clamp(48px, 3.6vw, 64px)",
+              height: "clamp(48px, 3.6vw, 64px)",
               background: `radial-gradient(circle at 35% 30%, ${VIOLET}22, ${NAVY_DEEP})`,
-              border: `1px solid ${GOLD}88`,
-              boxShadow: `inset 0 1px 0 ${TEXT_HI}33, 0 0 18px ${VIOLET_DEEP}55`,
+              border: `1.5px solid ${GOLD}aa`,
+              boxShadow: `inset 0 1px 0 ${TEXT_HI}33, 0 0 18px ${VIOLET_DEEP}55, 0 0 22px ${GOLD_GLOW}`,
             }}
           >
-            <TeacherSprite size={56} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/classroom/teacher-bhavna.png"
+              alt="Ms. Bhavna"
+              draggable={false}
+              className="w-full h-full object-cover select-none"
+              style={{ objectPosition: "center 18%" }}
+            />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -334,6 +361,19 @@ export function TeacherPanel({ profile, hidden, initialOpen }: TeacherPanelProps
                     AIDA stays on the right →
                   </div>
                 </div>
+
+                {voiceError && (
+                  <div
+                    className="mt-2 text-[11px] rounded-lg px-3 py-1.5"
+                    style={{
+                      color: "#FFC7CC",
+                      background: "rgba(255,87,108,0.12)",
+                      border: "1px solid rgba(255,87,108,0.35)",
+                    }}
+                  >
+                    {voiceError}
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
