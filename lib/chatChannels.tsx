@@ -30,6 +30,26 @@ export interface WorksheetSnapshot {
   status:    "idle" | "saving" | "saved" | "error";
 }
 
+// AIDA can read this; the classroom teacher cannot read AIDA's chat
+// (one-way mirror of the whiteboard ↔ AIDA pattern).
+export interface ClassroomTurn {
+  role:    "teacher" | "student";
+  content: string;
+  at:      string;
+}
+
+export interface ClassroomSnapshot {
+  lastLesson: {
+    topic:      string;
+    summary:    string;
+    keyConcepts: string[];
+    studentResponses: Array<{ question: string; answer: string }>;
+  } | null;
+  liveTurns:       ClassroomTurn[];
+  lastInteraction: string | null;
+  status:          "idle" | "in_lesson" | "lesson_ended";
+}
+
 // ── context shape ───────────────────────────────────────────────────────────
 // We expose the React setState setters directly. They're stable across
 // renders by definition (useState guarantees this), so consumers can put
@@ -42,6 +62,8 @@ interface ChannelsCtx {
   setValidator:  Dispatch<SetStateAction<ValidatorPublicState>>;
   worksheet:     WorksheetSnapshot;
   setWorksheet:  Dispatch<SetStateAction<WorksheetSnapshot>>;
+  classroom:     ClassroomSnapshot;
+  setClassroom:  Dispatch<SetStateAction<ClassroomSnapshot>>;
 }
 
 const EMPTY_VALIDATOR: ValidatorPublicState = {
@@ -51,6 +73,9 @@ const EMPTY_VALIDATOR: ValidatorPublicState = {
 const EMPTY_WORKSHEET: WorksheetSnapshot = {
   lmsId: null, data: {}, updatedAt: null, status: "idle",
 };
+const EMPTY_CLASSROOM: ClassroomSnapshot = {
+  lastLesson: null, liveTurns: [], lastInteraction: null, status: "idle",
+};
 
 const Ctx = createContext<ChannelsCtx | null>(null);
 
@@ -58,6 +83,7 @@ export function ChatChannelsProvider({ children }: { children: ReactNode }) {
   const [whiteboard, setWhiteboard] = useState<WhiteboardSnapshot>({ messages: [] });
   const [validator,  setValidator]  = useState<ValidatorPublicState>(EMPTY_VALIDATOR);
   const [worksheet,  setWorksheet]  = useState<WorksheetSnapshot>(EMPTY_WORKSHEET);
+  const [classroom,  setClassroom]  = useState<ClassroomSnapshot>(EMPTY_CLASSROOM);
 
   // The setter references are stable (React useState guarantees this) so
   // the value's identity changes only when one of the snapshots changes.
@@ -67,7 +93,8 @@ export function ChatChannelsProvider({ children }: { children: ReactNode }) {
     whiteboard, setWhiteboard,
     validator,  setValidator,
     worksheet,  setWorksheet,
-  }), [whiteboard, validator, worksheet]);
+    classroom,  setClassroom,
+  }), [whiteboard, validator, worksheet, classroom]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -121,4 +148,35 @@ export function useValidatorReader(): ValidatorPublicState {
 }
 export function useWorksheetReader(): WorksheetSnapshot {
   return useCtx("useWorksheetReader").worksheet;
+}
+export function useClassroomReader(): ClassroomSnapshot {
+  return useCtx("useClassroomReader").classroom;
+}
+
+export function useClassroomWriter() {
+  const { setClassroom } = useCtx("useClassroomWriter");
+  return useMemo(() => ({
+    startLesson: (_topic: string) =>
+      setClassroom(prev => ({
+        ...prev,
+        status: "in_lesson",
+        lastInteraction: new Date().toISOString(),
+        liveTurns: [],
+      })),
+    appendTurn: (turn: Omit<ClassroomTurn, "at">) =>
+      setClassroom(prev => ({
+        ...prev,
+        status: "in_lesson",
+        lastInteraction: new Date().toISOString(),
+        liveTurns: [...prev.liveTurns, { ...turn, at: new Date().toISOString() }].slice(-40),
+      })),
+    endLesson: (lesson: NonNullable<ClassroomSnapshot["lastLesson"]>) =>
+      setClassroom(prev => ({
+        ...prev,
+        status: "lesson_ended",
+        lastInteraction: new Date().toISOString(),
+        lastLesson: lesson,
+      })),
+    reset: () => setClassroom(EMPTY_CLASSROOM),
+  }), [setClassroom]);
 }

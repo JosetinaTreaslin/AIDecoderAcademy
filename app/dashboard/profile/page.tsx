@@ -8,6 +8,7 @@ import {
   BADGES, ARENAS,
 } from "@/lib/arenas";
 import { isGameSfxEnabled, setGameSfxEnabled } from "@/lib/gameAudio";
+import LearnerStats from "@/components/profile/LearnerStats";
 import type { AgeGroup, Profile } from "@/types";
 
 // ─── Onboarding helpers ───────────────────────────────────────────────────────
@@ -752,6 +753,9 @@ function TrophyRoom({ profile }: { profile: Profile }) {
             })}
           </div>
         </div>
+
+        {/* ─── Learner Stats — RPG-style adaptive profile ─── */}
+        <LearnerStats profile={profile} outputCounts={typeCounts} />
 
         {/* ─── Trophy Hall — categorized badges ─── */}
         <div>

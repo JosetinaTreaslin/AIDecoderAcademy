@@ -33,6 +33,7 @@ export async function POST(req: Request) {
       objectiveId,
       validator_state,
       worksheet_draft,
+      classroom_state,
     }: {
       message:              string;
       history:              { role: "user" | "assistant"; content: string }[];
@@ -58,6 +59,17 @@ export async function POST(req: Request) {
         lmsId:      string;
         data:       Record<string, string | boolean>;
         updated_at: string;
+      };
+      // Classroom-teacher channel snapshot. AIDA can read it (one-way mirror
+      // of whiteboard ↔ AIDA). Only attached when lesson_ended — see Phase 5.
+      classroom_state?: {
+        status:    "idle" | "in_lesson" | "lesson_ended";
+        lastLesson?: {
+          topic:       string;
+          summary:     string;
+          keyConcepts: string[];
+          studentResponses: Array<{ question: string; answer: string }>;
+        } | null;
       };
     } = body;
 
@@ -87,15 +99,16 @@ export async function POST(req: Request) {
     }
     distressFlag = detectDistress(message);
 
-    // ── Fetch student's profile ID from Supabase ─────────────────────────────
+    // ── Fetch student's profile ID + learner model from Supabase ────────────
     const supabase = createAdminClient();
     const { data: profileRow } = await supabase
       .from("profiles")
-      .select("id")
+      .select("id, learner_model")
       .eq("clerk_user_id", userId)
       .single();
 
     const profileId = profileRow?.id as string | undefined;
+    const learnerModel = (profileRow?.learner_model as Record<string, unknown> | null) ?? null;
 
     // ── Search relevant creations from Pinecone ───────────────────────────────
     let creationsContext = "";
@@ -234,11 +247,26 @@ export async function POST(req: Request) {
       .map(o => `- ${o.id} · Arena ${o.arenaId} #${o.order} · ${o.emoji} ${o.title} (${o.outputType}, ${o.xpReward} XP)`)
       .join("\n");
 
+    // Classroom context: only attach when lesson is ENDED (edge case 10).
+    let classroomContext: string | undefined;
+    if (classroom_state?.status === "lesson_ended" && classroom_state.lastLesson) {
+      const l = classroom_state.lastLesson;
+      const responses = l.studentResponses?.length
+        ? l.studentResponses.slice(0, 6).map(r => `  Q: ${r.question}\n  A: ${r.answer}`).join("\n")
+        : "  (no student responses recorded)";
+      classroomContext =
+        `Topic: ${l.topic}\nSummary: ${l.summary}\nKey concepts: ${(l.keyConcepts ?? []).join(", ") || "—"}\nStudent responses:\n${responses}`;
+    } else if (classroom_state?.status === "in_lesson") {
+      classroomContext = "[The student's classroom lesson is still in progress — full transcript unavailable. Answer their question without assuming what the teacher just covered.]";
+    }
+
     const baseSystemPrompt = buildAidaSystemPrompt({
         profile:           profile as Profile,
         pageContext:       getPageDoc(pathname),
         sessionContext:    sessionContext || undefined,
         creationsContext:  creationsContext || undefined,
+        classroomContext,
+        learnerModel,
         isVoiceMode,
         interruptedContext,
         isObjectiveMode,

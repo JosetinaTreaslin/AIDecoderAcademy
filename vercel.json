@@ -1,0 +1,3 @@
+{
+  "crons": []  # Vercel-free: weekly-cron is manual-trigger only (see api/learner-model/weekly-cron/route.ts)
+}

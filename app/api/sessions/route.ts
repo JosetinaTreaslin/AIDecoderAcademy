@@ -82,9 +82,69 @@ export async function PATCH(req: Request) {
   if (title) updates.title = title;
   if (ended_at) updates.ended_at = new Date().toISOString();
 
-  const { error } = await supabase
-    .from("sessions").update(updates).eq("id", session_id);
+  const { data: session, error } = await supabase
+    .from("sessions")
+    .update(updates)
+    .eq("id", session_id)
+    .select("id, profile_id, mode, started_at, message_count")
+    .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Fire-and-forget adaptive learner reflection on session close.
+  if (ended_at && session && session.message_count > 0) {
+    void runReflectionForSession(session).catch((e) => {
+      console.warn("[sessions] reflection enqueue failed", e);
+    });
+  }
+
   return NextResponse.json({ ok: true });
+}
+
+async function runReflectionForSession(session: {
+  id: string;
+  profile_id: string;
+  mode: string;
+  started_at: string;
+  message_count: number;
+}) {
+  const sb = createAdminClient();
+  const { data: messages } = await sb
+    .from("chat_messages")
+    .select("role, content, output_type, created_at")
+    .eq("session_id", session.id)
+    .order("created_at", { ascending: true });
+
+  if (!messages || messages.length === 0) return;
+
+  const outputTypes = Array.from(
+    new Set((messages as Array<{ output_type?: string | null }>).map(m => m.output_type).filter(Boolean) as string[])
+  );
+
+  // Map playground modes to a reflection surface.
+  const surface: "playground" | "aida_chat" =
+    session.mode === "code" || session.mode === "art" || session.mode === "story" || session.mode === "quiz" || session.mode === "free"
+      ? "playground"
+      : "aida_chat";
+
+  // Lazy import to avoid pulling OpenAI into the cold path on every PATCH.
+  const { reflectAndMerge } = await import("@/lib/learnerModel/reflect");
+  await reflectAndMerge({
+    profile_id:         session.profile_id,
+    session_id:         session.id,
+    surface,
+    messages: messages.map(m => ({
+      role: (m.role === "assistant" ? "assistant" : "user") as "assistant" | "user",
+      content: String(m.content ?? ""),
+    })),
+    metrics: {
+      message_count:      messages.length,
+      user_message_count: messages.filter(m => m.role === "user").length,
+      output_types_used:  outputTypes,
+      session_duration_minutes:
+        (Date.now() - new Date(session.started_at).getTime()) / 60000,
+    },
+    session_started_at: session.started_at,
+    session_ended_at:   new Date().toISOString(),
+  });
 }

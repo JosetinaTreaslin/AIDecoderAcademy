@@ -11,6 +11,9 @@ const AIDA_VOICE_ID    = process.env.ELEVENLABS_AIDA_VOICE_ID    ?? "AZnzlk1Xvdv
 // Teacher "Skeptical Mentor" persona (see lib/teacherPersona.ts →
 // TEACHER_VOICE_AND_MANNER).
 const TEACHER_VOICE_ID = process.env.ELEVENLABS_TEACHER_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
+// Bhavna (Insightful Storyteller) — Indian-accented English, warm female.
+// Used by the Classroom Teacher persona (lib/teacherPanelGreeting.ts).
+const CLASSROOM_VOICE_ID = process.env.ELEVENLABS_CLASSROOM_VOICE_ID ?? "fEJqMD6Jp1JFP8T1BZpd";
 
 const ELEVENLABS_MODEL = "eleven_flash_v2_5"; // ~75ms first-byte latency
 
@@ -30,6 +33,14 @@ const VOICE_SETTINGS = {
     style:            0.15,
     use_speaker_boost: true,
   },
+  classroom: {
+    // Bhavna — warm, storytelling. Slightly looser stability than the
+    // skeptical-mentor validator voice to let warmth come through.
+    stability:        0.55,
+    similarity_boost: 0.85,
+    style:            0.25,
+    use_speaker_boost: true,
+  },
 } as const;
 
 // Split text into sentence-sized chunks so the first sentence's audio starts
@@ -47,7 +58,7 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return new Response("Unauthorized", { status: 401 });
 
-    const { text, role } = (await req.json()) as { text: string; role?: "aida" | "teacher" };
+    const { text, role } = (await req.json()) as { text: string; role?: "aida" | "teacher" | "classroom" };
     if (!text?.trim()) return new Response("Bad request", { status: 400 });
 
     if (!process.env.ELEVENLABS_API_KEY) {
@@ -55,8 +66,14 @@ export async function POST(req: Request) {
       return new Response("TTS not configured", { status: 503 });
     }
 
-    const voiceId       = role === "teacher" ? TEACHER_VOICE_ID : AIDA_VOICE_ID;
-    const voiceSettings = role === "teacher" ? VOICE_SETTINGS.teacher : VOICE_SETTINGS.aida;
+    const voiceId =
+      role === "teacher"   ? TEACHER_VOICE_ID :
+      role === "classroom" ? CLASSROOM_VOICE_ID :
+                             AIDA_VOICE_ID;
+    const voiceSettings =
+      role === "teacher"   ? VOICE_SETTINGS.teacher :
+      role === "classroom" ? VOICE_SETTINGS.classroom :
+                             VOICE_SETTINGS.aida;
     const chunks  = splitIntoChunks(text.slice(0, 4096));
     const encoder = new TextEncoder();
 

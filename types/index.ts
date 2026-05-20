@@ -31,7 +31,20 @@ export interface Profile {
   learning_style?:        LearningStyle | null;
   difficulty_preference?: DifficultyPreference | null;
   current_grade?:         number | null;
+  board?:                 string | null;
+
+  // Adaptive Learner Model (lazy parsed via lib/learnerModel/types.ts)
+  learner_model?: Record<string, unknown> | null;
 }
+
+export type ReflectionSurface =
+  | "aida_chat"
+  | "playground"
+  | "validator"
+  | "classroom_test"
+  | "classroom_teacher"
+  | "diagnostic"
+  | "weekly_cron";
 
 export interface Creation {
   id:           string;

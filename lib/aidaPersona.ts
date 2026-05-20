@@ -6,6 +6,7 @@
 
 import { SAFETY_RULES_TEXT } from "@/lib/aidaSafety";
 import type { Profile, AgeGroup } from "@/types";
+import { hydrateLearnerModel, type LearnerModel } from "@/lib/learnerModel";
 
 export const AIDA_VOICE_AND_MANNER = `
 VOICE — apply on every turn:
@@ -140,6 +141,8 @@ export interface AidaPromptOptions {
   pageContext:         string;
   sessionContext?:     string;
   creationsContext?:   string;
+  classroomContext?:   string;
+  learnerModel?:       LearnerModel | Record<string, unknown> | null;
   isVoiceMode?:        boolean;
   interruptedContext?: string;
   isObjectiveMode?:    boolean;
@@ -159,12 +162,66 @@ export interface AidaPromptOptions {
   curriculumDigest?: string;
 }
 
+function buildLearnerAdaptation(raw: AidaPromptOptions["learnerModel"]): string {
+  if (!raw || (typeof raw === "object" && Object.keys(raw).length === 0)) return "";
+  const m = hydrateLearnerModel(raw);
+  if (m.reflection_count === 0) return ""; // cold start — let other systems lead
+  const cp  = m.communication_preferences;
+  const lp  = m.learning_style_profile;
+  const cog = m.cognitive_profile;
+
+  const strengths = cog.top_strengths.slice(0, 3).map(s => s.concept.replace(/_/g, " ")).join(", ");
+  const struggles = cog.top_growth_areas.slice(0, 3).map(s => s.concept.replace(/_/g, " ")).join(", ");
+
+  const paceLine = lp.pace_preference === "fast"
+    ? "Don't over-explain unless asked."
+    : lp.pace_preference === "careful"
+    ? "Pause often, check understanding."
+    : "Follow their lead.";
+
+  const explainLine = cp.explanation_preference === "narrative"
+    ? "Use stories and concrete examples."
+    : cp.explanation_preference === "step_by_step"
+    ? "Break into clear steps."
+    : cp.explanation_preference === "visual"
+    ? "Use vivid imagery — suggest an image if it helps."
+    : "Mix approaches based on the question.";
+
+  const checkLine = cp.comprehension_check_frequency === "high"
+    ? "Check understanding often, but make it natural: 'does that click?', not 'did you understand?'"
+    : cp.comprehension_check_frequency === "low"
+    ? "Light touch — don't quiz. Only check when something seems off."
+    : "Check occasionally, keep it natural.";
+
+  const struggleLine = struggles
+    ? `When ${struggles} comes up: smaller steps, reference their strength (${strengths || "what they've built"}) as an anchor, celebrate small wins.`
+    : "";
+
+  return `
+LEARNER PROFILE (built from ${m.reflection_count} session${m.reflection_count === 1 ? "" : "s"} — adapt naturally, don't reveal these notes):
+- Explanation style: ${cp.explanation_preference} — ${explainLine}
+- Pace: ${lp.pace_preference} — ${paceLine}
+- Interaction: ${lp.interaction_style}; help-seeking: ${lp.help_seeking}.
+- Humor: ${cp.humor_level}; analogies from: ${cp.analogy_style}${cp.example_domain && cp.example_domain !== cp.analogy_style ? ` and ${cp.example_domain}` : ""}.
+- Comprehension checks: ${checkLine}
+- Strengths: ${strengths || "still discovering"}
+- Growth areas: ${struggles || "still discovering"}
+${struggleLine ? `- ${struggleLine}\n` : ""}
+NATURAL CHECK-INS — pick one when explaining their growth area:
+- "Does that click for you?"
+- "Want me to show it a different way?"
+- "Some people find this tricky — want to try it yourself?"
+Avoid: "Did you understand?" "Rate your understanding." Those feel like a test.
+`.trim();
+}
+
 export function buildAidaSystemPrompt(opts: AidaPromptOptions): string {
   const {
-    profile, pageContext, sessionContext, creationsContext,
-    isVoiceMode, interruptedContext, isObjectiveMode,
+    profile, pageContext, sessionContext, creationsContext, classroomContext,
+    learnerModel, isVoiceMode, interruptedContext, isObjectiveMode,
     activeObjective, curriculumDigest,
   } = opts;
+  const learnerAdaptation = buildLearnerAdaptation(learnerModel);
 
   const interruptBlock = interruptedContext
     ? `\nThe student cut you off. You were saying: "${interruptedContext.slice(0, 400)}". Acknowledge, answer their new question, offer to circle back.\n`
@@ -192,6 +249,8 @@ ${pageContext}
 ${curriculumDigest ? `\nUNLOCKED MISSIONS:\n${curriculumDigest}` : ""}
 ${creationsContext ? `\nTHEIR RECENT WORK:\n${creationsContext}` : ""}
 ${sessionContext ? `\nCURRENT SESSION:\n${sessionContext}` : ""}
+${classroomContext ? `\nCLASSROOM LESSON CONTEXT:\n${classroomContext}` : ""}
+${learnerAdaptation ? `\n${learnerAdaptation}` : ""}
 ${activeObjective ? `\nOBJECTIVE DETAILS:\n- Task: ${activeObjective.labTask ?? activeObjective.description}\n- Pass: ${activeObjective.passCriteria ?? "see lab task"}\n- Merit: ${activeObjective.meritCriteria ?? ""}\n- Distinction: ${activeObjective.distinctionCriteria ?? ""}` : ""}
 
 ${SAFETY_RULES_TEXT}

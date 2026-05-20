@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { X, Send, Mic, Square, MessageSquare, Radio, PhoneOff } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { useWhiteboardReader, useValidatorReader, useWorksheetReader } from "@/lib/chatChannels";
+import { useWhiteboardReader, useValidatorReader, useWorksheetReader, useClassroomReader } from "@/lib/chatChannels";
 import { useLiveVoice } from "@/components/aida/voice/useLiveVoice";
 import type { LiveState } from "@/components/aida/voice/LiveVoiceSession";
 import type { Profile } from "@/types";
@@ -220,6 +220,7 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   const { messages: playgroundMessages } = useWhiteboardReader();
   const validatorState = useValidatorReader();
   const worksheetState = useWorksheetReader();
+  const classroomState = useClassroomReader();
   const isOnPlayground = pathname.startsWith("/dashboard/playground");
 
   // ── Stable refs (avoid stale closures in async callbacks) ─────────────────
@@ -606,6 +607,15 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
             updated_at: worksheetState.updatedAt ?? new Date().toISOString(),
           };
         }
+      }
+
+      // Classroom snapshot — AIDA reads (one-way). Only send when there's
+      // something to send; route gates further to lesson_ended-only injection.
+      if (classroomState.status !== "idle") {
+        body.classroom_state = {
+          status:     classroomState.status,
+          lastLesson: classroomState.lastLesson ?? null,
+        };
       }
 
       // Live-mode barge-in: hand the LLM the partial response we cut off so it

@@ -13,6 +13,7 @@ import { ScoreReport }      from "@/components/classroom/ScoreReport";
 import { WrittenTest, type WrittenResult } from "@/components/classroom/WrittenTest";
 import { WrittenScoreReport } from "@/components/classroom/WrittenScoreReport";
 import { ProctoringGuard }  from "@/components/classroom/ProctoringGuard";
+import { TeacherPanel }     from "@/components/classroom/TeacherPanel";
 import type { Chapter, MCQQuestion, WrittenQuestion, WrittenFeedbackItem, Profile } from "@/types";
 
 const NAVY = "#0f1c4d";
@@ -386,40 +387,59 @@ export default function ClassroomPage() {
 
   const proctoringActive = view==="mcq-test" || (view==="written-test" && writtenPhase==="test");
 
+  // Teacher panel — hidden during proctored tests so it can't be used as
+  // a workaround channel by the student under exam conditions.
+  const teacherHidden = proctoringActive;
+  const teacher = <TeacherPanel profile={profile} hidden={teacherHidden} />;
+
   // ── Landing view — full viewport, hub style ────────────────────────────────
   if (view === "landing") {
-    return <ClassroomLanding profile={profile} onEnter={() => setView("chapters")} />;
+    return (
+      <>
+        <ClassroomLanding profile={profile} onEnter={() => setView("chapters")} />
+        {teacher}
+      </>
+    );
   }
 
   // ── Chapter map — full viewport ───────────────────────────────────────────
   if (view === "chapters") {
     return (
-      <ChapterMapPage
-        onChapterSelect={(ch) => { setChapter(ch); setView("objective"); }}
-        onBack={() => setView("landing")}
-      />
+      <>
+        <ChapterMapPage
+          onChapterSelect={(ch) => { setChapter(ch); setView("objective"); }}
+          onBack={() => setView("landing")}
+        />
+        {teacher}
+      </>
     );
   }
 
   // ── Objective page — full viewport ────────────────────────────────────────
   if (view === "objective" && selectedChapter) {
     return (
-      <ObjectivePage
-        chapter={selectedChapter}
-        onSelectTest={(type) => loadPaper(selectedChapter, type)}
-        onBack={() => setView("chapters")}
-        onEnterArena={() => setView("arena")}
-      />
+      <>
+        <ObjectivePage
+          chapter={selectedChapter}
+          onSelectTest={(type) => loadPaper(selectedChapter, type)}
+          onBack={() => setView("chapters")}
+          onEnterArena={() => setView("arena")}
+        />
+        {teacher}
+      </>
     );
   }
 
   // ── Classroom arena — full viewport ───────────────────────────────────────
   if (view === "arena" && selectedChapter) {
     return (
-      <ClassroomArena
-        chapter={selectedChapter}
-        onBack={() => setView("objective")}
-      />
+      <>
+        <ClassroomArena
+          chapter={selectedChapter}
+          onBack={() => setView("objective")}
+        />
+        {teacher}
+      </>
     );
   }
 
@@ -528,6 +548,7 @@ export default function ClassroomPage() {
           </div>
         </div>
       </ProctoringGuard>
+      {teacher}
     </div>
   );
 }
