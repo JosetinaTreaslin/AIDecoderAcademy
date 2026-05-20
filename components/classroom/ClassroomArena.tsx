@@ -238,7 +238,15 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       </div>
 
       {/* ── Chat overlay — transparent bg, floats on whiteboard ────────────── */}
-      <div className="absolute flex flex-col"
+      {/* Override Syne display font on all markdown headings inside this pane */}
+      <style>{`
+        .classroom-chat h1,.classroom-chat h2,.classroom-chat h3,
+        .classroom-chat h4,.classroom-chat h5,.classroom-chat h6 {
+          font-family: 'DM Sans', sans-serif !important;
+          font-weight: 700;
+        }
+      `}</style>
+      <div className="absolute flex flex-col classroom-chat"
         style={{ left:"36%", top:"10%", width:"60%", height:"70%", zIndex:15 }}>
 
         {/* Message list — no background, messages float on the whiteboard */}
@@ -306,7 +314,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               rows={1}
               disabled={!profile}
               style={{ flex:1, resize:"none", border:"none", outline:"none",
-                background:"transparent", fontSize:13, fontWeight:500,
+                background:"transparent", fontSize:15, fontWeight:500,
                 color:"rgba(255,255,255,0.92)", fontFamily:"inherit",
                 lineHeight:1.5, overflowY:"hidden",
                 caretColor:ACCENT, userSelect:"text" }}
@@ -368,10 +376,19 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
               {/* Modal content */}
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4"
-                style={{ scrollbarWidth:"thin" }}>
-                <div className="prose prose-sm max-w-none" style={{ color:"#0f1c4d" }}>
-                  <ReactMarkdown>{viewingItem.content}</ReactMarkdown>
-                </div>
+                style={{ scrollbarWidth:"thin", fontFamily:"'DM Sans', sans-serif", fontSize:15, color:"#0f1c4d", lineHeight:1.7 }}>
+                <ReactMarkdown
+                  components={{
+                    h1: ({children}) => <h1 style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:20, margin:"16px 0 6px", color:"#0f1c4d" }}>{children}</h1>,
+                    h2: ({children}) => <h2 style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:18, margin:"14px 0 5px", color:"#0f1c4d" }}>{children}</h2>,
+                    h3: ({children}) => <h3 style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:600, fontSize:16, margin:"12px 0 4px", color:"#0f1c4d" }}>{children}</h3>,
+                    p:  ({children}) => <p  style={{ margin:"6px 0" }}>{children}</p>,
+                    li: ({children}) => <li style={{ marginBottom:4 }}>{children}</li>,
+                    code: ({children}) => <code style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:13, background:"rgba(37,99,235,0.08)", color:"#1d4ed8", padding:"1px 5px", borderRadius:4 }}>{children}</code>,
+                    pre: ({children}) => <pre style={{ background:"rgba(15,28,77,0.05)", borderRadius:8, padding:"10px 14px", overflowX:"auto", margin:"10px 0" }}>{children}</pre>,
+                    strong: ({children}) => <strong style={{ fontWeight:700, color:"#0f1c4d" }}>{children}</strong>,
+                  }}
+                >{viewingItem.content}</ReactMarkdown>
               </div>
             </motion.div>
           </motion.div>
