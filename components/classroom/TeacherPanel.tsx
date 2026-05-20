@@ -104,6 +104,10 @@ export function TeacherPanel({ profile, hidden, initialOpen }: TeacherPanelProps
   const [autoSpoken, setAutoSpoken] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Pre-fetched audio blob URL — primed on mount so the click → play()
+  // call is synchronous (Chrome's user-activation gate doesn't survive
+  // the network round-trip otherwise).
+  const audioUrlRef = useRef<string | null>(null);
 
   // Greeting is recomputed when profile / learner_model changes.
   const greeting = useMemo(() => {
@@ -139,32 +143,51 @@ export function TeacherPanel({ profile, hidden, initialOpen }: TeacherPanelProps
     setPlaying(false);
   }, []);
 
+  // Pre-fetch the TTS audio so the click handler can play it synchronously,
+  // which keeps the user-activation gesture alive (otherwise Chrome blocks
+  // play() after the network round-trip).
+  const ensureAudioReady = useCallback(async () => {
+    if (audioUrlRef.current) return audioUrlRef.current;
+    const res = await fetch("/api/aida/tts", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ text: greeting.spoken, role: "classroom" }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`TTS ${res.status}${text ? ` · ${text.slice(0, 80)}` : ""}`);
+    }
+    const blob = await res.blob();
+    if (blob.size === 0) throw new Error("TTS returned empty audio");
+    const url = URL.createObjectURL(blob);
+    audioUrlRef.current = url;
+    return url;
+  }, [greeting.spoken]);
+
+  // Kick off the pre-fetch on mount.
+  useEffect(() => {
+    let cancelled = false;
+    ensureAudioReady().catch((e) => {
+      if (cancelled) return;
+      console.error("[TeacherPanel] audio prefetch failed:", e);
+      // Don't surface this as an error yet — the user hasn't tried.
+    });
+    return () => { cancelled = true; };
+  }, [ensureAudioReady]);
+
   const speak = useCallback(async () => {
     if (playing) { stopAudio(); return; }
     setVoiceError(null);
+    setPlaying(true);
     try {
-      setPlaying(true);
-      const res = await fetch("/api/aida/tts", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ text: greeting.spoken, role: "classroom" }),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        const detail = `TTS ${res.status}${text ? ` · ${text.slice(0, 80)}` : ""}`;
-        console.error("[TeacherPanel] tts failed:", detail);
-        throw new Error(detail);
-      }
-      const blob = await res.blob();
-      if (blob.size === 0) throw new Error("TTS returned empty audio");
-      const url  = URL.createObjectURL(blob);
+      // Use the prefetched URL synchronously when available.
+      const url = audioUrlRef.current ?? await ensureAudioReady();
       const audio = new Audio(url);
       audioRef.current = audio;
-      audio.onended = () => { setPlaying(false); URL.revokeObjectURL(url); };
+      audio.onended = () => setPlaying(false);
       audio.onerror = () => {
         setPlaying(false);
         setVoiceError("Audio failed to load. Try again.");
-        URL.revokeObjectURL(url);
       };
       try {
         await audio.play();
@@ -174,10 +197,11 @@ export function TeacherPanel({ profile, hidden, initialOpen }: TeacherPanelProps
         setPlaying(false);
       }
     } catch (e) {
+      console.error("[TeacherPanel] tts failed:", e);
       setPlaying(false);
       setVoiceError((e as Error)?.message ?? "Voice unavailable");
     }
-  }, [greeting.spoken, playing, stopAudio]);
+  }, [playing, stopAudio, ensureAudioReady]);
 
   // Auto-speak the welcome once per page mount (once profile loads).
   useEffect(() => {
@@ -234,13 +258,13 @@ export function TeacherPanel({ profile, hidden, initialOpen }: TeacherPanelProps
           style={{ background: "transparent" }}
         >
           <div
-            className="relative flex-shrink-0 rounded-full overflow-hidden"
+            className="relative flex-shrink-0 flex items-end justify-center"
             style={{
-              width:  "clamp(48px, 3.6vw, 64px)",
-              height: "clamp(48px, 3.6vw, 64px)",
-              background: `radial-gradient(circle at 35% 30%, ${VIOLET}22, ${NAVY_DEEP})`,
-              border: `1.5px solid ${GOLD}aa`,
-              boxShadow: `inset 0 1px 0 ${TEXT_HI}33, 0 0 18px ${VIOLET_DEEP}55, 0 0 22px ${GOLD_GLOW}`,
+              width:  "clamp(64px, 5vw, 88px)",
+              height: "clamp(72px, 5.5vw, 96px)",
+              // No frame — let the portrait sit free; the dark PNG
+              // background blends into the navy panel naturally.
+              filter: `drop-shadow(0 6px 12px rgba(0,0,0,0.4)) drop-shadow(0 0 14px ${GOLD_GLOW})`,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -248,8 +272,15 @@ export function TeacherPanel({ profile, hidden, initialOpen }: TeacherPanelProps
               src="/classroom/teacher-bhavna.png"
               alt="Ms. Bhavna"
               draggable={false}
-              className="w-full h-full object-cover select-none"
-              style={{ objectPosition: "center 18%" }}
+              className="select-none"
+              style={{
+                height: "100%",
+                width:  "auto",
+                objectFit: "contain",
+                // Lift the character out of her dark photo background
+                // by blending with the panel — preserves highlights.
+                mixBlendMode: "screen",
+              }}
             />
           </div>
 
