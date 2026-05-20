@@ -135,8 +135,12 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
   // Called by MessageBubble's save button → adds thumbnail + persists to creations
   const handleSave = useCallback((content: string, outputType: OutputType) => {
-    const title = `${chapter.chapter_title} — ${new Date().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })}`;
-    const preview = content.replace(/[#*`_]/g, "").slice(0, 80);
+    // Extract the first markdown heading from the LLM response as the title
+    const headingMatch = content.match(/^#{1,3}\s+(.+)$/m);
+    const title = headingMatch
+      ? headingMatch[1].trim()
+      : content.replace(/[#*`_]/g, "").slice(0, 50).trim() || chapter.chapter_title;
+    const preview = content.replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60);
     setSavedItems(prev => [{ id: crypto.randomUUID(), title, preview, content, createdAt: Date.now() }, ...prev].slice(0, 10));
     // Persist to creations (fire and forget)
     fetch("/api/creations", {
@@ -212,19 +216,17 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               animate={{ opacity:1, y:0,  scale:1 }}
               transition={{ duration:0.25 }}
               onClick={() => setViewingItem(item)}
-              className="rounded-xl p-2.5 mb-2 cursor-pointer"
+              className="rounded-xl p-3 mb-2 cursor-pointer"
               whileHover={{ scale:1.02, boxShadow:"0 4px 16px rgba(37,99,235,0.2)" }}
               style={{ background:"rgba(255,255,255,0.88)",
                 border:"1px solid rgba(37,99,235,0.2)",
                 boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
-              <p className="text-[10px] font-bold leading-snug mb-1 truncate"
-                style={{ color:"#0f1c4d" }}>
+              {/* Coloured top strip */}
+              <div className="w-full h-1 rounded-full mb-2" style={{ background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
+              <p className="text-xs font-bold leading-snug"
+                style={{ color:"#0f1c4d", display:"-webkit-box",
+                  WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
                 {item.title}
-              </p>
-              <p className="text-[9px] leading-relaxed"
-                style={{ color:"rgba(15,28,77,0.5)", display:"-webkit-box",
-                  WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
-                {item.preview}
               </p>
             </motion.div>
           ))}
