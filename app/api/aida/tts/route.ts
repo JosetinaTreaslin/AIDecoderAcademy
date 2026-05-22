@@ -11,9 +11,9 @@ const AIDA_VOICE_ID    = process.env.ELEVENLABS_AIDA_VOICE_ID    ?? "AZnzlk1Xvdv
 // Teacher "Skeptical Mentor" persona (see lib/teacherPersona.ts →
 // TEACHER_VOICE_AND_MANNER).
 const TEACHER_VOICE_ID = process.env.ELEVENLABS_TEACHER_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
-// Bhavna (Insightful Storyteller) — Indian-accented English, warm female.
-// Used by the Classroom Teacher persona (lib/teacherPanelGreeting.ts).
-const CLASSROOM_VOICE_ID = process.env.ELEVENLABS_CLASSROOM_VOICE_ID ?? "fEJqMD6Jp1JFP8T1BZpd";
+// Monika Sogam — Calm and Natural, clear Indian-English female voice.
+// Used by the Classroom Teacher persona.
+const CLASSROOM_VOICE_ID = process.env.ELEVENLABS_CLASSROOM_VOICE_ID ?? "1qEiC6qsybMkmnNdVMbK";
 
 const ELEVENLABS_MODEL = "eleven_flash_v2_5"; // ~75ms first-byte latency
 
@@ -97,6 +97,7 @@ export async function POST(req: Request) {
                   text:           chunk,
                   model_id:       ELEVENLABS_MODEL,
                   voice_settings: voiceSettings,
+                  speed:          0.78,
                 }),
               }
             );

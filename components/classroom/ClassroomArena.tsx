@@ -427,6 +427,63 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         )}
       </div>
 
+      {/* ── Dustbin — drop a note card here to delete it ──────────────────── */}
+      <div
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setBinDragOver(true); }}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setBinDragOver(false); }}
+        onDrop={e => {
+          e.preventDefault();
+          setBinDragOver(false);
+          const id = e.dataTransfer.getData("application/classroom-item");
+          if (!id) return;
+          setSavedItems(prev => prev.filter(item => item.id !== id));
+          fetch("/api/creations", {
+            method:  "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ id }),
+          }).catch(() => {});
+        }}
+        style={{
+          position: "absolute",
+          bottom: "2%",
+          left:   "9%",
+          width:  "18%",
+          zIndex: 18,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          cursor: "copy",
+          transition: "transform 0.2s ease",
+          transform: binDragOver ? "scale(1.18) translateY(-6px)" : "scale(1)",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/arena1/bin.png"
+          alt="Delete"
+          draggable={false}
+          style={{
+            width: "100%", height: "auto", objectFit: "contain",
+            filter: binDragOver
+              ? "brightness(1.6) drop-shadow(0 0 14px rgba(255,80,80,0.9)) drop-shadow(0 0 32px rgba(255,80,80,0.5))"
+              : "brightness(0.75) saturate(0.7)",
+            transition: "filter 0.2s ease",
+          }}
+        />
+        {binDragOver && (
+          <div style={{
+            position: "absolute", bottom: "50%", left: "50%", transform: "translateX(-50%)",
+            background: "rgba(8,4,22,0.92)", border: "1px solid rgba(255,80,80,0.5)",
+            borderRadius: 10, padding: "4px 10px", whiteSpace: "nowrap",
+            fontSize: 10, fontWeight: 700, color: "rgba(255,120,120,1)",
+            boxShadow: "0 0 16px rgba(255,80,80,0.4)", backdropFilter: "blur(8px)",
+            pointerEvents: "none",
+          }}>
+            Drop to delete
+          </div>
+        )}
+      </div>
+
       {/* ── Chat overlay — transparent bg, floats on whiteboard ────────────── */}
       {/* Override Syne display font on all markdown headings inside this pane */}
       <style>{`

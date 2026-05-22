@@ -6,9 +6,11 @@
  * no arena/game persona. Completely separate from /api/chat.
  *
  * Body: {
- *   message:     string;
- *   chapterTitle: string;
- *   history:     { role: "user" | "assistant"; content: string }[];
+ *   message:        string;
+ *   chapterTitle:   string;
+ *   history:        { role: "user" | "assistant"; content: string }[];
+ *   isVoiceMode?:   boolean;   // voice mode → concise, no-markdown reply
+ *   conceptContext?: string;   // lecture doubt → concept being asked about
  * }
  */
 
@@ -28,11 +30,14 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return new Response("Unauthorized", { status: 401 });
 
-    const { message, chapterTitle, history = [] } = await req.json() as {
-      message:      string;
-      chapterTitle: string;
-      history:      { role: "user" | "assistant"; content: string }[];
-    };
+    const { message, chapterTitle, history = [], isVoiceMode = false, conceptContext } =
+      await req.json() as {
+        message:        string;
+        chapterTitle:   string;
+        history:        { role: "user" | "assistant"; content: string }[];
+        isVoiceMode?:   boolean;
+        conceptContext?: string;
+      };
 
     if (!message?.trim()) return new Response("message required", { status: 400 });
 
@@ -46,9 +51,16 @@ export async function POST(req: Request) {
 
     if (!profileRow) return new Response("Profile not found", { status: 404 });
     const profile = profileRow as Profile;
+    const learnerModel =
+      (profileRow as { learner_model?: Record<string, unknown> | null }).learner_model ?? null;
 
     // Build classroom-specific system prompt
-    const systemPrompt = buildClassroomSystemPrompt(profile, chapterTitle || "Science Chapter");
+    // chapterTitle is optional — when absent, the teacher answers across subjects.
+    const systemPrompt = buildClassroomSystemPrompt(
+      profile,
+      chapterTitle || undefined,
+      { isVoiceMode, conceptContext, learnerModel },
+    );
 
     // Build message history for OpenAI (last 20 turns max to keep context window lean)
     const recentHistory = history.slice(-20).map(m => ({
@@ -59,7 +71,7 @@ export async function POST(req: Request) {
     // Stream from OpenAI
     const stream = await openai.chat.completions.create({
       model:       "gpt-4o-mini",
-      max_tokens:  1500,
+      max_tokens:  isVoiceMode ? 350 : 1500,
       temperature: 0.4,          // lower = more structured, consistent output
       stream:      true,
       messages: [
