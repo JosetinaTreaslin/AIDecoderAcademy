@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Play, X } from "lucide-react";
 import { MessageBubble } from "@/components/playground/MessageBubble";
 import type { Message }  from "@/components/playground/useChat";
 import ReactMarkdown from "react-markdown";
@@ -13,7 +13,16 @@ interface Props {
   onBack:  () => void;
 }
 
-interface SavedItem { id: string; title: string; preview: string; content: string; createdAt: number; }
+interface SavedItem  { id: string; title: string; preview: string; content: string; createdAt: number; }
+interface VideoItem  { src: string; title: string; }
+
+// Map subject → available explainer videos
+function getVideos(subject: string): VideoItem[] {
+  if (subject === "Mathematics") {
+    return [{ src: "/explainer_videos/maths/maths.mp4", title: "Mathematics Explainer" }];
+  }
+  return [{ src: "/explainer_videos/physics/physics.mp4", title: "Physics Explainer" }];
+}
 
 // Left toolbar tile hotspot positions (% of viewport)
 const TILES = [
@@ -40,8 +49,11 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const [savedItems,   setSavedItems]   = useState<SavedItem[]>([]);
   const [viewingItem,  setViewingItem]  = useState<SavedItem | null>(null);
+  const [binDragOver,  setBinDragOver]  = useState(false);
   const [messages,     setMessages]     = useState<Message[]>([]);
   const [isStreaming,  setIsStreaming]  = useState(false);
+  const [mode,         setMode]         = useState<"notes" | "videos">("notes");
+  const [playingVideo, setPlayingVideo] = useState<VideoItem | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const taRef     = useRef<HTMLTextAreaElement>(null);
 
@@ -51,6 +63,27 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       .then(({ profile: p }) => setProfile(p))
       .catch(() => {});
   }, []);
+
+  // Load persisted classroom creations for this chapter on mount
+  useEffect(() => {
+    fetch("/api/creations?type=chat&limit=10")
+      .then(r => r.ok ? r.json() : { creations: [] })
+      .then(({ creations }: { creations: any[] }) => {
+        const filtered = creations.filter(
+          (c: any) => Array.isArray(c.tags) && c.tags.includes("classroom") && c.tags.includes(chapter.chapter_title)
+        ).slice(0, 10);
+        setSavedItems(
+          filtered.map((c: any) => ({
+            id:        c.id,
+            title:     c.title,
+            preview:   (c.content as string).replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60),
+            content:   c.content,
+            createdAt: new Date(c.created_at).getTime(),
+          }))
+        );
+      })
+      .catch(() => {});
+  }, [chapter.chapter_title]);
 
   // Sends to the dedicated classroom chat route (NOT /api/chat)
   const sendMessage = useCallback(async (text: string) => {
@@ -135,14 +168,13 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
   // Called by MessageBubble's save button → adds thumbnail + persists to creations
   const handleSave = useCallback((content: string, outputType: OutputType) => {
-    // Extract the first markdown heading from the LLM response as the title
     const headingMatch = content.match(/^#{1,3}\s+(.+)$/m);
     const title = headingMatch
       ? headingMatch[1].trim()
       : content.replace(/[#*`_]/g, "").slice(0, 50).trim() || chapter.chapter_title;
     const preview = content.replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60);
-    setSavedItems(prev => [{ id: crypto.randomUUID(), title, preview, content, createdAt: Date.now() }, ...prev].slice(0, 10));
-    // Persist to creations (fire and forget)
+    const tempId = crypto.randomUUID();
+    setSavedItems(prev => [{ id: tempId, title, preview, content, createdAt: Date.now() }, ...prev].slice(0, 10));
     fetch("/api/creations", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -150,7 +182,17 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         title, type:"chat", output_type: outputType, content,
         tags: ["classroom", chapter.chapter_title],
       }),
-    }).catch(() => {});
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        // Replace temp id with real DB id so refreshing doesn't duplicate
+        if (data?.creation?.id) {
+          setSavedItems(prev => prev.map(item =>
+            item.id === tempId ? { ...item, id: data.creation.id } : item
+          ));
+        }
+      })
+      .catch(() => {});
   }, [chapter.chapter_title]);
 
   const canSend = input.trim().length > 0 && !isStreaming && !!profile;
@@ -202,40 +244,186 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         </div>
       </div>
 
-      {/* Left toolbar hotspots removed — tiles are visual only for now */}
+      {/* ── Toolbar hotspot: Notes ────────────────────────────────────────────── */}
+      <div
+        onClick={() => setMode("notes")}
+        className="absolute"
+        style={{ left:"0", top:"10%", width:"10%", height:"8.5%", zIndex:20, cursor:"pointer" }}
+      >
+        {mode === "notes" && (
+          <div className="absolute inset-0 rounded-r-xl"
+            style={{ background:"rgba(37,99,235,0.18)", border:"2px solid rgba(37,99,235,0.5)",
+              borderLeft:"none", boxShadow:"inset 0 0 12px rgba(37,99,235,0.2)" }} />
+        )}
+      </div>
 
-      {/* ── My Creations thumbnails — overlaid on left wall panel ──────────── */}
-      {/* The background has a tall white "My Creations" rectangle ~14–33% left */}
+      {/* ── Toolbar hotspot: Explainer Videos ────────────────────────────────── */}
+      <div
+        onClick={() => setMode("videos")}
+        className="absolute"
+        style={{ left:0, top:"45%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer" }}
+      >
+        {mode === "videos" && (
+          <div className="absolute inset-0 rounded-r-xl"
+            style={{ background:"rgba(37,99,235,0.18)", border:"2px solid rgba(37,99,235,0.5)",
+              borderLeft:"none", boxShadow:"inset 0 0 12px rgba(37,99,235,0.2)" }} />
+        )}
+      </div>
+
+      {/* ── My Creations / Videos panel — overlaid on left wall panel ─────────── */}
       <div className="absolute overflow-y-auto"
         style={{ left:"15.5%", top:"15.5%", width:"17%", height:"72%",
           zIndex:18, scrollbarWidth:"none" }}>
-        <AnimatePresence>
-          {savedItems.map((item, i) => (
-            <motion.div key={item.id}
-              initial={{ opacity:0, y:-8, scale:0.95 }}
-              animate={{ opacity:1, y:0,  scale:1 }}
-              transition={{ duration:0.25 }}
-              onClick={() => setViewingItem(item)}
-              className="rounded-xl p-3 mb-2 cursor-pointer"
-              whileHover={{ scale:1.02, boxShadow:"0 4px 16px rgba(37,99,235,0.2)" }}
-              style={{ background:"rgba(255,255,255,0.88)",
-                border:"1px solid rgba(37,99,235,0.2)",
-                boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
-              {/* Coloured top strip */}
-              <div className="w-full h-1 rounded-full mb-2" style={{ background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
-              <p className="text-xs font-bold leading-snug"
-                style={{ color:"#0f1c4d", display:"-webkit-box",
-                  WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
-                {item.title}
-              </p>
+
+        <AnimatePresence mode="wait">
+
+          {/* ── NOTES mode ── */}
+          {mode === "notes" && (
+            <motion.div key="notes-panel"
+              initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+              transition={{ duration:0.18 }}>
+              <AnimatePresence>
+                {savedItems.map((item) => (
+                  <div key={item.id} draggable
+                    onDragStart={(e: React.DragEvent<HTMLDivElement>) => {
+                      e.dataTransfer.setData("application/classroom-item", item.id);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}>
+                    <motion.div
+                      initial={{ opacity:0, y:-8, scale:0.95 }}
+                      animate={{ opacity:1, y:0,  scale:1 }}
+                      transition={{ duration:0.25 }}
+                      onClick={() => setViewingItem(item)}
+                      className="rounded-xl p-3 mb-2 cursor-grab"
+                      whileHover={{ scale:1.02, boxShadow:"0 4px 16px rgba(37,99,235,0.2)" }}
+                      style={{ background:"rgba(255,255,255,0.88)",
+                        border:"1px solid rgba(37,99,235,0.2)",
+                        boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
+                      <div className="w-full h-1 rounded-full mb-2"
+                        style={{ background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
+                      <p className="text-xs font-bold leading-snug"
+                        style={{ color:"#0f1c4d", display:"-webkit-box",
+                          WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+                        {item.title}
+                      </p>
+                    </motion.div>
+                  </div>
+                ))}
+              </AnimatePresence>
+              {savedItems.length === 0 && (
+                <p className="text-[10px] text-center pt-3 opacity-30" style={{ color:"#0f1c4d" }}>
+                  Saved items<br/>appear here
+                </p>
+              )}
             </motion.div>
-          ))}
+          )}
+
+          {/* ── VIDEOS mode ── */}
+          {mode === "videos" && (
+            <motion.div key="videos-panel"
+              initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+              transition={{ duration:0.18 }}>
+              {getVideos(chapter.subject).map((vid) => (
+                <motion.div key={vid.src}
+                  initial={{ opacity:0, y:-8, scale:0.95 }}
+                  animate={{ opacity:1, y:0,  scale:1 }}
+                  transition={{ duration:0.25 }}
+                  onClick={() => setPlayingVideo(vid)}
+                  className="rounded-xl mb-2 overflow-hidden cursor-pointer"
+                  whileHover={{ scale:1.03, boxShadow:"0 6px 20px rgba(37,99,235,0.28)" }}
+                  style={{ background:"rgba(255,255,255,0.92)",
+                    border:"1px solid rgba(37,99,235,0.2)",
+                    boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
+                  {/* Video thumbnail */}
+                  <div className="relative w-full" style={{ aspectRatio:"16/9", background:"#0a0f1e", maxHeight:72 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <video
+                      src={vid.src}
+                      preload="metadata"
+                      muted
+                      playsInline
+                      style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
+                    />
+                    {/* Play button overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center"
+                      style={{ background:"rgba(10,15,40,0.38)" }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                        style={{ background:"rgba(37,99,235,0.9)",
+                          boxShadow:"0 0 16px rgba(37,99,235,0.7)" }}>
+                        <Play className="w-4 h-4 text-white" style={{ marginLeft:2 }} />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Title */}
+                  <div className="px-2.5 py-2">
+                    <div className="w-full h-0.5 rounded-full mb-1.5"
+                      style={{ background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
+                    <p className="text-[11px] font-bold leading-snug" style={{ color:"#0f1c4d" }}>
+                      {vid.title}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+
         </AnimatePresence>
-        {savedItems.length === 0 && (
-          <p className="text-[10px] text-center pt-3 opacity-30"
-            style={{ color:"#0f1c4d" }}>
-            Saved items<br/>appear here
-          </p>
+      </div>
+
+      {/* ── Dustbin — drop a note card here to delete it ──────────────────── */}
+      <div
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setBinDragOver(true); }}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setBinDragOver(false); }}
+        onDrop={e => {
+          e.preventDefault();
+          setBinDragOver(false);
+          const id = e.dataTransfer.getData("application/classroom-item");
+          if (!id) return;
+          setSavedItems(prev => prev.filter(item => item.id !== id));
+          fetch("/api/creations", {
+            method:  "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ id }),
+          }).catch(() => {});
+        }}
+        style={{
+          position: "absolute",
+          bottom: "2%",
+          left:   "9%",
+          width:  "18%",
+          zIndex: 18,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          cursor: "copy",
+          transition: "transform 0.2s ease",
+          transform: binDragOver ? "scale(1.18) translateY(-6px)" : "scale(1)",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/arena1/bin.png"
+          alt="Delete"
+          draggable={false}
+          style={{
+            width: "100%", height: "auto", objectFit: "contain",
+            filter: binDragOver
+              ? "brightness(1.6) drop-shadow(0 0 14px rgba(255,80,80,0.9)) drop-shadow(0 0 32px rgba(255,80,80,0.5))"
+              : "brightness(0.75) saturate(0.7)",
+            transition: "filter 0.2s ease",
+          }}
+        />
+        {binDragOver && (
+          <div style={{
+            position: "absolute", bottom: "50%", left: "50%", transform: "translateX(-50%)",
+            background: "rgba(8,4,22,0.92)", border: "1px solid rgba(255,80,80,0.5)",
+            borderRadius: 10, padding: "4px 10px", whiteSpace: "nowrap",
+            fontSize: 10, fontWeight: 700, color: "rgba(255,120,120,1)",
+            boxShadow: "0 0 16px rgba(255,80,80,0.4)", backdropFilter: "blur(8px)",
+            pointerEvents: "none",
+          }}>
+            Drop to delete
+          </div>
         )}
       </div>
 
@@ -338,6 +526,51 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Video player modal ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {playingVideo && (
+          <motion.div
+            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ zIndex:60, background:"rgba(0,0,0,0.85)", backdropFilter:"blur(8px)" }}
+            onClick={() => setPlayingVideo(null)}
+          >
+            <motion.div
+              initial={{ opacity:0, scale:0.93, y:16 }}
+              animate={{ opacity:1, scale:1,    y:0 }}
+              exit={{    opacity:0, scale:0.93, y:16 }}
+              transition={{ duration:0.22 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width:"72%", borderRadius:16, overflow:"hidden",
+                boxShadow:"0 32px 80px rgba(0,0,0,0.7)",
+                border:"1px solid rgba(255,255,255,0.1)" }}>
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3"
+                style={{ background:"rgba(10,15,40,0.95)", borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-sm font-semibold" style={{ color:"rgba(255,255,255,0.88)",
+                  fontFamily:"'DM Sans',sans-serif" }}>
+                  {playingVideo.title}
+                </p>
+                <button onClick={() => setPlayingVideo(null)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-white/10"
+                  style={{ color:"rgba(255,255,255,0.5)" }}>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {/* Video */}
+              <video
+                key={playingVideo.src}
+                src={playingVideo.src}
+                controls
+                autoPlay
+                style={{ width:"100%", display:"block", background:"#000",
+                  maxHeight:"70vh", objectFit:"contain" }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Saved item viewer modal ─────────────────────────────────────────── */}
       <AnimatePresence>

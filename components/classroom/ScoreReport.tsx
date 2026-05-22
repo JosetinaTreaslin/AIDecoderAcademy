@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, XCircle, RotateCcw, Trophy, TrendingUp } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, Trophy, TrendingUp, Home } from "lucide-react";
 import type { MCQQuestion } from "@/types";
 import type { SubmitResult } from "./MCQTest";
 
@@ -8,6 +8,7 @@ interface Props {
   result:       SubmitResult;
   chapterTitle: string;
   onRetry:      () => void;
+  onHome:       () => void;
 }
 
 const NAVY    = "#0f1c4d";
@@ -52,14 +53,14 @@ function ScoreRing({ score, max }: { score: number; max: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display font-black text-3xl leading-none" style={{ color }}>{score}</span>
+        <span className="text-3xl font-bold leading-none" style={{ color, fontFamily:"'DM Sans',sans-serif" }}>{score}</span>
         <span className="text-sm font-mono mt-0.5" style={{ color: NAVY_55 }}>/ {max}</span>
       </div>
     </div>
   );
 }
 
-export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
+export function ScoreReport({ result, chapterTitle, onRetry, onHome }: Props) {
   const { score, max_score, feedback, questions, answers } = result;
   const pct   = max_score > 0 ? score / max_score : 0;
   const grade = gradeLabel(pct);
@@ -94,7 +95,7 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
         <ScoreRing score={score} max={max_score} />
 
         <div className="text-center">
-          <p className="font-display font-black text-3xl leading-none" style={{ color: grade.color }}>
+          <p className="text-2xl font-bold leading-none" style={{ color: grade.color, fontFamily:"'DM Sans',sans-serif" }}>
             {grade.label}
           </p>
           <p className="text-sm mt-2" style={{ color: NAVY_55 }}>
@@ -106,12 +107,12 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
         <div className="flex gap-3 w-full max-w-xs">
           <div className="flex-1 rounded-xl p-3 text-center"
             style={{ background: "rgba(22,163,74,0.07)", border: "1px solid rgba(22,163,74,0.18)" }}>
-            <p className="font-display font-black text-xl" style={{ color: "#16a34a" }}>{correct}</p>
+            <p className="text-xl font-bold" style={{ color: "#16a34a", fontFamily:"'DM Sans',sans-serif" }}>{correct}</p>
             <p className="text-[10px] font-mono mt-0.5" style={{ color: "rgba(22,163,74,0.7)" }}>Correct</p>
           </div>
           <div className="flex-1 rounded-xl p-3 text-center"
             style={{ background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.18)" }}>
-            <p className="font-display font-black text-xl" style={{ color: "#dc2626" }}>{incorrect}</p>
+            <p className="text-xl font-bold" style={{ color: "#dc2626", fontFamily:"'DM Sans',sans-serif" }}>{incorrect}</p>
             <p className="text-[10px] font-mono mt-0.5" style={{ color: "rgba(220,38,38,0.7)" }}>Incorrect</p>
           </div>
         </div>
@@ -128,7 +129,7 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
               <div key={d} className="flex-1 rounded-xl p-2.5"
                 style={{ background: dc.bg, border: `1px solid ${dc.border}` }}>
                 <span className="text-[10px] font-mono uppercase block mb-1.5 font-bold" style={{ color: dc.text }}>{d}</span>
-                <span className="font-display font-black text-sm block" style={{ color: dc.text }}>
+                <span className="text-sm font-bold block" style={{ color: dc.text, fontFamily:"'DM Sans',sans-serif" }}>
                   {s}/{qs.length}
                 </span>
                 <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ background: "rgba(255,255,255,0.5)" }}>
@@ -220,15 +221,26 @@ export function ScoreReport({ result, chapterTitle, onRetry }: Props) {
         <div className="h-2" />
       </div>
 
-      {/* ── Retry ── */}
-      <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: `1px solid ${NAVY_08}` }}>
+      {/* ── Actions ── */}
+      <div className="flex-shrink-0 px-6 py-4 flex gap-3" style={{ borderTop: `1px solid ${NAVY_08}` }}>
+        <button onClick={onHome}
+          className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all"
+          style={{ flex:"0 0 auto", paddingLeft:20, paddingRight:20,
+            background: "rgba(15,28,77,0.05)", border: "1px solid rgba(15,28,77,0.15)", color: NAVY_70,
+            fontFamily:"'DM Sans',sans-serif" }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(15,28,77,0.10)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(15,28,77,0.05)"; }}
+        >
+          <Home className="w-4 h-4" /> Home
+        </button>
         <button onClick={onRetry}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-display font-bold text-sm transition-all"
-          style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", color: "#2563eb" }}
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all"
+          style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", color: "#2563eb",
+            fontFamily:"'DM Sans',sans-serif" }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(37,99,235,0.14)"; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(37,99,235,0.08)"; }}
         >
-          <RotateCcw className="w-4 h-4" /> Try Again with New Questions
+          <RotateCcw className="w-4 h-4" /> Try Again
         </button>
       </div>
     </div>
