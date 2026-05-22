@@ -40,6 +40,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const [savedItems,   setSavedItems]   = useState<SavedItem[]>([]);
   const [viewingItem,  setViewingItem]  = useState<SavedItem | null>(null);
+  const [binDragOver,  setBinDragOver]  = useState(false);
   const [messages,     setMessages]     = useState<Message[]>([]);
   const [isStreaming,  setIsStreaming]  = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -240,25 +241,34 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         style={{ left:"15.5%", top:"15.5%", width:"17%", height:"72%",
           zIndex:18, scrollbarWidth:"none" }}>
         <AnimatePresence>
-          {savedItems.map((item, i) => (
-            <motion.div key={item.id}
-              initial={{ opacity:0, y:-8, scale:0.95 }}
-              animate={{ opacity:1, y:0,  scale:1 }}
-              transition={{ duration:0.25 }}
-              onClick={() => setViewingItem(item)}
-              className="rounded-xl p-3 mb-2 cursor-pointer"
-              whileHover={{ scale:1.02, boxShadow:"0 4px 16px rgba(37,99,235,0.2)" }}
-              style={{ background:"rgba(255,255,255,0.88)",
-                border:"1px solid rgba(37,99,235,0.2)",
-                boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
-              {/* Coloured top strip */}
-              <div className="w-full h-1 rounded-full mb-2" style={{ background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
-              <p className="text-xs font-bold leading-snug"
-                style={{ color:"#0f1c4d", display:"-webkit-box",
-                  WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
-                {item.title}
-              </p>
-            </motion.div>
+          {savedItems.map((item) => (
+            <div
+              key={item.id}
+              draggable
+              onDragStart={(e: React.DragEvent<HTMLDivElement>) => {
+                e.dataTransfer.setData("application/classroom-item", item.id);
+                e.dataTransfer.effectAllowed = "move";
+              }}
+            >
+              <motion.div
+                initial={{ opacity:0, y:-8, scale:0.95 }}
+                animate={{ opacity:1, y:0,  scale:1 }}
+                transition={{ duration:0.25 }}
+                onClick={() => setViewingItem(item)}
+                className="rounded-xl p-3 mb-2 cursor-grab"
+                whileHover={{ scale:1.02, boxShadow:"0 4px 16px rgba(37,99,235,0.2)" }}
+                style={{ background:"rgba(255,255,255,0.88)",
+                  border:"1px solid rgba(37,99,235,0.2)",
+                  boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
+                {/* Coloured top strip */}
+                <div className="w-full h-1 rounded-full mb-2" style={{ background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
+                <p className="text-xs font-bold leading-snug"
+                  style={{ color:"#0f1c4d", display:"-webkit-box",
+                    WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+                  {item.title}
+                </p>
+              </motion.div>
+            </div>
           ))}
         </AnimatePresence>
         {savedItems.length === 0 && (
@@ -266,6 +276,63 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             style={{ color:"#0f1c4d" }}>
             Saved items<br/>appear here
           </p>
+        )}
+      </div>
+
+      {/* ── Dustbin — drop a note card here to delete it ──────────────────── */}
+      <div
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setBinDragOver(true); }}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setBinDragOver(false); }}
+        onDrop={e => {
+          e.preventDefault();
+          setBinDragOver(false);
+          const id = e.dataTransfer.getData("application/classroom-item");
+          if (!id) return;
+          setSavedItems(prev => prev.filter(item => item.id !== id));
+          fetch("/api/creations", {
+            method:  "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ id }),
+          }).catch(() => {});
+        }}
+        style={{
+          position: "absolute",
+          bottom: "2%",
+          left:   "9%",
+          width:  "18%",
+          zIndex: 18,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          cursor: "copy",
+          transition: "transform 0.2s ease",
+          transform: binDragOver ? "scale(1.18) translateY(-6px)" : "scale(1)",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/arena1/bin.png"
+          alt="Delete"
+          draggable={false}
+          style={{
+            width: "100%", height: "auto", objectFit: "contain",
+            filter: binDragOver
+              ? "brightness(1.6) drop-shadow(0 0 14px rgba(255,80,80,0.9)) drop-shadow(0 0 32px rgba(255,80,80,0.5))"
+              : "brightness(0.75) saturate(0.7)",
+            transition: "filter 0.2s ease",
+          }}
+        />
+        {binDragOver && (
+          <div style={{
+            position: "absolute", bottom: "50%", left: "50%", transform: "translateX(-50%)",
+            background: "rgba(8,4,22,0.92)", border: "1px solid rgba(255,80,80,0.5)",
+            borderRadius: 10, padding: "4px 10px", whiteSpace: "nowrap",
+            fontSize: 10, fontWeight: 700, color: "rgba(255,120,120,1)",
+            boxShadow: "0 0 16px rgba(255,80,80,0.4)", backdropFilter: "blur(8px)",
+            pointerEvents: "none",
+          }}>
+            Drop to delete
+          </div>
         )}
       </div>
 
