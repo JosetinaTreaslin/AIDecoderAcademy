@@ -14,14 +14,31 @@ interface Props {
 }
 
 interface SavedItem  { id: string; title: string; preview: string; content: string; createdAt: number; }
-interface VideoItem  { src: string; title: string; }
+interface VideoItem  {
+  title:     string;
+  embedUrl:  string;   // iframe src (Google Drive preview URL)
+  thumbUrl:  string;   // thumbnail image src
+}
+
+function driveEmbed(fileId: string)  { return `https://drive.google.com/file/d/${fileId}/preview`; }
+function driveThumb(fileId: string)  { return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`; }
+
+const MATHS_VIDEO_ID = "1tTJkw13HqGbkTUoxypgtBGlAXkdoiE1Y";
 
 // Map subject → available explainer videos
 function getVideos(subject: string): VideoItem[] {
   if (subject === "Mathematics") {
-    return [{ src: "/explainer_videos/maths/maths.mp4", title: "Mathematics Explainer" }];
+    return [{
+      title:    "Mathematics Explainer",
+      embedUrl: driveEmbed(MATHS_VIDEO_ID),
+      thumbUrl: driveThumb(MATHS_VIDEO_ID),
+    }];
   }
-  return [{ src: "/explainer_videos/physics/physics.mp4", title: "Physics Explainer" }];
+  return [{
+    title:    "Physics Explainer",
+    embedUrl: "/explainer_videos/physics/physics.mp4",
+    thumbUrl: "",
+  }];
 }
 
 // Left toolbar tile hotspot positions (% of viewport)
@@ -324,7 +341,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
               transition={{ duration:0.18 }}>
               {getVideos(chapter.subject).map((vid) => (
-                <motion.div key={vid.src}
+                <motion.div key={vid.embedUrl}
                   initial={{ opacity:0, y:-8, scale:0.95 }}
                   animate={{ opacity:1, y:0,  scale:1 }}
                   transition={{ duration:0.25 }}
@@ -335,15 +352,14 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                     border:"1px solid rgba(37,99,235,0.2)",
                     boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
                   {/* Video thumbnail */}
-                  <div className="relative w-full" style={{ aspectRatio:"16/9", background:"#0a0f1e", maxHeight:72 }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <video
-                      src={vid.src}
-                      preload="metadata"
-                      muted
-                      playsInline
-                      style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
-                    />
+                  <div className="relative w-full" style={{ aspectRatio:"16/9", background:"#0a0f1e", maxHeight:72, overflow:"hidden" }}>
+                    {vid.thumbUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={vid.thumbUrl} alt={vid.title}
+                        style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                    ) : (
+                      <div style={{ width:"100%", height:"100%", background:"#1a2540" }} />
+                    )}
                     {/* Play button overlay */}
                     <div className="absolute inset-0 flex items-center justify-center"
                       style={{ background:"rgba(10,15,40,0.38)" }}>
@@ -558,15 +574,26 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              {/* Video */}
-              <video
-                key={playingVideo.src}
-                src={playingVideo.src}
-                controls
-                autoPlay
-                style={{ width:"100%", display:"block", background:"#000",
-                  maxHeight:"70vh", objectFit:"contain" }}
-              />
+              {/* Video — iframe for Drive links, native video for local files */}
+              {playingVideo.embedUrl.startsWith("https://drive.google.com") ? (
+                <iframe
+                  key={playingVideo.embedUrl}
+                  src={playingVideo.embedUrl}
+                  allow="autoplay"
+                  allowFullScreen
+                  style={{ width:"100%", border:"none", background:"#000",
+                    height:"min(70vh, 480px)", display:"block" }}
+                />
+              ) : (
+                <video
+                  key={playingVideo.embedUrl}
+                  src={playingVideo.embedUrl}
+                  controls
+                  autoPlay
+                  style={{ width:"100%", display:"block", background:"#000",
+                    maxHeight:"70vh", objectFit:"contain" }}
+                />
+              )}
             </motion.div>
           </motion.div>
         )}
