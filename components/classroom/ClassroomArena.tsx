@@ -52,6 +52,27 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       .catch(() => {});
   }, []);
 
+  // Load persisted classroom creations for this chapter on mount
+  useEffect(() => {
+    fetch("/api/creations?type=chat&limit=50")
+      .then(r => r.ok ? r.json() : { creations: [] })
+      .then(({ creations }: { creations: any[] }) => {
+        const filtered = creations.filter(
+          (c: any) => Array.isArray(c.tags) && c.tags.includes("classroom") && c.tags.includes(chapter.chapter_title)
+        );
+        setSavedItems(
+          filtered.map((c: any) => ({
+            id:        c.id,
+            title:     c.title,
+            preview:   (c.content as string).replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60),
+            content:   c.content,
+            createdAt: new Date(c.created_at).getTime(),
+          }))
+        );
+      })
+      .catch(() => {});
+  }, [chapter.chapter_title]);
+
   // Sends to the dedicated classroom chat route (NOT /api/chat)
   const sendMessage = useCallback(async (text: string) => {
     if (!profile || isStreaming || !text.trim()) return;
@@ -135,14 +156,13 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
   // Called by MessageBubble's save button → adds thumbnail + persists to creations
   const handleSave = useCallback((content: string, outputType: OutputType) => {
-    // Extract the first markdown heading from the LLM response as the title
     const headingMatch = content.match(/^#{1,3}\s+(.+)$/m);
     const title = headingMatch
       ? headingMatch[1].trim()
       : content.replace(/[#*`_]/g, "").slice(0, 50).trim() || chapter.chapter_title;
     const preview = content.replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60);
-    setSavedItems(prev => [{ id: crypto.randomUUID(), title, preview, content, createdAt: Date.now() }, ...prev].slice(0, 10));
-    // Persist to creations (fire and forget)
+    const tempId = crypto.randomUUID();
+    setSavedItems(prev => [{ id: tempId, title, preview, content, createdAt: Date.now() }, ...prev].slice(0, 50));
     fetch("/api/creations", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -150,7 +170,17 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         title, type:"chat", output_type: outputType, content,
         tags: ["classroom", chapter.chapter_title],
       }),
-    }).catch(() => {});
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        // Replace temp id with real DB id so refreshing doesn't duplicate
+        if (data?.creation?.id) {
+          setSavedItems(prev => prev.map(item =>
+            item.id === tempId ? { ...item, id: data.creation.id } : item
+          ));
+        }
+      })
+      .catch(() => {});
   }, [chapter.chapter_title]);
 
   const canSend = input.trim().length > 0 && !isStreaming && !!profile;
