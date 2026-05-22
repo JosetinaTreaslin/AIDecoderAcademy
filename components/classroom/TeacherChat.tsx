@@ -45,7 +45,7 @@ const TC_MD_CSS = `
 .tc-md p              { margin: 0 0 6px; }
 .tc-md ul, .tc-md ol  { margin: 0 0 6px; padding-left: 18px; }
 .tc-md li             { margin: 2px 0; }
-.tc-md h1, .tc-md h2, .tc-md h3 { font-weight: 800; margin: 9px 0 4px; line-height: 1.3; }
+.tc-md h1, .tc-md h2, .tc-md h3 { font-weight: 700; margin: 9px 0 4px; line-height: 1.3; font-family: inherit; letter-spacing: normal; }
 .tc-md h1 { font-size: 14.5px; }
 .tc-md h2 { font-size: 14px; }
 .tc-md h3 { font-size: 13.5px; }
