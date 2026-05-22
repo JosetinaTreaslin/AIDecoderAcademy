@@ -13,7 +13,6 @@ import { ScoreReport }      from "@/components/classroom/ScoreReport";
 import { WrittenTest, type WrittenResult } from "@/components/classroom/WrittenTest";
 import { WrittenScoreReport } from "@/components/classroom/WrittenScoreReport";
 import { ProctoringGuard }  from "@/components/classroom/ProctoringGuard";
-import { TeacherPanel }       from "@/components/classroom/TeacherPanel";
 import { MathChapterMapPage } from "@/components/classroom/MathChapterMapPage";
 import { TeacherCharacter } from "@/components/classroom/TeacherCharacter";
 import type { Chapter, MCQQuestion, WrittenQuestion, WrittenFeedbackItem, Profile } from "@/types";
