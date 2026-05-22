@@ -54,12 +54,12 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
   // Load persisted classroom creations for this chapter on mount
   useEffect(() => {
-    fetch("/api/creations?type=chat&limit=50")
+    fetch("/api/creations?type=chat&limit=10")
       .then(r => r.ok ? r.json() : { creations: [] })
       .then(({ creations }: { creations: any[] }) => {
         const filtered = creations.filter(
           (c: any) => Array.isArray(c.tags) && c.tags.includes("classroom") && c.tags.includes(chapter.chapter_title)
-        );
+        ).slice(0, 10);
         setSavedItems(
           filtered.map((c: any) => ({
             id:        c.id,
@@ -162,7 +162,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       : content.replace(/[#*`_]/g, "").slice(0, 50).trim() || chapter.chapter_title;
     const preview = content.replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60);
     const tempId = crypto.randomUUID();
-    setSavedItems(prev => [{ id: tempId, title, preview, content, createdAt: Date.now() }, ...prev].slice(0, 50));
+    setSavedItems(prev => [{ id: tempId, title, preview, content, createdAt: Date.now() }, ...prev].slice(0, 10));
     fetch("/api/creations", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
