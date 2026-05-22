@@ -13,6 +13,7 @@ import { ScoreReport }      from "@/components/classroom/ScoreReport";
 import { WrittenTest, type WrittenResult } from "@/components/classroom/WrittenTest";
 import { WrittenScoreReport } from "@/components/classroom/WrittenScoreReport";
 import { ProctoringGuard }  from "@/components/classroom/ProctoringGuard";
+import { MathChapterMapPage } from "@/components/classroom/MathChapterMapPage";
 import { TeacherCharacter } from "@/components/classroom/TeacherCharacter";
 import type { Chapter, MCQQuestion, WrittenQuestion, WrittenFeedbackItem, Profile } from "@/types";
 
@@ -21,7 +22,7 @@ const GOLD = "#C8A84B";
 
 // ── Subject tiles configuration ───────────────────────────────────────────────
 const LEFT_SUBJECTS = [
-  { id: "mathematics", src: "/classroom/mathematics.png", name: "Mathematics",  hasData: false },
+  { id: "mathematics", src: "/classroom/mathematics.png", name: "Mathematics",  hasData: true  },
   { id: "physics",     src: "/classroom/physics.png",     name: "Physics",      hasData: false },
   { id: "chemistry",   src: "/classroom/chemistry.png",   name: "Chemistry",    hasData: true  },
   { id: "english",     src: "/classroom/english.png",     name: "English",      hasData: false },
@@ -224,7 +225,7 @@ function SubjectTile({ src, name, hasData, onClick }: {
 }
 
 // ── Classroom landing (hub layout) ────────────────────────────────────────────
-function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter: (subject: string) => void }) {
+function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter: (subjectId: string) => void }) {
   const firstName = (profile?.display_name ?? "Explorer").split(" ")[0];
   return (
     <div className="relative w-full flex flex-col overflow-hidden"
@@ -293,7 +294,7 @@ function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter
         {/* Left — 4 subject tiles */}
         <div className="cl-col-left">
           {LEFT_SUBJECTS.map(s => (
-            <SubjectTile key={s.id} src={s.src} name={s.name} hasData={s.hasData} onClick={onEnter} />
+            <SubjectTile key={s.id} src={s.src} name={s.name} hasData={s.hasData} onClick={() => onEnter(s.id)} />
           ))}
         </div>
 
@@ -303,7 +304,7 @@ function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter
         {/* Right — 4 subject tiles */}
         <div className="cl-col-right">
           {RIGHT_SUBJECTS.map(s => (
-            <SubjectTile key={s.id} src={s.src} name={s.name} hasData={s.hasData} onClick={onEnter} />
+            <SubjectTile key={s.id} src={s.src} name={s.name} hasData={s.hasData} onClick={() => onEnter(s.id)} />
           ))}
         </div>
 
@@ -317,7 +318,7 @@ function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-type View = "landing" | "chapters" | "objective" | "arena" | "pick" | "select-type" | "loading"
+type View = "landing" | "chapters" | "math-chapters" | "objective" | "arena" | "pick" | "select-type" | "loading"
           | "mcq-test" | "written-test" | "mcq-result" | "written-result";
 
 interface PaperData {
@@ -338,6 +339,7 @@ export default function ClassroomPage() {
   const [writtenResult,  setWrittenResult] = useState<WrittenResult|null>(null);
   const [loadError,      setLoadError]     = useState<string|null>(null);
   const [loadingMsg,     setLoadingMsg]    = useState("");
+  const [activeSubject,  setActiveSubject] = useState<string>("chemistry");
   const [writtenPhase,   setWrittenPhase]  = useState("intro");
 
   useEffect(() => {
@@ -403,13 +405,16 @@ export default function ClassroomPage() {
   if (view === "landing") {
     return (
       <>
-        <ClassroomLanding profile={profile} onEnter={(subject) => { setSelectedSubject(subject); setView("chapters"); }} />
+        <ClassroomLanding profile={profile} onEnter={(subjectId) => {
+          setActiveSubject(subjectId);
+          setView(subjectId === "mathematics" ? "math-chapters" : "chapters");
+        }} />
         {teacher}
       </>
     );
   }
 
-  // ── Chapter map — full viewport ───────────────────────────────────────────
+  // ── Chemistry chapter map — full viewport ────────────────────────────────
   if (view === "chapters") {
     return (
       <>
@@ -422,14 +427,28 @@ export default function ClassroomPage() {
     );
   }
 
+  // ── Mathematics chapter map — full viewport ───────────────────────────────
+  if (view === "math-chapters") {
+    return (
+      <>
+        <MathChapterMapPage
+          onChapterSelect={(ch) => { setChapter(ch); setView("objective"); }}
+          onBack={() => setView("landing")}
+        />
+        {teacher}
+      </>
+    );
+  }
+
   // ── Objective page — full viewport ────────────────────────────────────────
   if (view === "objective" && selectedChapter) {
+    const chapterMapView = activeSubject === "mathematics" ? "math-chapters" : "chapters";
     return (
       <>
         <ObjectivePage
           chapter={selectedChapter}
           onSelectTest={(type) => loadPaper(selectedChapter, type)}
-          onBack={() => setView("chapters")}
+          onBack={() => setView(chapterMapView)}
           onEnterArena={() => setView("arena")}
         />
         {teacher}
@@ -538,13 +557,15 @@ export default function ClassroomPage() {
 
               {view === "mcq-result" && mcqResult && paper && (
                 <motion.div key="mcq-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
-                  <ScoreReport result={mcqResult} chapterTitle={paper.chapter.chapter_title} onRetry={retryMcq} />
+                  <ScoreReport result={mcqResult} chapterTitle={paper.chapter.chapter_title}
+                    onRetry={retryMcq} onHome={() => setView("landing")} />
                 </motion.div>
               )}
 
               {view === "written-result" && writtenResult && paper && (
                 <motion.div key="written-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
-                  <WrittenScoreReport result={writtenResult} chapterTitle={paper.chapter.chapter_title} onRetry={retryWritten} />
+                  <WrittenScoreReport result={writtenResult} chapterTitle={paper.chapter.chapter_title}
+                    onRetry={retryWritten} onHome={() => setView("landing")} />
                 </motion.div>
               )}
 

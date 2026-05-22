@@ -1,6 +1,6 @@
 "use client";
 
-import { Trophy, RotateCcw, TrendingUp, CheckCircle2, AlertCircle, MinusCircle } from "lucide-react";
+import { Trophy, RotateCcw, TrendingUp, CheckCircle2, AlertCircle, MinusCircle, Home } from "lucide-react";
 import type { WrittenQuestion, WrittenFeedbackItem } from "@/types";
 import type { WrittenResult } from "./WrittenTest";
 
@@ -8,6 +8,7 @@ interface Props {
   result:       WrittenResult;
   chapterTitle: string;
   onRetry:      () => void;
+  onHome:       () => void;
 }
 
 const NAVY     = "#0f1c4d";
@@ -59,7 +60,7 @@ function ScoreRing({ score, max }: { score: number; max: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display font-black text-3xl leading-none" style={{ color }}>{score}</span>
+        <span className="text-3xl font-bold leading-none" style={{ color, fontFamily:"'DM Sans',sans-serif" }}>{score}</span>
         <span className="text-sm font-mono mt-0.5" style={{ color: NAVY_45 }}>/ {max}</span>
       </div>
     </div>
@@ -82,7 +83,7 @@ function ScoreBar({ score, max }: { score: number; max: number }) {
   );
 }
 
-export function WrittenScoreReport({ result, chapterTitle, onRetry }: Props) {
+export function WrittenScoreReport({ result, chapterTitle, onRetry, onHome }: Props) {
   const { score, max_score, feedback, questions } = result;
   const pct   = max_score > 0 ? score / max_score : 0;
   const grade = gradeLabel(pct);
@@ -117,7 +118,7 @@ export function WrittenScoreReport({ result, chapterTitle, onRetry }: Props) {
         <ScoreRing score={score} max={max_score} />
 
         <div className="text-center">
-          <p className="font-display font-black text-3xl leading-none" style={{ color: grade.color }}>
+          <p className="text-2xl font-bold leading-none" style={{ color: grade.color, fontFamily:"'DM Sans',sans-serif" }}>
             {grade.label}
           </p>
           <p className="text-sm mt-2" style={{ color: NAVY_60 }}>
@@ -250,11 +251,22 @@ export function WrittenScoreReport({ result, chapterTitle, onRetry }: Props) {
         <div className="h-2" />
       </div>
 
-      {/* ── Retry ── */}
-      <div className="flex-shrink-0 px-6 py-4" style={{ borderTop: `1px solid ${NAVY_08}` }}>
+      {/* ── Actions ── */}
+      <div className="flex-shrink-0 px-6 py-4 flex gap-3" style={{ borderTop: `1px solid ${NAVY_08}` }}>
+        <button onClick={onHome}
+          className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all"
+          style={{ flex:"0 0 auto", paddingLeft:20, paddingRight:20,
+            background: "rgba(15,28,77,0.05)", border: "1px solid rgba(15,28,77,0.15)", color: NAVY_60,
+            fontFamily:"'DM Sans',sans-serif" }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(15,28,77,0.10)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(15,28,77,0.05)"; }}
+        >
+          <Home className="w-4 h-4" /> Home
+        </button>
         <button onClick={onRetry}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-display font-bold text-sm transition-all"
-          style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", color: "#2563eb" }}
+          className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all"
+          style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", color: "#2563eb",
+            fontFamily:"'DM Sans',sans-serif" }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(37,99,235,0.14)"; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(37,99,235,0.08)"; }}
         >
