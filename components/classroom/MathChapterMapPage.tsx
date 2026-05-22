@@ -271,9 +271,8 @@ export function MathChapterMapPage({ onChapterSelect, onBack }: Props) {
             onClick={() => handleClick(tile.num, tile.locked)}
           >
             {/* White card wrapper — matches chemistry tile appearance */}
-            <div className="relative rounded-2xl overflow-hidden"
+            <div className="relative rounded-xl overflow-hidden"
               style={{
-                background: "rgba(255,255,255,0.92)",
                 backdropFilter: "blur(12px)",
                 boxShadow: tile.locked
                   ? "0 4px 16px rgba(15,28,77,0.12)"
