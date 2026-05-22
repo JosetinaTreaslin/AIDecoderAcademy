@@ -555,14 +555,16 @@ export function LecturePanel({ profile: _profile, chapterTitle, onClose, onSpeak
                   }}>
                     {concept.title}
                   </p>
-                  <p style={{ color: TEXT_HI, fontSize: 13.5, lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
-                    {concept.explanation}
-                  </p>
+                  <div className="lp-md" style={{ color: TEXT_HI, fontSize: 13.5, lineHeight: 1.65 }}>
+                    <ReactMarkdown>{normalizeMd(concept.explanation)}</ReactMarkdown>
+                  </div>
                   {concept.example && (
                     <div className="mt-3 px-3 py-2 rounded-lg"
                       style={{ background: "rgba(255,255,255,0.04)", borderLeft: `3px solid ${GOLD}` }}>
                       <p style={{ color: TEXT_LO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 2 }}>Example</p>
-                      <p style={{ color: TEXT_HI, fontSize: 13, lineHeight: 1.55 }}>{concept.example}</p>
+                      <div className="lp-md" style={{ color: TEXT_HI, fontSize: 13, lineHeight: 1.55 }}>
+                        <ReactMarkdown>{normalizeMd(concept.example)}</ReactMarkdown>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -693,9 +695,9 @@ export function LecturePanel({ profile: _profile, chapterTitle, onClose, onSpeak
                 }}>
                   🎓 LESSON COMPLETE
                 </p>
-                <p style={{ color: TEXT_HI, fontSize: 13.5, lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
-                  {summary}
-                </p>
+                <div className="lp-md" style={{ color: TEXT_HI, fontSize: 13.5, lineHeight: 1.65 }}>
+                  <ReactMarkdown>{normalizeMd(summary)}</ReactMarkdown>
+                </div>
                 <div className="flex gap-2 flex-wrap">
                   <button
                     onClick={startNewTopic}
