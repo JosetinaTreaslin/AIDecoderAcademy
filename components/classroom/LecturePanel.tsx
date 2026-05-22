@@ -12,7 +12,29 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowRight, Mic, Square, Volume2, VolumeX, MessageSquare } from "lucide-react";
 import { useTeacherVoice } from "./useTeacherVoice";
+import ReactMarkdown from "react-markdown";
 import type { Profile } from "@/types";
+
+// Compact markdown styling for Bhavna's doubt replies — renders ## / ** / ```
+// as real formatting instead of dumping raw symbols into the lesson panel.
+const LP_MD_CSS = `
+.lp-md > :first-child { margin-top: 0; }
+.lp-md > :last-child  { margin-bottom: 0; }
+.lp-md p              { margin: 0 0 6px; }
+.lp-md ul, .lp-md ol  { margin: 0 0 6px; padding-left: 18px; }
+.lp-md li             { margin: 2px 0; }
+.lp-md h1, .lp-md h2, .lp-md h3 { font-weight: 700; margin: 8px 0 4px; line-height: 1.3; font-family: inherit; letter-spacing: normal; }
+.lp-md h1 { font-size: 14px; }
+.lp-md h2 { font-size: 13.5px; }
+.lp-md h3 { font-size: 13px; }
+.lp-md strong { font-weight: 800; }
+.lp-md code   { background: rgba(255,255,255,0.12); border-radius: 4px; padding: 1px 4px; font-size: 11.5px; }
+.lp-md pre    { background: rgba(0,0,0,0.4); border-radius: 8px; padding: 8px 10px; overflow-x: auto; margin: 0 0 6px; }
+.lp-md pre code { background: transparent; padding: 0; }
+`;
+
+// Bullets sometimes arrive as a U+2212 minus / en-dash — normalise to "- ".
+const normalizeMd = (s: string) => s.replace(/^[−–]\s/gm, "- ");
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const GOLD        = "#E0B14C";
@@ -110,6 +132,16 @@ export function LecturePanel({ profile: _profile, chapterTitle, onClose, onSpeak
   const voiceRef = useRef(voice);
   voiceRef.current = voice;
   useEffect(() => () => voiceRef.current.cleanup(), []);
+
+  // Speak the opening prompt on mount — the lesson should greet aloud as well
+  // as on screen (the topic phase had text only; concepts already speak).
+  useEffect(() => {
+    const prompt = chapterTitle
+      ? `Ready to learn about ${chapterTitle}? Or we can study something different.`
+      : "What would you like to learn today?";
+    void voiceRef.current.speak(prompt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-scroll on content changes
   useEffect(() => {
@@ -291,6 +323,19 @@ export function LecturePanel({ profile: _profile, chapterTitle, onClose, onSpeak
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose]);
 
+  // Reset back to the topic picker so the student can take another lesson
+  // without leaving the panel ("Learn another topic" on the summary screen).
+  const startNewTopic = useCallback(() => {
+    doubtAbortRef.current?.abort();
+    conceptCache.current.clear();
+    setConcept(null);
+    setOutline([]);        outlineRef.current    = [];
+    setConceptIdx(0);      conceptIdxRef.current = 0;
+    setSummary("");
+    setDoubt(""); setDoubtReply(""); setCustomTopic("");
+    setPhase("topic");
+  }, []);
+
   // Keyboard shortcuts: Esc = close/confirm, N = next concept
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -331,11 +376,11 @@ export function LecturePanel({ profile: _profile, chapterTitle, onClose, onSpeak
           transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
           className="absolute pointer-events-none select-none"
           style={{
-            bottom: "-2vh",
-            left:   "1.5vw",
-            height: "clamp(240px, 38vh, 460px)",
+            bottom: "-3vh",
+            left:   "1vw",
+            height: "clamp(340px, 56vh, 660px)",
             width:  "auto",
-            filter: `drop-shadow(0 0 28px ${GOLD_GLOW})`,
+            filter: `drop-shadow(0 0 34px ${GOLD_GLOW})`,
           }}
         />
 
@@ -533,7 +578,7 @@ export function LecturePanel({ profile: _profile, chapterTitle, onClose, onSpeak
                       color: TEXT_MID, opacity: (simplifying || doubtStreaming) ? 0.5 : 1,
                     }}
                   >
-                    {simplifying ? "…" : "Explain simpler"}
+                    {simplifying ? "…" : "I didn't get this"}
                   </button>
                   <button
                     onClick={requestExample}
@@ -546,19 +591,29 @@ export function LecturePanel({ profile: _profile, chapterTitle, onClose, onSpeak
                   >
                     {exampling ? "…" : "Give another example"}
                   </button>
+                  <button
+                    onClick={handleClose}
+                    className="px-3 py-1 rounded-full text-[11px] font-semibold transition-colors flex items-center gap-1"
+                    style={{
+                      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+                      color: TEXT_MID,
+                    }}
+                  >
+                    <MessageSquare size={11} /> Back to chat
+                  </button>
                 </div>
 
                 {/* Doubt reply bubble */}
                 {doubtReply && (
                   <div className="px-3 py-2.5 rounded-xl"
                     style={{ background: `${TEXT_HI}0a`, border: `1px solid ${TEXT_HI}18` }}>
-                    <p style={{ color: TEXT_MID, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                      {doubtReply}
+                    <div className="lp-md" style={{ color: TEXT_MID, fontSize: 13, lineHeight: 1.6 }}>
+                      <ReactMarkdown>{normalizeMd(doubtReply)}</ReactMarkdown>
                       {doubtStreaming && (
                         <span className="inline-block w-1 h-3 ml-0.5 align-middle"
                           style={{ background: GOLD, animation: "lblink 1s steps(2) infinite" }} />
                       )}
-                    </p>
+                    </div>
                   </div>
                 )}
 
@@ -641,13 +696,22 @@ export function LecturePanel({ profile: _profile, chapterTitle, onClose, onSpeak
                 <p style={{ color: TEXT_HI, fontSize: 13.5, lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
                   {summary}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button
-                    onClick={() => { voice.cleanup(); onClose(); }}
+                    onClick={startNewTopic}
                     className="px-4 py-2 rounded-full text-[12px] font-bold flex items-center gap-1.5"
                     style={{
                       background: `linear-gradient(135deg, ${GOLD}, ${VIOLET})`,
                       color: TEXT_HI, boxShadow: `0 4px 14px ${GOLD_GLOW}`,
+                    }}
+                  >
+                    <ArrowRight size={13} /> Learn another topic
+                  </button>
+                  <button
+                    onClick={() => { voice.cleanup(); onClose(); }}
+                    className="px-4 py-2 rounded-full text-[12px] font-semibold flex items-center gap-1.5"
+                    style={{
+                      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: TEXT_MID,
                     }}
                   >
                     <MessageSquare size={13} /> Back to chat
@@ -690,6 +754,7 @@ export function LecturePanel({ profile: _profile, chapterTitle, onClose, onSpeak
         </motion.div>
 
         <style>{`
+          ${LP_MD_CSS}
           @keyframes lpulse { 0%, 100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
           @keyframes lblink  { from { opacity: 1; } to { opacity: 0; } }
         `}</style>

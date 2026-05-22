@@ -162,7 +162,13 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   const [streamReady, setStreamReady] = useState(false);
   const [voiceOK, setVoiceOK]         = useState(false);
   const [voiceError, setVoiceError]   = useState<string | null>(null);
-  const [validatorPanelOpen, setValidatorPanelOpen] = useState(false);
+  // Seed from the window flag so an AidaAssistant that mounts after the
+  // validator panel already auto-opened still starts hidden (the one-shot
+  // "validator-panel-open" event would otherwise be missed).
+  const [validatorPanelOpen, setValidatorPanelOpen] = useState(
+    () => typeof window !== "undefined" &&
+      !!(window as Window & { __validatorPanelOpen?: boolean }).__validatorPanelOpen,
+  );
   const [worksheetPopupOpen, setWorksheetPopupOpen] = useState(false);
 
   // Whether AIDA voices her thought-bubble nudges. Persisted in localStorage
@@ -187,6 +193,19 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     const stored = localStorage.getItem("aida:nudgeAudio");
     if (stored === "off") setNudgeAudioEnabled(false);
   }, []);
+
+  // Warm up the TTS pipeline on mount — the first ElevenLabs call each page
+  // load cold-starts ~5s. AIDA renders in the dashboard layout, so this throw-
+  // away request warms /api/aida/tts for every page (AIDA nudges, validator
+  // teacher, etc. all share that endpoint).
+  useEffect(() => {
+    fetch("/api/aida/tts", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ text: "." }),
+    }).catch(() => { /* warmup is best-effort */ });
+  }, []);
+
   const toggleNudgeAudio = () => {
     setNudgeAudioEnabled(v => {
       const next = !v;
@@ -1547,7 +1566,7 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
             title="Ask AIDA"
           >
             <img
-              src="/teacher.png"
+              src="/assistant.png"
               alt=""
               draggable={false}
               style={{ width: "100%", height: "100%", objectFit: "contain" }}

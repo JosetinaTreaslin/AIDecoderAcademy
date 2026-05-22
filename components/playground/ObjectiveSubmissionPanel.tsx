@@ -693,7 +693,7 @@ export function ObjectiveSubmissionPanel({
         {/* Portrait */}
         <motion.img
           key="obj-portrait"
-          src="/assistant.png"
+          src="/teacher.png"
           alt="Validator"
           initial={{ x: -40, opacity: 0 }}
           animate={{ x: 0,   opacity: 1 }}

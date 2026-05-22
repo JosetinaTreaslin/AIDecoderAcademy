@@ -228,7 +228,7 @@ export function TeacherDialogue({ open, rubric, onClose, onValidate, onComplete 
             Fluid height: scales with viewport between ~240 and ~480px. */}
         <motion.img
           key="teacher-portrait"
-          src="/assistant.png"
+          src="/teacher.png"
           alt="Validator"
           initial={{ x: -40, opacity: 0 }}
           animate={{ x: 0,   opacity: 1 }}
@@ -236,11 +236,11 @@ export function TeacherDialogue({ open, rubric, onClose, onValidate, onComplete 
           transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
           className="absolute pointer-events-none select-none"
           style={{
-            bottom:    "-2vh",
-            left:      "1.5vw",
-            height:    "clamp(240px, 38vh, 460px)",
+            bottom:    "-3vh",
+            left:      "1vw",
+            height:    "clamp(340px, 56vh, 660px)",
             width:     "auto",
-            filter:    "drop-shadow(0 0 28px rgba(124,58,237,0.55))",
+            filter:    "drop-shadow(0 0 34px rgba(124,58,237,0.55))",
           }}
         />
 

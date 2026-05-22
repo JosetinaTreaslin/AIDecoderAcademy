@@ -132,6 +132,17 @@ ANSWER STYLE:
 - If the student asks about a topic from a different subject than the one
   on the page, that's fine — answer it (you teach all academic subjects),
   just keep it educational.
+
+MATH FORMATTING — CRITICAL:
+- NEVER use LaTeX notation (no \\sin, \\cos, \\frac, \\theta, \\pm, \\circ, \\csc, \\sec, \\cot, \\sqrt, \\sum, \\int, etc.).
+- Write equations in plain readable text that works in any chat client:
+  • Use actual characters: θ, α, β, π, °, ±, ∓, ÷, √, ∑, ∫, ≤, ≥, ≠, →, ∞
+  • sin, cos, tan, csc, sec, cot — no backslash, no parentheses around the function name
+  • Fractions: use a ÷ b or a/b — never \\frac{a}{b}
+  • Powers: use ^ or superscript if available — x² or x^2, never x^2 or \\sqrt
+  • Subscripts: use _ where needed — H₂O or H_2O
+  • Example: write "sin(90° - θ) = cos(θ)" not "\\( \\sin(90^\\circ - \\theta) = \\cos(\\theta) \\)"
+  • Example: write "csc(θ) = 1 ÷ sin(θ)" not "\\( \\csc(\\theta) = \\frac{1}{\\sin(\\theta)} \\)"
 `.trim();
 
 // ── Voice-mode rules — appended only when the reply will be spoken aloud ────
@@ -146,9 +157,9 @@ VOICE MODE (your reply will be read aloud by a text-to-speech voice):
 `.trim();
 
 // ── Learner-model adaptation ────────────────────────────────────────────────
-// Mirrors the field names used by buildLearnerAdaptation in aidaPersona.ts:
-// cognitive_profile.top_strengths / top_growth_areas, learning_style_profile
-// .pace_preference, communication_preferences.explanation_preference.
+// Teacher-register counterpart of buildLearnerAdaptation in aidaPersona.ts.
+// Each preference is turned into a concrete TEACHING instruction so Bhavna's
+// replies actually change per student — not just a list of traits.
 function buildLearnerProfileBlock(
   raw: Record<string, unknown> | null | undefined,
 ): string {
@@ -157,16 +168,75 @@ function buildLearnerProfileBlock(
   if (m.reflection_count === 0) return ""; // cold start — no profile yet
 
   const cog = m.cognitive_profile;
-  const strengths = cog.top_strengths.slice(0, 2)
+  const lp  = m.learning_style_profile;
+  const cp  = m.communication_preferences;
+
+  const strengths = cog.top_strengths.slice(0, 3)
     .map(s => s.concept.replace(/_/g, " ")).join(", ");
-  const growth = cog.top_growth_areas.slice(0, 2)
+  const growth = cog.top_growth_areas.slice(0, 3)
     .map(s => s.concept.replace(/_/g, " ")).join(", ");
 
-  return `\n\nSTUDENT PROFILE (private — adapt teaching accordingly, never mention these notes):
-- Strengths: ${strengths || "still discovering"}
-- Growth areas: ${growth || "still discovering"}
-- Pace preference: ${m.learning_style_profile.pace_preference}
-- Explanation style: ${m.communication_preferences.explanation_preference}`;
+  const depthLine = lp.explanation_depth === "deep"
+    ? "Go deep — give the full reasoning, not just the result."
+    : lp.explanation_depth === "simple"
+    ? "Keep it simple and concrete — short sentences, plain words, one idea at a time."
+    : "Pitch at a normal level; add depth only when asked.";
+
+  const paceLine = lp.pace_preference === "fast"
+    ? "Move briskly — don't pad explanations."
+    : lp.pace_preference === "careful"
+    ? "Go slowly, one step at a time; let each step settle before the next."
+    : "Steady pace — follow the student's lead.";
+
+  const explainLine = cp.explanation_preference === "narrative"
+    ? "Teach through stories and real-world examples, not bare definitions."
+    : cp.explanation_preference === "step_by_step"
+    ? "Break every explanation into clear, ordered steps."
+    : cp.explanation_preference === "visual"
+    ? "Lean on diagrams and vivid mental imagery — describe what things look like."
+    : "Mix worked examples with explanation.";
+
+  const checkLine = cp.comprehension_check_frequency === "high"
+    ? "Check understanding often and naturally ('does that make sense so far?') after each chunk."
+    : cp.comprehension_check_frequency === "low"
+    ? "Don't quiz constantly — explain fully, check only when something seems off."
+    : "Check understanding at natural breakpoints.";
+
+  const confidenceLine = lp.confidence_calibration === "underconfident"
+    ? "This student underrates themselves — affirm correct thinking explicitly; never let a small mistake feel like failure."
+    : lp.confidence_calibration === "overconfident"
+    ? "This student can rush — gently surface gaps and ask them to justify their reasoning."
+    : "";
+
+  const feedbackLine = lp.feedback_sensitivity === "high"
+    ? "Be especially gentle with corrections — frame mistakes as 'almost — let's adjust one thing'."
+    : "";
+
+  const praiseLine = cp.praise_frequency === "frequent"
+    ? "Praise genuine effort and small wins often."
+    : cp.praise_frequency === "rare"
+    ? "Keep praise meaningful and occasional — substance over cheerleading."
+    : "";
+
+  const struggleLine = growth
+    ? `When ${growth} comes up: smaller steps, slower pace, and anchor it to ${strengths || "something they already know well"}. Celebrate progress.`
+    : "";
+
+  const lines = [
+    `- Explanation style: ${cp.explanation_preference} — ${explainLine}`,
+    `- Depth: ${lp.explanation_depth} — ${depthLine}`,
+    `- Pace: ${lp.pace_preference} — ${paceLine}`,
+    `- Comprehension checks: ${checkLine}`,
+    `- Strengths: ${strengths || "still discovering"}`,
+    `- Growth areas: ${growth || "still discovering"}`,
+    confidenceLine ? `- Confidence: ${confidenceLine}` : null,
+    feedbackLine   ? `- Feedback: ${feedbackLine}`     : null,
+    praiseLine     ? `- Praise: ${praiseLine}`         : null,
+    struggleLine   ? `- Struggle approach: ${struggleLine}` : null,
+  ].filter(Boolean).join("\n");
+
+  return `\n\nSTUDENT PROFILE (built from ${m.reflection_count} session${m.reflection_count === 1 ? "" : "s"} — private; adapt your teaching naturally, never read these notes aloud):
+${lines}`;
 }
 
 // ── Builder ─────────────────────────────────────────────────────────────────

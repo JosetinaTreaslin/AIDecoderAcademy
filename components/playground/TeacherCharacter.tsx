@@ -63,7 +63,11 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
   useEffect(() => { if (open) setHint(false); }, [open]);
 
   // Tell AidaAssistant to hide itself while the validator panel is open.
+  // We BOTH dispatch an event (live updates) AND set a window flag (so an
+  // AidaAssistant that mounts *after* this fires — e.g. the panel auto-opens
+  // during page load — can still read the current state on init).
   useEffect(() => {
+    (window as Window & { __validatorPanelOpen?: boolean }).__validatorPanelOpen = open;
     window.dispatchEvent(new CustomEvent(open ? "validator-panel-open" : "validator-panel-close"));
   }, [open]);
 
@@ -265,9 +269,11 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
   return (
     <>
       {/* Bottom-left character sprite — clickable, idle bob.
+          Hidden while the dialogue/submission panel is open — that panel
+          renders its own portrait, so two would overlap.
           Size knob: change the `clamp(...)` width/height below (currently 2× original).
-          Position knobs: `left` and `bottom` below (lower px = closer to that edge).
-          Original size was clamp(72px, 6vw, 112px) — halve back if needed. */}
+          Position knobs: `left` and `bottom` below (lower px = closer to that edge). */}
+      {!open && (
       <button
         onClick={() => setOpen(true)}
         aria-label="Talk to the validator teacher"
@@ -287,7 +293,7 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
           className="relative"
         >
           <img
-            src="/assistant.png"
+            src="/teacher.png"
             alt=""
             draggable={false}
             style={{
@@ -316,6 +322,7 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
           )}
         </motion.div>
       </button>
+      )}
 
       {isStaged && stagedRubric ? (
         <ObjectiveSubmissionPanel
