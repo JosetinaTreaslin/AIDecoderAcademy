@@ -380,7 +380,7 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
                 color:      TEXT_HI,
                 fontSize:   13.5,
                 lineHeight: 1.55,
-                whiteSpace: "pre-wrap",
+                whiteSpace: m.role === "user" ? "pre-wrap" : "normal",
                 wordBreak:  "break-word",
               }}
             >
