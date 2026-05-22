@@ -16,6 +16,7 @@ import { motion } from "framer-motion";
 import { Send, Mic, Square, Volume2, VolumeX, X, BookOpen, MessageSquare } from "lucide-react";
 import { buildClassroomGreeting } from "@/lib/teacherPanelGreeting";
 import { useTeacherVoice } from "./useTeacherVoice";
+import ReactMarkdown from "react-markdown";
 import type { Profile } from "@/types";
 
 interface Props {
@@ -35,6 +36,29 @@ interface Msg {
   content:   string;
   streaming?: boolean;
 }
+
+// Compact markdown styling for Bhavna's chat bubbles — keeps headings/lists/code
+// readable inside a narrow panel instead of dumping raw ## / ** / ``` symbols.
+const TC_MD_CSS = `
+.tc-md > :first-child { margin-top: 0; }
+.tc-md > :last-child  { margin-bottom: 0; }
+.tc-md p              { margin: 0 0 6px; }
+.tc-md ul, .tc-md ol  { margin: 0 0 6px; padding-left: 18px; }
+.tc-md li             { margin: 2px 0; }
+.tc-md h1, .tc-md h2, .tc-md h3 { font-weight: 800; margin: 9px 0 4px; line-height: 1.3; }
+.tc-md h1 { font-size: 14.5px; }
+.tc-md h2 { font-size: 14px; }
+.tc-md h3 { font-size: 13.5px; }
+.tc-md strong { font-weight: 800; }
+.tc-md code   { background: rgba(255,255,255,0.12); border-radius: 4px; padding: 1px 4px; font-size: 12px; }
+.tc-md pre    { background: rgba(0,0,0,0.4); border-radius: 8px; padding: 8px 10px; overflow-x: auto; margin: 0 0 6px; }
+.tc-md pre code { background: transparent; padding: 0; }
+.tc-md a { color: #E0B14C; text-decoration: underline; }
+`;
+
+// Bullets sometimes arrive as the U+2212 minus sign / en-dash, which markdown
+// won't parse as a list. Normalise them to real "- " bullets before rendering.
+const normalizeMd = (s: string) => s.replace(/^[−–]\s/gm, "- ");
 
 // ── Teacher palette ───────────────────────────────────────────────────────────
 const NAVY_DEEP   = "#0A1230";
@@ -343,6 +367,7 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
 
       {/* ── Messages ── */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ scrollbarWidth: "thin" }}>
+        <style>{TC_MD_CSS}</style>
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
@@ -359,7 +384,9 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
                 wordBreak:  "break-word",
               }}
             >
-              {m.content || (m.streaming ? "…" : "")}
+              {m.role === "assistant"
+                ? <div className="tc-md"><ReactMarkdown>{normalizeMd(m.content || (m.streaming ? "…" : ""))}</ReactMarkdown></div>
+                : (m.content || (m.streaming ? "…" : ""))}
               {m.streaming && m.content && (
                 <span className="inline-block w-1 h-3 ml-0.5 align-middle"
                   style={{ background: GOLD, animation: "tcblink 1s steps(2) infinite" }} />
