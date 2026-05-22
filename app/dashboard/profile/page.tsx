@@ -9,6 +9,7 @@ import {
 } from "@/lib/arenas";
 import { isGameSfxEnabled, setGameSfxEnabled } from "@/lib/gameAudio";
 import LearnerStats from "@/components/profile/LearnerStats";
+import TeacherViewCard from "@/components/profile/TeacherViewCard";
 import type { AgeGroup, Profile } from "@/types";
 
 // ─── Onboarding helpers ───────────────────────────────────────────────────────
@@ -756,6 +757,12 @@ function TrophyRoom({ profile }: { profile: Profile }) {
 
         {/* ─── Learner Stats — RPG-style adaptive profile ─── */}
         <LearnerStats profile={profile} outputCounts={typeCounts} />
+
+        {/* ─── Teacher View — how each AI teacher sees the student ─── */}
+        <TeacherViewCard
+          profile={profile}
+          learner_model={(profile as Profile & { learner_model?: Record<string, unknown> | null }).learner_model ?? null}
+        />
 
         {/* ─── Trophy Hall — categorized badges ─── */}
         <div>

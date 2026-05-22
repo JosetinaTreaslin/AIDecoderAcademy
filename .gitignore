@@ -35,3 +35,4 @@ dev/test/__pycache__/
 modal_app/__pycache__/
 .modal_secrets.env
 .plan_cache_*.pkl
+dev.log

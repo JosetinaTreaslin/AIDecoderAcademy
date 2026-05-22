@@ -1,34 +1,32 @@
 "use client";
 
-// Classroom Teacher (Ms. Bhavna) — full-body standee + chat trigger.
-// Mirrors how AIDA and the validator stand on the playground floor.
-// Click standee or chat badge → opens TeacherChat panel.
+// Classroom Teacher (Ms. Bhavna) — full-body standee + chat + lecture.
+// Click standee → opens TeacherChat (free chat).
+// Click "Lesson" inside TeacherChat → opens LecturePanel overlay.
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle } from "lucide-react";
 import { useClassroomWriter } from "@/lib/chatChannels";
 import type { Profile } from "@/types";
 import { TeacherChat } from "./TeacherChat";
+import { LecturePanel } from "./LecturePanel";
 
 interface Props {
   profile: Profile | null;
-  /** Optional chapter context for the chat persona. */
   chapterTitle?: string;
-  /** Hide entirely (e.g. during proctored tests). */
   hidden?: boolean;
 }
 
-const GOLD       = "#E0B14C";
-const GOLD_GLOW  = "rgba(224,177,76,0.55)";
-const VIOLET     = "#9D6BFF";
+const GOLD      = "#E0B14C";
+const GOLD_GLOW = "rgba(224,177,76,0.55)";
 
 export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen,    setChatOpen]    = useState(false);
+  const [lectureOpen, setLectureOpen] = useState(false);
   const [hintVisible, setHintVisible] = useState(true);
+  const [speaking,    setSpeaking]    = useState(false);
   const writer = useClassroomWriter();
 
-  // Mark "in lesson" on mount so AIDA knows.
   useEffect(() => {
     writer.startLesson("classroom");
     return () => {
@@ -42,10 +40,9 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fade the floating "talk to me" hint after first interaction.
   useEffect(() => {
-    if (chatOpen) setHintVisible(false);
-  }, [chatOpen]);
+    if (chatOpen || lectureOpen) setHintVisible(false);
+  }, [chatOpen, lectureOpen]);
 
   if (hidden) return null;
 
@@ -64,16 +61,19 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
           width:  "auto",
         }}
       >
-        {/* Soft floor glow behind her */}
-        <div
+        {/* Floor glow — wider pulse range when speaking (Fix 8) */}
+        <motion.div
           className="absolute pointer-events-none"
           style={{
             bottom: 0, left: "50%", transform: "translateX(-50%)",
-            width: "110%", height: "32%",
+            width: "130%", height: "36%",
             background: `radial-gradient(ellipse at center bottom, ${GOLD_GLOW} 0%, transparent 70%)`,
-            filter: "blur(8px)",
-            opacity: 0.55,
+            filter: "blur(10px)",
           }}
+          animate={{ opacity: speaking ? [0.2, 1.0, 0.2] : 0.45, scale: speaking ? [0.95, 1.05, 0.95] : 1 }}
+          transition={speaking
+            ? { duration: 1.0, repeat: Infinity, ease: "easeInOut" }
+            : { duration: 0.4 }}
         />
 
         <motion.button
@@ -96,29 +96,6 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
               filter: "drop-shadow(0 12px 22px rgba(0,0,0,0.45))",
             }}
           />
-
-          {/* Chat trigger badge — top-right of standee */}
-          <motion.div
-            className="absolute pointer-events-none flex items-center justify-center rounded-full"
-            style={{
-              top:    "8%",
-              right:  "-4px",
-              width:  44, height: 44,
-              background: `linear-gradient(135deg, ${VIOLET}, ${GOLD})`,
-              boxShadow: `0 0 18px ${GOLD_GLOW}, inset 0 1px 0 rgba(255,255,255,0.4)`,
-              border:  "2px solid rgba(255,255,255,0.7)",
-            }}
-            animate={hintVisible ? {
-              boxShadow: [
-                `0 0 18px ${GOLD_GLOW}, inset 0 1px 0 rgba(255,255,255,0.4)`,
-                `0 0 28px ${GOLD_GLOW}, inset 0 1px 0 rgba(255,255,255,0.4)`,
-                `0 0 18px ${GOLD_GLOW}, inset 0 1px 0 rgba(255,255,255,0.4)`,
-              ],
-            } : {}}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <MessageCircle size={20} color="#fff" strokeWidth={2.4} />
-          </motion.div>
         </motion.button>
 
         {/* Hint bubble */}
@@ -151,13 +128,27 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
         </AnimatePresence>
       </motion.div>
 
-      {/* ── Chat panel (separate component) ─────────────────────────── */}
+      {/* ── Chat panel ──────────────────────────────────────────────── */}
       <AnimatePresence>
         {chatOpen && (
           <TeacherChat
             profile={profile}
             chapterTitle={chapterTitle}
             onClose={() => setChatOpen(false)}
+            onSpeakingChange={setSpeaking}
+            onOpenLecture={() => setLectureOpen(true)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Lecture panel (full overlay, opens on top of chat) ──────── */}
+      <AnimatePresence>
+        {lectureOpen && (
+          <LecturePanel
+            profile={profile}
+            chapterTitle={chapterTitle}
+            onClose={() => setLectureOpen(false)}
+            onSpeakingChange={setSpeaking}
           />
         )}
       </AnimatePresence>

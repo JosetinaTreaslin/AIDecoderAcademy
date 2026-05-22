@@ -13,6 +13,7 @@
  */
 
 import type { Profile } from "@/types";
+import { hydrateLearnerModel } from "@/lib/learnerModel";
 
 // ── Identity ─────────────────────────────────────────────────────────────────
 const IDENTITY = `
@@ -133,10 +134,50 @@ ANSWER STYLE:
   just keep it educational.
 `.trim();
 
+// ── Voice-mode rules — appended only when the reply will be spoken aloud ────
+const VOICE_RULES = `
+VOICE MODE (your reply will be read aloud by a text-to-speech voice):
+- Keep it short and conversational — about 40-110 words. One idea at a time.
+- NO markdown: no #, ##, ###, no -, *, no code blocks, no tables, no bullets.
+- Write equations and formulae in spoken words ("two H two O" not "2H₂O").
+- Sound like a teacher talking, not a textbook. Plain sentences.
+- If the topic genuinely needs a long structured answer, give the key idea
+  aloud and offer: "I can write the full notes out if you switch to text."
+`.trim();
+
+// ── Learner-model adaptation ────────────────────────────────────────────────
+// Mirrors the field names used by buildLearnerAdaptation in aidaPersona.ts:
+// cognitive_profile.top_strengths / top_growth_areas, learning_style_profile
+// .pace_preference, communication_preferences.explanation_preference.
+function buildLearnerProfileBlock(
+  raw: Record<string, unknown> | null | undefined,
+): string {
+  if (!raw || (typeof raw === "object" && Object.keys(raw).length === 0)) return "";
+  const m = hydrateLearnerModel(raw);
+  if (m.reflection_count === 0) return ""; // cold start — no profile yet
+
+  const cog = m.cognitive_profile;
+  const strengths = cog.top_strengths.slice(0, 2)
+    .map(s => s.concept.replace(/_/g, " ")).join(", ");
+  const growth = cog.top_growth_areas.slice(0, 2)
+    .map(s => s.concept.replace(/_/g, " ")).join(", ");
+
+  return `\n\nSTUDENT PROFILE (private — adapt teaching accordingly, never mention these notes):
+- Strengths: ${strengths || "still discovering"}
+- Growth areas: ${growth || "still discovering"}
+- Pace preference: ${m.learning_style_profile.pace_preference}
+- Explanation style: ${m.communication_preferences.explanation_preference}`;
+}
+
 // ── Builder ─────────────────────────────────────────────────────────────────
 export function buildClassroomSystemPrompt(
   profile: Profile,
   chapterTitle?: string,
+  opts?: {
+    isVoiceMode?: boolean;
+    conceptContext?: string;
+    learnerModel?: Record<string, unknown> | null;
+  },
 ): string {
   const grade = (profile as Profile & { current_grade?: number | null }).current_grade;
   const board = (profile as Profile & { board?: string | null }).board;
@@ -146,6 +187,12 @@ export function buildClassroomSystemPrompt(
     board ? `- Board: ${board}` : null,
     chapterTitle ? `- Current chapter: ${chapterTitle}` : "- No specific chapter selected — answer across subjects as needed.",
   ].filter(Boolean).join("\n");
+
+  const conceptBlock = opts?.conceptContext
+    ? `\n\nLESSON CONTEXT — the student is asking a doubt about this concept you just taught. Answer their doubt in the context of it:\n"""\n${opts.conceptContext}\n"""`
+    : "";
+
+  const learnerBlock = buildLearnerProfileBlock(opts?.learnerModel);
 
   return `
 ${IDENTITY}
@@ -162,5 +209,6 @@ ${ACCURACY_RULES}
 ${TONE}
 
 ${ANSWER_STYLE}
+${opts?.isVoiceMode ? `\n${VOICE_RULES}` : ""}${conceptBlock}${learnerBlock}
 `.trim();
 }

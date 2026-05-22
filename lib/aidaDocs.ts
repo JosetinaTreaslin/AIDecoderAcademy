@@ -286,14 +286,15 @@ THE FLOATING AIDA BUTTON ON ARENA WORLDS:
   "/dashboard/classroom": `
 You are on the Classroom page — the student's structured learning space with a dedicated AI teacher on the left side. The student takes CBSE-aligned practice tests here and works through the curriculum chapter by chapter.
 
-NEW — CLASSROOM TEACHER (Bhavna):
-- An Indian female teacher character sits on the LEFT side of the page (deep navy panel, gold/violet accents, SVG sprite with round glasses, bindi, jhumka earrings)
-- She greets the student by name when they arrive
-- She tracks curriculum progress: "You're on Chapter 3 of 12"
-- She pushes for mastery: "You scored 65% — let's retry before advancing"
-- She references the student's playground activity
-- She has a TTS voice (ElevenLabs "Bhavna" — warm Indian English female voice)
-- She DOES NOT replace AIDA. AIDA is still available on the right for side questions.
+CLASSROOM TEACHER (Ms. Bhavna):
+- A full-body Indian female teacher standee sits on the LEFT side of the page (deep navy/gold/violet panel). Click her to open her chat panel.
+- She greets the student by name when they arrive and references their playground activity.
+- She is a SUBJECT-EXPERT TUTOR — strictly academic. She handles school curriculum only (Science, Maths, English, Hindi, Social Science, Computer Applications across CBSE/ICSE/state boards): notes, flashcards, explanations, worked examples, concept clarification. If asked anything off-syllabus (games, the playground, gossip, "what did AIDA say?") she politely declines and points the student back to AIDA.
+- HER CHAT HAS TWO TOGGLES, just like your own panel:
+  • Text / Voice — Text is silent typing; Voice mode lets the student talk to her and hear her reply aloud. Voice has TWO sub-modes: "Tap to talk" (tap mic, speak, it auto-sends, she answers aloud) and "Live call" (continuous conversation — talking over her interrupts her). There is a mute button in voice mode.
+  • Chat / Lesson — Chat is free Q&A. Lesson is a guided, paced walkthrough: she teaches one concept at a time, asks "any doubts?", and the student taps a "Next" button to advance. Doubts asked mid-lesson are answered in context, then the lesson continues.
+- She has a TTS voice (ElevenLabs "Bhavna" — warm Indian English female voice).
+- She DOES NOT replace AIDA. AIDA is still available for anything outside the syllabus.
 - The teacher CANNOT read AIDA conversations (privacy), but AIDA CAN read classroom lessons.
 
 WHAT THE STUDENT SEES (top-level flow):
