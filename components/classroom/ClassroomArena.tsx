@@ -261,31 +261,19 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         </div>
       </div>
 
-      {/* ── Toolbar hotspot: Notes ────────────────────────────────────────────── */}
+      {/* ── Toolbar hotspot: Notes (invisible clickable zone) ────────────────── */}
       <div
         onClick={() => setMode("notes")}
         className="absolute"
         style={{ left:"0", top:"10%", width:"10%", height:"8.5%", zIndex:20, cursor:"pointer" }}
-      >
-        {mode === "notes" && (
-          <div className="absolute inset-0 rounded-r-xl"
-            style={{ background:"rgba(37,99,235,0.18)", border:"2px solid rgba(37,99,235,0.5)",
-              borderLeft:"none", boxShadow:"inset 0 0 12px rgba(37,99,235,0.2)" }} />
-        )}
-      </div>
+      />
 
-      {/* ── Toolbar hotspot: Explainer Videos ────────────────────────────────── */}
+      {/* ── Toolbar hotspot: Explainer Videos (invisible clickable zone) ─────── */}
       <div
         onClick={() => setMode("videos")}
         className="absolute"
         style={{ left:0, top:"45%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer" }}
-      >
-        {mode === "videos" && (
-          <div className="absolute inset-0 rounded-r-xl"
-            style={{ background:"rgba(37,99,235,0.18)", border:"2px solid rgba(37,99,235,0.5)",
-              borderLeft:"none", boxShadow:"inset 0 0 12px rgba(37,99,235,0.2)" }} />
-        )}
-      </div>
+      />
 
       {/* ── My Creations / Videos panel — overlaid on left wall panel ─────────── */}
       <div className="absolute overflow-y-auto"
