@@ -135,7 +135,7 @@ Output JSON only:
     return parsed;
   } catch (e: any) {
     console.error("[annotateNotes] locate API error:", e.message);
-    return { issues: [], tick_positions: [] };
+    return { issues: [], tick_line: 0, total_lines: 1 };
   }
 }
 
