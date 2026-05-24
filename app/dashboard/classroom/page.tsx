@@ -15,7 +15,9 @@ import { WrittenScoreReport } from "@/components/classroom/WrittenScoreReport";
 import { ProctoringGuard }  from "@/components/classroom/ProctoringGuard";
 import { MathChapterMapPage } from "@/components/classroom/MathChapterMapPage";
 import { TeacherCharacter } from "@/components/classroom/TeacherCharacter";
-import type { Chapter, MCQQuestion, WrittenQuestion, WrittenFeedbackItem, Profile } from "@/types";
+import { NotesUpload }      from "@/components/classroom/NotesUpload";
+import { CorrectionReport } from "@/components/classroom/CorrectionReport";
+import type { Chapter, MCQQuestion, WrittenQuestion, WrittenFeedbackItem, Profile, CorrectionResult } from "@/types";
 
 const NAVY = "#0f1c4d";
 const GOLD = "#C8A84B";
@@ -319,7 +321,8 @@ function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 type View = "landing" | "chapters" | "math-chapters" | "objective" | "arena" | "pick" | "select-type" | "loading"
-          | "mcq-test" | "written-test" | "mcq-result" | "written-result";
+          | "mcq-test" | "written-test" | "mcq-result" | "written-result"
+          | "correct-notes" | "notes-result";
 
 interface PaperData {
   paperId: string; questionIds: string[];
@@ -336,8 +339,9 @@ export default function ClassroomPage() {
   const [selectedChapter,setChapter]       = useState<Chapter|null>(null);
   const [paper,          setPaper]         = useState<PaperData|null>(null);
   const [mcqResult,      setMcqResult]     = useState<MCQResult|null>(null);
-  const [writtenResult,  setWrittenResult] = useState<WrittenResult|null>(null);
-  const [loadError,      setLoadError]     = useState<string|null>(null);
+  const [writtenResult,    setWrittenResult]    = useState<WrittenResult|null>(null);
+  const [correctionResult, setCorrectionResult] = useState<CorrectionResult|null>(null);
+  const [loadError,        setLoadError]        = useState<string|null>(null);
   const [loadingMsg,     setLoadingMsg]    = useState("");
   const [activeSubject,  setActiveSubject] = useState<string>("chemistry");
   const [writtenPhase,   setWrittenPhase]  = useState("intro");
@@ -450,6 +454,7 @@ export default function ClassroomPage() {
           onSelectTest={(type) => loadPaper(selectedChapter, type)}
           onBack={() => setView(chapterMapView)}
           onEnterArena={() => setView("arena")}
+          onCorrectNotes={() => setView("correct-notes")}
         />
         {teacher}
       </>
@@ -466,6 +471,62 @@ export default function ClassroomPage() {
         />
         {teacher}
       </>
+    );
+  }
+
+  // ── Correct Notes — glass panel (upload) ─────────────────────────────────
+  if (view === "correct-notes" && selectedChapter) {
+    return (
+      <div className="flex flex-col"
+        style={{ height:"100dvh", backgroundImage:"url('/classroom/background.png')",
+          backgroundSize:"cover", backgroundPosition:"center", position:"relative" }}>
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background:"linear-gradient(160deg,rgba(230,238,255,0.2),rgba(210,225,255,0.1))", zIndex:0 }} />
+        <div className="flex-1 overflow-hidden flex relative z-10 py-4 px-4">
+          <div className="flex-1 flex flex-col overflow-hidden max-w-xl mx-auto w-full rounded-3xl relative"
+            style={{ background:"rgba(255,255,255,0.82)", border:"1px solid rgba(255,255,255,0.88)",
+              backdropFilter:"blur(32px)", boxShadow:"0 8px 48px rgba(15,28,77,0.12), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
+            <div className="h-0.5 w-full flex-shrink-0 rounded-t-3xl"
+              style={{ background:`linear-gradient(90deg, transparent 0%, rgba(6,182,212,0.6) 30%, rgba(8,145,178,0.5) 70%, transparent 100%)` }} />
+            <NotesUpload
+              chapter={selectedChapter}
+              onComplete={(r) => { setCorrectionResult(r); setView("notes-result"); }}
+              onBack={() => setView("objective")}
+            />
+            <div className="h-0.5 w-full flex-shrink-0 rounded-b-3xl"
+              style={{ background:`linear-gradient(90deg, transparent, rgba(6,182,212,0.3), transparent)` }} />
+          </div>
+        </div>
+        {teacher}
+      </div>
+    );
+  }
+
+  // ── Notes Result — glass panel (correction report) ─────────────────────────
+  if (view === "notes-result" && correctionResult && selectedChapter) {
+    return (
+      <div className="flex flex-col"
+        style={{ height:"100dvh", backgroundImage:"url('/classroom/background.png')",
+          backgroundSize:"cover", backgroundPosition:"center", position:"relative" }}>
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background:"linear-gradient(160deg,rgba(230,238,255,0.2),rgba(210,225,255,0.1))", zIndex:0 }} />
+        <div className="flex-1 overflow-hidden flex relative z-10 py-4 px-4">
+          <div className="flex-1 flex flex-col overflow-hidden max-w-xl mx-auto w-full rounded-3xl"
+            style={{ background:"rgba(255,255,255,0.82)", border:"1px solid rgba(255,255,255,0.88)",
+              backdropFilter:"blur(32px)", boxShadow:"0 8px 48px rgba(15,28,77,0.12), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
+            <div className="h-0.5 w-full flex-shrink-0 rounded-t-3xl"
+              style={{ background:`linear-gradient(90deg, transparent 0%, rgba(6,182,212,0.6) 30%, rgba(8,145,178,0.5) 70%, transparent 100%)` }} />
+            <CorrectionReport
+              result={correctionResult}
+              chapter={selectedChapter.chapter_title}
+              onBack={() => setView("objective")}
+            />
+            <div className="h-0.5 w-full flex-shrink-0 rounded-b-3xl"
+              style={{ background:`linear-gradient(90deg, transparent, rgba(6,182,212,0.3), transparent)` }} />
+          </div>
+        </div>
+        {teacher}
+      </div>
     );
   }
 

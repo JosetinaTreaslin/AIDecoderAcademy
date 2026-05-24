@@ -17,10 +17,11 @@ interface Props {
 }
 
 export interface WrittenResult {
-  score:     number;
-  max_score: number;
-  feedback:  Record<string, WrittenFeedbackItem>;
-  questions: WrittenQuestion[];
+  score:                  number;
+  max_score:              number;
+  feedback:               Record<string, WrittenFeedbackItem>;
+  questions:              WrittenQuestion[];
+  annotated_image_urls?:  string[];   // teacher-annotated pages from evaluate-written
 }
 
 const DURATION_SECS = 45 * 60; // 45 minutes

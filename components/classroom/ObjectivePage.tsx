@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import type { Chapter } from "@/types";
 
 interface Props {
-  chapter:       Chapter;
-  onSelectTest:  (type: "mcq" | "written") => void;
-  onBack:        () => void;
-  onEnterArena?: () => void;
+  chapter:          Chapter;
+  onSelectTest:     (type: "mcq" | "written") => void;
+  onBack:           () => void;
+  onEnterArena?:    () => void;
+  onCorrectNotes?:  () => void;
 }
 
 // ── Lock medallion (same as arena / chapter map) ──────────────────────────────
@@ -93,7 +94,7 @@ const BOARD_CARDS = [
 ] as const;
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function ObjectivePage({ chapter, onSelectTest, onBack, onEnterArena }: Props) {
+export function ObjectivePage({ chapter, onSelectTest, onBack, onEnterArena, onCorrectNotes }: Props) {
   const router = useRouter();
 
   return (
@@ -158,6 +159,25 @@ export function ObjectivePage({ chapter, onSelectTest, onBack, onEnterArena }: P
         whileHover={{ background: "rgba(124,58,237,0.18)", boxShadow: "0 0 24px rgba(124,58,237,0.4)" }}
         transition={{ duration: 0.15 }}
       />
+
+      {/* "Correct My Notes" button — below arena circle, centered between columns */}
+      <motion.button
+        onClick={() => onCorrectNotes?.()}
+        className="absolute flex items-center justify-center gap-1.5 rounded-2xl text-[11px] font-black"
+        style={{
+          top: "73%", left: "29%", width: "20%", height: "5%", zIndex: 10,
+          cursor: "pointer", color: "#fff",
+          background: "linear-gradient(135deg, #06B6D4cc, #0891B2cc)",
+          backdropFilter: "blur(8px)",
+          border: "1.5px solid rgba(6,182,212,0.6)",
+          boxShadow: "0 0 16px rgba(6,182,212,0.35)",
+          letterSpacing: "0.01em",
+        }}
+        whileHover={{ boxShadow: "0 0 28px rgba(6,182,212,0.6)", scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.15 }}>
+        ✏️ Correct My Notes
+      </motion.button>
     </div>
   );
 }

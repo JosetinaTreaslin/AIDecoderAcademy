@@ -10,6 +10,7 @@
     "seed:classroom": "npx tsx --env-file=.env.local scripts/seed-classroom.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
     "@aws-sdk/client-polly": "^3.1024.0",
     "@clerk/nextjs": "^6.0.0",
     "@google/genai": "^1.48.0",

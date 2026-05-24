@@ -8,10 +8,11 @@
  *           submissions (e.g. only Q2 uploaded) work correctly.
  */
 
-import { auth } from "@clerk/nextjs/server";
-import { createAdminClient } from "@/lib/supabase";
-import OpenAI from "openai";
+import { auth }               from "@clerk/nextjs/server";
+import { createAdminClient }  from "@/lib/supabase";
+import OpenAI                 from "openai";
 import type { WrittenFeedbackItem } from "@/types";
+import { annotateAnswerSheets } from "@/lib/annotateAnswerSheet";
 
 export const runtime     = "nodejs";
 export const maxDuration = 120;
@@ -78,34 +79,57 @@ async function evaluateOneQuestion(
 ): Promise<WrittenFeedbackItem> {
   const prompt = `You are a CBSE Class 10 ${subject} examiner evaluating a student's handwritten answer sheet.
 
-You are evaluating QUESTION ${qNumber} only. Read all images carefully.
+You are evaluating QUESTION ${qNumber} only. The answer sheet may span multiple images — read ALL of them.
 
 QUESTION NUMBER: ${qNumber}
 QUESTION (${q.marks} marks): ${q.question}
 EXPECTED ANSWER: ${q.expected_answer}
 MARKING SCHEME: ${q.marking_scheme}
 
-STEP 1 — LOCATE by question number:
-Scan all images for the student's answer to Question ${qNumber}.
-- Look for number markers: "${qNumber})", "${qNumber}.", "Q${qNumber}", "Q.${qNumber}", "(${qNumber})" or simply the numeral "${qNumber}" at the start of a section.
-- The answer may span multiple lines or even continue on the next image page.
-- If you cannot find any marker for Question ${qNumber} in any image, write "[Not attempted]".
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — FIND THE QUESTION ${qNumber} MARKER:
 
-STEP 2 — TRANSCRIBE:
-Write out exactly what the student wrote for Question ${qNumber}.
-- Capture ALL mathematical expressions — fractions, roots (√), powers (²), trig ratios (sin, cos, tan).
-- Accept equivalent notations: 1/√2 = √2/2, sin²A = (sinA)², √3 written as root(3), etc.
+Search every image for the student's handwritten marker that signals the start of
+their answer to Question ${qNumber}. Acceptable forms:
+  ${qNumber})   ${qNumber}.   Q${qNumber}   Q.${qNumber}   (${qNumber})
 
+KEY DISTINCTION — question numbers vs. sub-items:
+• Questions are numbered with ARABIC NUMERALS: 1), 2), 3), 4) ...
+• Sub-parts within a question use Roman numerals (i., ii., iii.) or letters (a., b., (a), (b)).
+• If you see i. or ii. followed later by ${qNumber}), the ${qNumber}) IS a new question marker —
+  do not treat it as a continuation of the previous question's sub-items.
+
+Rules:
+• The marker could appear on any of the images, not just the first.
+• Do NOT evaluate based on position or order alone — the marker must be explicitly written.
+• If after checking all images you cannot find any of these markers → return:
+  { "read": "[Not attempted]", "score": 0, "feedback": "Question ${qNumber} was not attempted — marker not found." }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — COLLECT THE FULL ANSWER (only if marker found):
+
+The student's answer for Question ${qNumber} begins immediately after its marker and ends
+just before the next question's marker (Q${qNumber + 1} or higher) or the last page.
+
+IMPORTANT: The answer may START on one image and CONTINUE on the next image.
+Collect ALL text, equations, and working the student wrote for Question ${qNumber}
+across ALL images before the next question marker appears.
+
+Transcribe completely — fractions, roots (√), powers (²), trig ratios (sin/cos/tan).
+Accept equivalent notations: 1/√2 = √2/2, sin²A = (sinA)², etc.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STEP 3 — SCORE:
-Compare your transcription to the marking scheme. Award marks generously for:
-- Correct method shown even if final simplification differs slightly.
-- Correct values in any equivalent form.
-- Partial credit for partially correct steps where the scheme allows it.
-Only deduct if a required step or value is genuinely absent.
+
+Compare the full transcription to the marking scheme. Award marks generously for:
+• Correct method shown even if final simplification differs slightly.
+• Correct values in any equivalent form.
+• Partial credit for partially correct steps where the scheme allows it.
+Only deduct if a required step or value is genuinely absent across ALL pages.
 
 Return JSON only, no markdown:
 {
-  "read": "your transcription of what the student wrote for Q${qNumber}, or [Not attempted]",
+  "read": "full transcription of what student wrote for Q${qNumber} across all pages, or [Not attempted]",
   "score": <integer 0 to ${q.marks}>,
   "feedback": "1-3 sentences: what earned marks and what (if anything) was missing"
 }`;
@@ -193,7 +217,7 @@ export async function POST(req: Request) {
         answers: { image_urls }, score: 0, max_score: maxScore, feedback,
         time_taken_secs: time_taken_secs ?? null,
       });
-      return Response.json({ score: 0, max_score: maxScore, feedback });
+      return Response.json({ score: 0, max_score: maxScore, feedback, annotated_image_urls: image_urls });
     }
 
     // ── Gate 2: evaluate each question independently in parallel ──────────────
@@ -208,14 +232,32 @@ export async function POST(req: Request) {
       score += results[i]!.score;
     });
 
+    // ── Annotation: draw teacher-style tick marks + scores on each page ───────
+    let annotated_image_urls: string[] = image_urls;
+    try {
+      const feedbackForAnnotation: Record<string, { score: number; max: number; feedback: string }> = {};
+      questions.forEach((q: any, i: number) => {
+        feedbackForAnnotation[q.id] = {
+          score:    results[i]!.score,
+          max:      results[i]!.max,
+          feedback: results[i]!.feedback,
+        };
+      });
+      annotated_image_urls = await annotateAnswerSheets(
+        image_urls, feedbackForAnnotation, questions, profileRow.id
+      );
+    } catch (annotateErr: any) {
+      console.error("[evaluate-written] annotation failed (non-fatal):", annotateErr.message);
+    }
+
     await supabase.from("student_attempts").insert({
       profile_id: profileRow.id, question_paper_id: paper_id,
       question_ids: questions.map((q: any) => q.id),
-      answers: { image_urls }, score, max_score: maxScore, feedback,
+      answers: { image_urls, annotated_image_urls }, score, max_score: maxScore, feedback,
       time_taken_secs: time_taken_secs ?? null,
     });
 
-    return Response.json({ score, max_score: maxScore, feedback });
+    return Response.json({ score, max_score: maxScore, feedback, annotated_image_urls });
   } catch (err) {
     console.error("[classroom/evaluate-written]", err);
     return new Response("Internal error", { status: 500 });

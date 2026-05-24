@@ -166,6 +166,28 @@ export interface WrittenAttempt {
   submitted_at:      string;
 }
 
+// ── Notes Correction ─────────────────────────────────────────────────────────
+
+export type CorrectionIssueType = "wrong_formula" | "spelling" | "missing_content" | "conceptual_error";
+export type CorrectionSeverity  = "high" | "medium" | "low";
+
+export interface CorrectionIssue {
+  type:          CorrectionIssueType;
+  student_wrote: string | null;   // exact text from notes; null for missing_content
+  correct_version: string;
+  description:   string;
+  severity:      CorrectionSeverity;
+}
+
+export interface CorrectionResult {
+  accuracy_score:        number;        // 0–100
+  teacher_summary:       string;
+  issues:                CorrectionIssue[];
+  positives:             string[];
+  image_urls:            string[];      // original uploaded pages (for display)
+  annotated_image_urls?: string[];      // teacher-annotated pages (underlines, circles, ticks)
+}
+
 // ── ChatRequest ───────────────────────────────────────────────────────────────
 
 export interface ChatRequest {
