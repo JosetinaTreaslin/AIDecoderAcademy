@@ -13,7 +13,7 @@
 import sharp  from "sharp";
 import OpenAI from "openai";
 import { createAdminClient } from "./supabase";
-import type { CorrectionIssue } from "@/types";
+import type { CorrectionIssue, CorrectionIssueType } from "@/types";
 
 const openai = new OpenAI({
   apiKey:  process.env.OPENROUTER_API_KEY!,
@@ -213,7 +213,7 @@ export async function annotateNotesSheets(
       student_wrote: iss.student_wrote,
       description:   iss.description,
     }))
-    .filter((iss): iss is { id: number; type: string; student_wrote: string; description: string } =>
+    .filter((iss): iss is { id: number; type: CorrectionIssueType; student_wrote: string; description: string } =>
       !!iss.student_wrote
     );
 
