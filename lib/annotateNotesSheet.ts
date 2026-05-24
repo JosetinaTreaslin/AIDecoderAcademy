@@ -129,7 +129,7 @@ Output JSON only:
     const parsed = extractJson(raw);
     if (!parsed) {
       console.warn("[annotateNotes] JSON parse failed, raw:", raw.slice(0, 300));
-      return { issues: [], tick_positions: [] };
+      return { issues: [], tick_line: 0, total_lines: 1 };
     }
     console.log("[annotateNotes] parsed location:", JSON.stringify(parsed));
     return parsed;
