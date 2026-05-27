@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { FlashcardDeck, parseFlashcards } from "./FlashcardDeck";
+import type { FlashCard } from "./FlashcardDeck";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, Play, X } from "lucide-react";
 import { MessageBubble } from "@/components/playground/MessageBubble";
@@ -13,7 +15,7 @@ interface Props {
   onBack:  () => void;
 }
 
-interface SavedItem  { id: string; title: string; preview: string; content: string; createdAt: number; }
+interface SavedItem  { id: string; title: string; preview: string; content: string; createdAt: number; tags: string[]; }
 interface VideoItem  {
   title:     string;
   embedUrl:  string;   // iframe src (Google Drive preview URL)
@@ -69,10 +71,15 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [binDragOver,  setBinDragOver]  = useState(false);
   const [messages,     setMessages]     = useState<Message[]>([]);
   const [isStreaming,  setIsStreaming]  = useState(false);
-  const [mode,         setMode]         = useState<"notes" | "videos">("notes");
-  const [playingVideo, setPlayingVideo] = useState<VideoItem | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const taRef     = useRef<HTMLTextAreaElement>(null);
+  const [mode,           setMode]           = useState<"notes" | "videos">("notes");
+  const [playingVideo,   setPlayingVideo]   = useState<VideoItem | null>(null);
+  const [flashcardCards, setFlashcardCards] = useState<FlashCard[] | null>(null);
+  const [flashcardRaw,   setFlashcardRaw]   = useState("");
+  const bottomRef           = useRef<HTMLDivElement>(null);
+  const taRef               = useRef<HTMLTextAreaElement>(null);
+  const pendingFlashcardRef = useRef(false);
+  const wasStreamingRef     = useRef(false);
+  const messagesRef         = useRef<Message[]>([]);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -95,6 +102,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             title:     c.title,
             preview:   (c.content as string).replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60),
             content:   c.content,
+            tags:      Array.isArray(c.tags) ? c.tags : [],
             createdAt: new Date(c.created_at).getTime(),
           }))
         );
@@ -157,10 +165,29 @@ export function ClassroomArena({ chapter, onBack }: Props) {
     }
   }, [profile, isStreaming, messages, chapter.chapter_title]);
 
+  // Keep messagesRef in sync for streaming completion detection
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+
   // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
+
+  // When flashcard stream finishes, auto-open the deck overlay
+  useEffect(() => {
+    if (wasStreamingRef.current && !isStreaming && pendingFlashcardRef.current) {
+      pendingFlashcardRef.current = false;
+      const lastAssistant = [...messagesRef.current].reverse().find(m => m.role === "assistant");
+      if (lastAssistant?.content) {
+        const parsed = parseFlashcards(lastAssistant.content);
+        if (parsed.length > 0) {
+          setFlashcardCards(parsed);
+          setFlashcardRaw(lastAssistant.content);
+        }
+      }
+    }
+    wasStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   const send = useCallback(async (text: string) => {
     const t = text.trim();
@@ -178,6 +205,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
     if (!profile || isStreaming) return;
     const buildPrompt = TILE_PROMPTS[key];
     if (!buildPrompt) return;
+    if (key === "flashcards") pendingFlashcardRef.current = true;
     setActiveHint(key);
     setTimeout(() => setActiveHint(null), 900);
     sendMessage(buildPrompt(chapter.chapter_title));
@@ -191,7 +219,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       : content.replace(/[#*`_]/g, "").slice(0, 50).trim() || chapter.chapter_title;
     const preview = content.replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60);
     const tempId = crypto.randomUUID();
-    setSavedItems(prev => [{ id: tempId, title, preview, content, createdAt: Date.now() }, ...prev].slice(0, 10));
+    setSavedItems(prev => [{ id: tempId, title, preview, content, tags: ["classroom", chapter.chapter_title], createdAt: Date.now() }, ...prev].slice(0, 10));
     fetch("/api/creations", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -211,6 +239,32 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       })
       .catch(() => {});
   }, [chapter.chapter_title]);
+
+  const handleFlashcardSave = useCallback((content: string) => {
+    const count = flashcardCards?.length ?? 10;
+    const title = `Flashcards: ${chapter.chapter_title}`;
+    const preview = `${count} flashcard${count !== 1 ? "s" : ""}`;
+    const tempId = crypto.randomUUID();
+    setSavedItems(prev => [
+      { id: tempId, title, preview, content, tags: ["classroom", chapter.chapter_title, "flashcards"], createdAt: Date.now() },
+      ...prev,
+    ].slice(0, 10));
+    fetch("/api/creations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title, type: "chat", output_type: "text", content,
+        tags: ["classroom", chapter.chapter_title, "flashcards"],
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.creation?.id) {
+          setSavedItems(prev => prev.map(item => item.id === tempId ? { ...item, id: data.creation.id } : item));
+        }
+      })
+      .catch(() => {});
+  }, [chapter.chapter_title, flashcardCards]);
 
   const canSend = input.trim().length > 0 && !isStreaming && !!profile;
 
@@ -268,6 +322,13 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         style={{ left:"0", top:"10%", width:"10%", height:"8.5%", zIndex:20, cursor:"pointer" }}
       />
 
+      {/* ── Toolbar hotspot: Flashcards (invisible clickable zone) ───────────── */}
+      <div
+        onClick={() => { setMode("notes"); handleTileClick("flashcards"); }}
+        className="absolute"
+        style={{ left:"0", top:"21%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer" }}
+      />
+
       {/* ── Toolbar hotspot: Explainer Videos (invisible clickable zone) ─────── */}
       <div
         onClick={() => setMode("videos")}
@@ -288,32 +349,48 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
               transition={{ duration:0.18 }}>
               <AnimatePresence>
-                {savedItems.map((item) => (
-                  <div key={item.id} draggable
-                    onDragStart={(e: React.DragEvent<HTMLDivElement>) => {
-                      e.dataTransfer.setData("application/classroom-item", item.id);
-                      e.dataTransfer.effectAllowed = "move";
-                    }}>
-                    <motion.div
-                      initial={{ opacity:0, y:-8, scale:0.95 }}
-                      animate={{ opacity:1, y:0,  scale:1 }}
-                      transition={{ duration:0.25 }}
-                      onClick={() => setViewingItem(item)}
-                      className="rounded-xl p-3 mb-2 cursor-grab"
-                      whileHover={{ scale:1.02, boxShadow:"0 4px 16px rgba(37,99,235,0.2)" }}
-                      style={{ background:"rgba(255,255,255,0.88)",
-                        border:"1px solid rgba(37,99,235,0.2)",
-                        boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
-                      <div className="w-full h-1 rounded-full mb-2"
-                        style={{ background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
-                      <p className="text-xs font-bold leading-snug"
-                        style={{ color:"#0f1c4d", display:"-webkit-box",
-                          WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
-                        {item.title}
-                      </p>
-                    </motion.div>
-                  </div>
-                ))}
+                {savedItems.map((item) => {
+                  const isFC = item.tags.includes("flashcards");
+                  return (
+                    <div key={item.id} draggable
+                      onDragStart={(e: React.DragEvent<HTMLDivElement>) => {
+                        e.dataTransfer.setData("application/classroom-item", item.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}>
+                      <motion.div
+                        initial={{ opacity:0, y:-8, scale:0.95 }}
+                        animate={{ opacity:1, y:0,  scale:1 }}
+                        transition={{ duration:0.25 }}
+                        onClick={() => {
+                          if (isFC) {
+                            const parsed = parseFlashcards(item.content);
+                            if (parsed.length > 0) { setFlashcardCards(parsed); setFlashcardRaw(item.content); }
+                          } else {
+                            setViewingItem(item);
+                          }
+                        }}
+                        className="rounded-xl p-3 mb-2 cursor-grab"
+                        whileHover={{ scale:1.02, boxShadow: isFC ? "0 4px 16px rgba(124,58,237,0.25)" : "0 4px 16px rgba(37,99,235,0.2)" }}
+                        style={{ background:"rgba(255,255,255,0.88)",
+                          border: `1px solid ${isFC ? "rgba(124,58,237,0.25)" : "rgba(37,99,235,0.2)"}`,
+                          boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
+                        <div className="w-full h-1 rounded-full mb-2"
+                          style={{ background: isFC ? "#7C3AED" : "linear-gradient(90deg,#2563eb,#7c3aed)" }} />
+                        {isFC && (
+                          <p className="text-[9px] font-mono uppercase tracking-widest mb-1"
+                            style={{ color:"rgba(124,58,237,0.7)" }}>
+                            ⚡ {item.preview}
+                          </p>
+                        )}
+                        <p className="text-xs font-bold leading-snug"
+                          style={{ color:"#0f1c4d", display:"-webkit-box",
+                            WebkitLineClamp: isFC ? 2 : 3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+                          {item.title}
+                        </p>
+                      </motion.div>
+                    </div>
+                  );
+                })}
               </AnimatePresence>
               {savedItems.length === 0 && (
                 <p className="text-[10px] text-center pt-3 opacity-30" style={{ color:"#0f1c4d" }}>
@@ -641,6 +718,19 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               )}
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Flashcard deck overlay ──────────────────────────────────────────── */}
+      <AnimatePresence>
+        {flashcardCards && (
+          <FlashcardDeck
+            cards={flashcardCards}
+            rawContent={flashcardRaw}
+            chapterTitle={chapter.chapter_title}
+            onClose={() => setFlashcardCards(null)}
+            onSave={handleFlashcardSave}
+          />
         )}
       </AnimatePresence>
 
