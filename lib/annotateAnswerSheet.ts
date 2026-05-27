@@ -1,132 +1,108 @@
 /**
  * annotateAnswerSheet.ts
  *
- * Teacher-style annotation matching CBSE graded answer sheet style:
- *   - Large red V-tick ON the answer (at midpoint, not bottom)
- *   - Score in a red oval on the far-right margin at the same y-level
- *   - Short red italic teacher comment for wrong/partial answers
- *   - Total score in a large circle top-right of the first page only
- *
- * Uses Claude Opus via OpenRouter for best handwriting + layout understanding.
+ * Teacher-style annotation for CBSE written answer sheets using AWS Textract:
+ *   1. Textract DetectDocumentText → locates question number markers (1), 2), Q1 etc.)
+ *      with pixel-perfect bounding boxes
+ *   2. Column auto-detected from marker x-position (left <45% = left col, else right col)
+ *   3. sharp + SVG draws:
+ *      - Asymmetric ✓ tick (short first leg, long sweeping second leg) for correct/partial
+ *      - Red ✗ cross for zero-score answers
+ *      - Circled score at right edge of the column
+ *      - Correct answer hint written above wrong/partial answers in red
+ *      - Red underline under the student's answer block for wrong/partial answers
+ *      - Total score circle top-right of first page
  */
 
-import sharp from "sharp";
-import OpenAI from "openai";
+import sharp  from "sharp";
+import { TextractClient, DetectDocumentTextCommand } from "@aws-sdk/client-textract";
+import type { Block } from "@aws-sdk/client-textract";
 import { createAdminClient } from "./supabase";
 
-const openai = new OpenAI({
-  apiKey:  process.env.OPENROUTER_API_KEY!,
-  baseURL: "https://openrouter.ai/api/v1",
-  defaultHeaders: {
-    "HTTP-Referer": "https://ai-decoder-academy.vercel.app",
-    "X-Title":      "AI Decoder Academy",
-  },
-});
+const RED = "#cc0000";
 
-const MODEL = "anthropic/claude-sonnet-4-6";
+// ── Singleton Textract client ─────────────────────────────────────────────────
+let _textract: TextractClient | null = null;
+function getTextract(): TextractClient {
+  if (!_textract) {
+    _textract = new TextractClient({
+      region:      process.env.AWS_REGION ?? "us-east-1",
+      credentials: {
+        accessKeyId:     process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      },
+    });
+  }
+  return _textract;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AnswerColumn = "left" | "right" | "full";
 
-interface AnswerPosition {
-  q:         number;          // question number (1-indexed)
-  y_mid_pct: number;          // vertical midpoint of answer block (0–100% from top)
-  column:    AnswerColumn;    // which column the answer occupies
-}
+interface BBox { left: number; top: number; width: number; height: number; }
 
 interface AnnotationData {
-  q:         number;
-  y_mid_pct: number;
-  column:    AnswerColumn;
-  score:     number;
-  max:       number;
-  comment:   string;
+  q:            number;
+  markerBbox:   BBox;        // Textract bounding box of the question number marker
+  column:       AnswerColumn;
+  score:        number;
+  max:          number;
+  comment:      string;      // evaluation feedback (short teacher remark)
+  correctHint:  string;      // truncated expected answer for wrong/partial
 }
 
-// ── Robust JSON array extractor ───────────────────────────────────────────────
-// Handles: plain JSON, code-fenced JSON, JSON embedded in prose
-function extractJsonArray(raw: string): AnswerPosition[] {
-  // Try the whole string first
-  try { const p = JSON.parse(raw.trim()); if (Array.isArray(p)) return p; } catch {}
-
-  // Strip code fences
-  const fenced = raw.replace(/^```(?:json)?\s*/m, "").replace(/```\s*$/m, "").trim();
-  try { const p = JSON.parse(fenced); if (Array.isArray(p)) return p; } catch {}
-
-  // Find first [...] block in the string
-  const start = raw.indexOf("[");
-  const end   = raw.lastIndexOf("]");
-  if (start !== -1 && end > start) {
-    try {
-      const p = JSON.parse(raw.slice(start, end + 1));
-      if (Array.isArray(p)) return p;
-    } catch {}
-  }
-
-  return [];
+// ── Check if a Textract word text is a question number marker ─────────────────
+function isQuestionMarker(wordText: string, qNum: number): boolean {
+  const t = wordText.trim();
+  const n = String(qNum);
+  return (
+    t === `${n})`  ||
+    t === `${n}.`  ||
+    t === `Q${n}`  ||
+    t === `q${n}`  ||
+    t === `(${n})` ||
+    t === n
+  );
 }
 
-// ── Step 1: Ask Claude Opus which questions are on this page and where ────────
-async function locateAnswersOnPage(
-  b64:  string,
-  mime: string,
+// ── Step 1: Textract → locate question markers with exact bounding boxes ───────
+async function textractLocateQuestions(
+  imgBuffer:       Buffer,
   questionNumbers: Array<{ number: number; marks: number }>,
-): Promise<AnswerPosition[]> {
-  const qList = questionNumbers.map(q => `Q${q.number} (${q.marks} marks)`).join(", ");
+): Promise<Map<number, { bbox: BBox; column: AnswerColumn }>> {
+  const result = await getTextract().send(new DetectDocumentTextCommand({
+    Document: { Bytes: imgBuffer },
+  }));
 
-  try {
-    const res = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [{
-        role: "user",
-        content: [
-          {
-            type: "image_url",
-            image_url: { url: `data:${mime};base64,${b64}`, detail: "high" },
-          },
-          {
-            type: "text",
-            text: `You are examining a handwritten exam answer sheet image.
+  const wordBlocks = (result.Blocks ?? []).filter(b => b.BlockType === "WORD");
+  console.log(`[annotate] Textract: ${wordBlocks.length} words`);
 
-Your task: find which of these questions have their answer marker explicitly written on THIS image: ${qList}.
+  const found = new Map<number, { bbox: BBox; column: AnswerColumn }>();
 
-STRICT RULE — only include a question if ALL of these are true:
-1. You can physically see the student's handwritten question number marker on this image.
-   Valid markers for question N:  N)   N.   QN   Q.N   (N)
-2. The marker is a standalone question number — NOT a sub-part label like i., ii., (a), (b).
-3. Do NOT include a question just because its answer content appears on this page.
-   Content without an explicit marker = continuation from a previous page = do NOT annotate.
+  for (const { number: qNum } of questionNumbers) {
+    const match = wordBlocks.find(w => isQuestionMarker(w.Text ?? "", qNum));
+    if (!match?.Geometry?.BoundingBox) {
+      console.warn(`[annotate] Q${qNum} marker not found in Textract`);
+      continue;
+    }
 
-For each question whose EXPLICIT MARKER you can see on this image, report:
-- q: the question number
-- y_mid_pct: vertical midpoint of that answer block as % from TOP of image (0=top, 100=bottom)
-- column: "left" (answer in left half ~0-50%), "right" (right half ~50-100%), or "full" (full width)
+    const bb  = match.Geometry.BoundingBox;
+    const bbox: BBox = {
+      left:   bb.Left!,
+      top:    bb.Top!,
+      width:  bb.Width!,
+      height: bb.Height!,
+    };
 
-The answer block starts at the marker and ends just before the next question marker or page edge.
-The midpoint is halfway between where the answer starts and where it ends on THIS page only.
+    // Determine column from marker's horizontal position
+    const markerMidX = bb.Left! + bb.Width! / 2;
+    const column: AnswerColumn = markerMidX < 0.45 ? "left" : "right";
 
-KEY DISTINCTION:
-• Arabic numerals 1), 2), 3)... = question markers ✓
-• Roman numerals i., ii., iii. or letters a., b. = sub-parts within a question, NOT question markers ✗
-
-Examples:
-[{ "q": 1, "y_mid_pct": 30, "column": "full" }, { "q": 2, "y_mid_pct": 75, "column": "full" }]
-
-Return ONLY the JSON array — no explanation, no markdown fences. If no question markers are found, return [].`,
-          },
-        ],
-      }],
-      max_tokens:  400,
-      temperature: 0,
-    });
-
-    const raw = res.choices[0]?.message?.content ?? "[]";
-    console.log(`[annotate] page locate raw response:`, raw.slice(0, 300));
-    return extractJsonArray(raw);
-  } catch (e: any) {
-    console.error("[annotate] locateAnswers API error:", e.message);
-    return [];
+    console.log(`[annotate] Q${qNum} marker → bbox: left=${bbox.left.toFixed(3)} top=${bbox.top.toFixed(3)} col=${column}`);
+    found.set(qNum, { bbox, column });
   }
+
+  return found;
 }
 
 // ── Step 2: Build SVG overlay ─────────────────────────────────────────────────
@@ -138,83 +114,114 @@ function buildSvgOverlay(
   totalMax:    number,
   isFirstPage: boolean,
 ): string {
-  const RED      = "#cc0000";
   const elements: string[] = [];
 
-  // Total score circle — top-right of first page only
+  // ── Total score circle — top-right of first page ──────────────────────────
   if (isFirstPage) {
-    const tx          = width - 95;
-    const ty          = 85;
-    const totalLabel  = `${totalScore}`;
+    const tx = width - 95;
+    const ty = 85;
     elements.push(`
       <ellipse cx="${tx}" cy="${ty}" rx="65" ry="52"
         stroke="${RED}" stroke-width="4" fill="none"/>
       <text x="${tx}" y="${ty + 14}"
         font-family="Arial, sans-serif" font-size="38" font-weight="bold"
-        fill="${RED}" text-anchor="middle">${totalLabel}</text>`);
+        fill="${RED}" text-anchor="middle">${totalScore}</text>`);
   }
 
-  // ── Column geometry ─────────────────────────────────────────────────────────
-  // For a two-column page the divider sits at ~50% of width.
-  // Tick is drawn near the LEFT edge of the answer's column.
-  // Score circle is drawn near the RIGHT edge of the answer's column.
-  const colGeometry: Record<AnswerColumn, {
-    tickStartPct: number;   // x of first point of V-tick (fraction of width)
-    tickMidPct:   number;   // x of V bottom
-    tickEndPct:   number;   // x of last point of V-tick
-    scorePct:     number;   // x of score circle centre
-    commentPct:   number;   // x of comment text start
-  }> = {
-    left:  { tickStartPct: 0.04, tickMidPct: 0.11, tickEndPct: 0.20, scorePct: 0.47, commentPct: 0.04 },
-    right: { tickStartPct: 0.54, tickMidPct: 0.61, tickEndPct: 0.70, scorePct: 0.95, commentPct: 0.54 },
-    full:  { tickStartPct: 0.04, tickMidPct: 0.11, tickEndPct: 0.20, scorePct: 0.95, commentPct: 0.04 },
+  // ── Column geometry (score circle x-position per column) ─────────────────
+  const scoreX: Record<AnswerColumn, number> = {
+    left:  Math.round(width * 0.47) - 40,
+    right: Math.round(width * 0.95) - 40,
+    full:  Math.round(width * 0.95) - 40,
+  };
+  const tickStartX: Record<AnswerColumn, number> = {
+    left:  Math.round(width * 0.03),
+    right: Math.round(width * 0.52),
+    full:  Math.round(width * 0.03),
+  };
+  const tickEndX: Record<AnswerColumn, number> = {
+    left:  Math.round(width * 0.19),
+    right: Math.round(width * 0.68),
+    full:  Math.round(width * 0.19),
+  };
+  const commentX: Record<AnswerColumn, number> = {
+    left:  Math.round(width * 0.04),
+    right: Math.round(width * 0.53),
+    full:  Math.round(width * 0.04),
   };
 
-  for (const { y_mid_pct, column, score, max, comment } of annotations) {
-    const yMid    = Math.round(Math.min(94, Math.max(6, y_mid_pct)) / 100 * height);
-    const correct = score >= max;
-    const partial = score > 0 && score < max;
-    const geo     = colGeometry[column] ?? colGeometry.full;
+  for (const ann of annotations) {
+    const { markerBbox, column, score, max, comment, correctHint } = ann;
 
-    const t0x = Math.round(geo.tickStartPct * width);
-    const t1x = Math.round(geo.tickMidPct   * width);
-    const t2x = Math.round(geo.tickEndPct   * width);
+    // Convert marker bbox fractions → pixels
+    const yMarker  = Math.round((markerBbox.top + markerBbox.height / 2) * height);
+    const yBase    = Math.round((markerBbox.top + markerBbox.height) * height);
+    const correct  = score >= max;
+    const partial  = score > 0 && score < max;
 
-    // ── Large V-tick or X drawn ON the answer ─────────────────────────────
+    const sx = scoreX[column];
+    const t0 = tickStartX[column];
+    const t2 = tickEndX[column];
+
+    // ── Asymmetric teacher tick ✓ (short first leg, long sweeping second) ──
     if (correct || partial) {
+      const vx = Math.round(t0 + (t2 - t0) * 0.18);  // vertex very close to start
+      const vy = yMarker + 28;
       elements.push(`
         <polyline
-          points="${t0x},${yMid - 18} ${t1x},${yMid + 28} ${t2x},${yMid - 52}"
+          points="${t0},${yMarker - 6} ${vx},${vy} ${t2},${yMarker - 85}"
           stroke="${RED}" stroke-width="7.5" fill="none"
           stroke-linecap="round" stroke-linejoin="round"/>`);
     } else {
-      const cx = t1x;
+      // ✗ cross for zero-score
+      const cx = Math.round(t0 + (t2 - t0) * 0.5);
       elements.push(`
-        <line x1="${cx - 28}" y1="${yMid - 28}" x2="${cx + 28}" y2="${yMid + 28}"
+        <line x1="${cx - 28}" y1="${yMarker - 28}" x2="${cx + 28}" y2="${yMarker + 28}"
           stroke="${RED}" stroke-width="7.5" stroke-linecap="round"/>
-        <line x1="${cx + 28}" y1="${yMid - 28}" x2="${cx - 28}" y2="${yMid + 28}"
+        <line x1="${cx + 28}" y1="${yMarker - 28}" x2="${cx - 28}" y2="${yMarker + 28}"
           stroke="${RED}" stroke-width="7.5" stroke-linecap="round"/>`);
     }
 
-    // ── Circled score at right edge of the answer's column ────────────────
-    const scoreX     = Math.round(geo.scorePct * width) - (column === "right" || column === "full" ? 45 : 0);
+    // ── Circled score at right edge of the column ─────────────────────────
     const scoreLabel = `${score}`;
     const rx         = scoreLabel.length > 1 ? 42 : 34;
     elements.push(`
-      <ellipse cx="${scoreX}" cy="${yMid}" rx="${rx}" ry="30"
+      <ellipse cx="${sx}" cy="${yMarker}" rx="${rx}" ry="30"
         stroke="${RED}" stroke-width="3.5" fill="none"/>
-      <text x="${scoreX}" y="${yMid + 12}"
+      <text x="${sx}" y="${yMarker + 12}"
         font-family="Arial, sans-serif" font-size="32" font-weight="bold"
         fill="${RED}" text-anchor="middle">${scoreLabel}</text>`);
 
-    // ── Short red italic comment for wrong/partial answers ────────────────
-    if (comment && !correct) {
-      const short  = comment.length > 45 ? comment.slice(0, 42) + "…" : comment;
-      const textX  = Math.round(geo.commentPct * width);
+    // ── For wrong/partial: underline the answer + write correct hint above ──
+    if (!correct) {
+      // Red underline across the column width just below the marker line
+      const ulX1 = tickStartX[column];
+      const ulX2 = column === "left"
+        ? Math.round(width * 0.48)
+        : Math.round(width * 0.97);
       elements.push(`
-        <text x="${textX}" y="${yMid + 55}"
-          font-family="Arial, sans-serif" font-style="italic" font-size="20"
-          fill="${RED}">${short}</text>`);
+        <line x1="${ulX1}" y1="${yBase + 6}" x2="${ulX2}" y2="${yBase + 6}"
+          stroke="${RED}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="8 4"/>`);
+
+      // Correct answer hint above the marker
+      if (correctHint) {
+        const safe = correctHint
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        elements.push(`
+          <text x="${commentX[column]}" y="${Math.round(markerBbox.top * height) - 6}"
+            font-family="Arial, sans-serif" font-size="19" font-weight="bold"
+            fill="${RED}">${safe}</text>`);
+      }
+
+      // Short feedback comment below
+      if (comment) {
+        const short = comment.length > 48 ? comment.slice(0, 45) + "…" : comment;
+        const safe  = short.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        elements.push(`
+          <text x="${commentX[column]}" y="${yBase + 32}"
+            font-family="Arial, sans-serif" font-style="italic" font-size="19"
+            fill="${RED}">${safe}</text>`);
+      }
     }
   }
 
@@ -234,16 +241,21 @@ export async function annotateAnswerSheets(
 
   // Build question map: number (1-indexed) → details
   const qByNum: Record<number, {
-    id: string; marks: number; score: number; max: number; comment: string;
+    id: string; marks: number; score: number; max: number;
+    comment: string; expectedAnswer: string;
   }> = {};
   questions.forEach((q: any, i: number) => {
     const fb = feedback[q.id];
+    // Truncate expected_answer to ~55 chars for the hint annotation
+    const raw    = (q.expected_answer ?? "") as string;
+    const hint   = raw.length > 55 ? raw.slice(0, 52) + "…" : raw;
     qByNum[i + 1] = {
-      id:      q.id,
-      marks:   q.marks,
-      score:   fb?.score    ?? 0,
-      max:     fb?.max      ?? q.marks,
-      comment: fb?.feedback ?? "",
+      id:             q.id,
+      marks:          q.marks,
+      score:          fb?.score    ?? 0,
+      max:            fb?.max      ?? q.marks,
+      comment:        fb?.feedback ?? "",
+      expectedAnswer: hint,
     };
   });
 
@@ -259,74 +271,73 @@ export async function annotateAnswerSheets(
 
   for (let pageIdx = 0; pageIdx < imageUrls.length; pageIdx++) {
     const url = imageUrls[pageIdx]!;
-    console.log(`[annotate] processing page ${pageIdx + 1}/${imageUrls.length}: ${url.slice(-40)}`);
+    console.log(`[annotate] page ${pageIdx + 1}/${imageUrls.length}`);
 
     try {
-      // Fetch image
       const imgRes = await fetch(url);
-      if (!imgRes.ok) throw new Error(`Image fetch failed (${imgRes.status}): ${url}`);
+      if (!imgRes.ok) throw new Error(`Fetch failed (${imgRes.status})`);
       const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
-      const mime      = imgRes.headers.get("content-type") ?? "image/jpeg";
-      const b64       = imgBuffer.toString("base64");
 
-      // Dimensions
       const meta   = await sharp(imgBuffer).metadata();
       const width  = meta.width  ?? 1240;
       const height = meta.height ?? 1754;
       console.log(`[annotate] page ${pageIdx + 1} dims: ${width}×${height}`);
 
-      // Locate answers via Claude Opus
-      const positions = await locateAnswersOnPage(b64, mime, allQNums);
-      console.log(`[annotate] page ${pageIdx + 1} positions:`, JSON.stringify(positions));
+      // ── Textract: locate question markers ─────────────────────────────────
+      const located = await textractLocateQuestions(imgBuffer, allQNums);
 
-      if (positions.length === 0) {
-        console.warn(`[annotate] page ${pageIdx + 1}: no positions found — using original`);
+      if (located.size === 0) {
+        console.warn(`[annotate] page ${pageIdx + 1}: no question markers found — using original`);
         annotatedUrls.push(url);
         continue;
       }
 
-      // Build annotation data
-      const annotations: AnnotationData[] = positions
-        .filter(p => qByNum[p.q] != null)
-        .map(p => ({
-          q:         p.q,
-          y_mid_pct: p.y_mid_pct,
-          column:    (["left","right","full"].includes(p.column) ? p.column : "full") as AnswerColumn,
-          score:     qByNum[p.q]!.score,
-          max:       qByNum[p.q]!.max,
-          comment:   qByNum[p.q]!.comment,
-        }));
+      // ── Build annotation data ─────────────────────────────────────────────
+      const annotations: AnnotationData[] = [];
+      for (const [qNum, { bbox, column }] of located) {
+        const info = qByNum[qNum];
+        if (!info) continue;
+        const correct = info.score >= info.max;
+        annotations.push({
+          q:           qNum,
+          markerBbox:  bbox,
+          column,
+          score:       info.score,
+          max:         info.max,
+          comment:     info.comment,
+          correctHint: correct ? "" : info.expectedAnswer,
+        });
+      }
 
       if (annotations.length === 0) {
-        console.warn(`[annotate] page ${pageIdx + 1}: positions found but no matching questions — using original`);
         annotatedUrls.push(url);
         continue;
       }
 
       console.log(`[annotate] page ${pageIdx + 1}: drawing ${annotations.length} annotations`);
 
-      // Draw SVG + composite
+      // ── Draw SVG + composite ──────────────────────────────────────────────
       const svg = buildSvgOverlay(width, height, annotations, totalScore, totalMax, pageIdx === 0);
       const annotatedBuffer = await sharp(imgBuffer)
         .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
         .jpeg({ quality: 93 })
         .toBuffer();
 
-      // Upload
+      // ── Upload ────────────────────────────────────────────────────────────
       const path = `answer-sheets/${profileId}/annotated-p${pageIdx}-${Date.now()}.jpg`;
       const { error: uploadErr } = await supabase.storage
         .from("creations-media")
         .upload(path, annotatedBuffer, { contentType: "image/jpeg", upsert: true });
 
       if (uploadErr) {
-        console.error(`[annotate] page ${pageIdx + 1} upload error:`, uploadErr.message);
+        console.error(`[annotate] upload error:`, uploadErr.message);
         annotatedUrls.push(url);
         continue;
       }
 
       const { data: pub } = supabase.storage.from("creations-media").getPublicUrl(path);
-      console.log(`[annotate] page ${pageIdx + 1} annotated → ${pub.publicUrl.slice(-40)}`);
       annotatedUrls.push(pub.publicUrl);
+      console.log(`[annotate] page ${pageIdx + 1} annotated ✓`);
 
     } catch (err: any) {
       console.error(`[annotate] page ${pageIdx + 1} fatal error:`, err.message);

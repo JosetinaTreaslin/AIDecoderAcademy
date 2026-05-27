@@ -30,7 +30,7 @@ const openai = new OpenAI({
 });
 
 // Claude model via OpenRouter
-const CLAUDE_MODEL = "openai/gpt-5.4-mini";
+const CLAUDE_MODEL = "google/gemini-3.5-flash";
 
 // ── Convert a Supabase URL to a base64 image part (same as evaluate-written) ──
 async function toBase64Part(url: string): Promise<OpenAI.Chat.ChatCompletionContentPart> {
@@ -97,7 +97,7 @@ Do NOT flag: shorthand, abbreviations, handwriting style, or inline subscripts (
 For "student_wrote": write the SPECIFIC wrong fragment only — e.g. "O" not "2Mg + O → 2MgO".
 This is used to underline just the wrong part in the annotation.
 
-Accuracy score: correct notes with only minor issues should score 85-95+.
+Accuracy score: correct notes with only minor issues.
 
 Return ONLY a valid JSON object — no markdown fences, no explanation outside the JSON:
 {
@@ -109,7 +109,9 @@ Return ONLY a valid JSON object — no markdown fences, no explanation outside t
       "student_wrote": "<ONLY the specific wrong fragment — e.g. 'O', 'CuSO', '2Pb' — NOT the full equation>",
       "correct_version": "<what that fragment should be — e.g. 'O₂', 'CuSO₄', '2PbO'>",
       "description": "<one clear sentence explaining why this is wrong>",
-      "severity": "<high for factually wrong, low for spelling>"
+      "severity": "<high for factually wrong, low for spelling>",
+      "approx_line_pct": <integer 0-100: estimated vertical position of this specific wrong fragment in the image, 0=very top, 100=very bottom>,
+      "approx_x_pct": <integer 0-100: estimated horizontal position of this specific wrong fragment, 0=left edge, 100=right edge>
     }
   ],
   "positives": [
@@ -166,13 +168,14 @@ export async function POST(req: Request) {
 
     const systemPrompt = buildSystemPrompt(subject, chapter_title, content_text);
 
-    // Call Claude Vision via OpenRouter
+    // Call Vision model via OpenRouter
+    // User message ends with the JSON schema to force Llama-style models to respond in JSON
     const res = await openai.chat.completions.create({
       model: CLAUDE_MODEL,
       messages: [
         {
           role:    "system",
-          content: systemPrompt,
+          content: "You are a JSON-only API. Your entire response must be a single valid JSON object. Do not write any explanation, prose, or markdown — only the JSON object.",
         },
         {
           role: "user",
@@ -180,18 +183,27 @@ export async function POST(req: Request) {
             ...imageParts,
             {
               type: "text",
-              text: `Please correct the student's handwritten classwork notes shown in the ${imageParts.length === 1 ? "image" : `${imageParts.length} images`} above. Follow the instructions in your system prompt exactly and return the JSON correction report.`,
+              text: `${systemPrompt}
+
+Analyse the handwritten notes in the ${imageParts.length === 1 ? "image" : `${imageParts.length} images`} above and respond with ONLY this JSON object (fill in the values, no other text):
+{
+  "accuracy_score": 0,
+  "teacher_summary": "",
+  "issues": [],
+  "positives": []
+}`,
             },
           ],
         },
       ],
-      max_tokens:  2048,
-      temperature: 0,
+      max_tokens:      8192,
+      temperature:     0,
+      response_format: { type: "json_object" },
     });
 
     const rawText = res.choices[0]?.message?.content ?? "";
 
-    // Parse JSON — strip any accidental markdown fences
+    // Robust JSON extraction — handles markdown fences, thinking preamble, trailing content
     let parsed: {
       accuracy_score:  number;
       teacher_summary: string;
@@ -200,14 +212,23 @@ export async function POST(req: Request) {
     };
 
     try {
-      const clean = rawText
+      // Strip markdown fences
+      let clean = rawText
         .replace(/^```json\s*/m, "")
         .replace(/^```\s*/m, "")
         .replace(/```\s*$/m, "")
         .trim();
+
+      // If model added preamble before JSON, extract the first {...} block
+      const jsonStart = clean.indexOf("{");
+      const jsonEnd   = clean.lastIndexOf("}");
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        clean = clean.slice(jsonStart, jsonEnd + 1);
+      }
+
       parsed = JSON.parse(clean);
     } catch {
-      console.error("[correct-notes] JSON parse failed:", rawText.slice(0, 400));
+      console.error("[correct-notes] JSON parse failed:", rawText.slice(0, 600));
       return new Response("AI returned malformed response — please try again", { status: 502 });
     }
 

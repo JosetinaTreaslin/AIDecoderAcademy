@@ -172,11 +172,13 @@ export type CorrectionIssueType = "wrong_formula" | "spelling" | "missing_conten
 export type CorrectionSeverity  = "high" | "medium" | "low";
 
 export interface CorrectionIssue {
-  type:          CorrectionIssueType;
-  student_wrote: string | null;   // exact text from notes; null for missing_content
-  correct_version: string;
-  description:   string;
-  severity:      CorrectionSeverity;
+  type:             CorrectionIssueType;
+  student_wrote:    string | null;   // exact text from notes; null for missing_content
+  correct_version:  string;
+  description:      string;
+  severity:         CorrectionSeverity;
+  approx_line_pct?: number;   // 0–100: vertical position of error from top of image
+  approx_x_pct?:   number;   // 0–100: horizontal position of the wrong fragment from left
 }
 
 export interface CorrectionResult {
