@@ -377,7 +377,7 @@ export async function annotateNotesSheets(
       approx_line_pct:  iss.approx_line_pct,
       approx_x_pct:     iss.approx_x_pct,
     }))
-    .filter((iss): iss is { id: number; type: CorrectionIssueType; student_wrote: string; description: string; approx_line_pct?: number; approx_x_pct?: number } =>
+    .filter((iss): iss is { id: number; type: CorrectionIssueType; student_wrote: string; description: string; approx_line_pct: number | undefined; approx_x_pct: number | undefined } =>
       !!iss.student_wrote
     );
 
