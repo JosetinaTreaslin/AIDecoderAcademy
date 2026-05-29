@@ -14,18 +14,7 @@ import type { Profile } from "@/types";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [arenaOverride, setArenaOverride] = useState<number | null>(null);
-  const [navVisible, setNavVisible] = useState(false);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevArenaRef = useRef<number | null>(null);
-
-  const showNav = useCallback(() => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    setNavVisible(true);
-  }, []);
-
-  const scheduleHide = useCallback(() => {
-    hideTimerRef.current = setTimeout(() => setNavVisible(false), 300);
-  }, []);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -82,25 +71,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     >
       <ArenaEnvironment preset={arena.environmentPreset} gradient={arena.gradient} />
 
-      {/* ── Hover trigger strip — always visible, sits at top ── */}
-      <div
-        className="fixed top-0 left-0 right-0 z-50"
-        style={{ height: 10 }}
-        onMouseEnter={showNav}
-      />
-
-      {/* ── Top nav — slides in from top on hover ── */}
+      {/* ── Top nav — always visible ── */}
       <header
         className="fixed top-0 left-0 right-0 z-40 border-b"
         style={{
-          background:       "rgba(255,255,255,0.92)",
+          background:       "#ffffff",
           borderColor:      "rgba(0,0,0,0.07)",
           backdropFilter:   "blur(20px)",
-          transform:        navVisible ? "translateY(0)" : "translateY(-100%)",
-          transition:       "transform 0.3s cubic-bezier(0.16,1,0.3,1)",
         }}
-        onMouseEnter={showNav}
-        onMouseLeave={scheduleHide}
       >
         <div className="flex items-center justify-between px-5 py-2.5 w-full gap-4">
 
@@ -166,8 +144,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      {/* ── Main content — always full-height since nav is overlaid ── */}
-      <main className="relative z-10 w-full overflow-hidden" style={{ height: "100dvh" }}>
+      {/* ── Main content — spaced down below the fixed top nav ── */}
+      <main className="relative z-10 w-full overflow-y-auto" style={{ paddingTop: 48, minHeight: "calc(100dvh - 48px)" }}>
         {children}
       </main>
 

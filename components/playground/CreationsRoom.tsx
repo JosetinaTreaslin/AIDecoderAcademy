@@ -39,6 +39,7 @@ const BOTTOM_TRAY_HOTSPOTS: {
   glowColor: string; glowRgb: string;
   top: string; height: string; left: string; width: string;
 }[] = [
+  // Reordered to match the visible floor icons left→right: audio, text, image, json, video, slides
   { id:"audio",  label:"Audio",  glowColor:"#00aaff", glowRgb:"0,170,255",   top:"77%", height:"15%", left:"37%", width:"8%" },
   { id:"text",   label:"Text",   glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"77%", height:"15%", left:"47%", width:"8%" },
   { id:"image",  label:"Image",  glowColor:"#ff4488", glowRgb:"255,68,136",  top:"77%", height:"15%", left:"57%", width:"8%" },
@@ -67,11 +68,11 @@ const FLOOR_OBJECTS: {
   vw: string; // responsive width, e.g. "9vw"
 }[] = [
   { key:"phones", id:"audio",  label:"Audio",  src:"/arena1/headphones.png",   blend:"screen", glowColor:"#00aaff", glowRgb:"0,170,255",   vw:"10vw"  },
-  { key:"slide",  id:"slides", label:"Slides", src:"/arena1/slide.png",         blend:"normal", glowColor:"#ffb400", glowRgb:"255,180,0",   vw:"15vw" },
   { key:"text",   id:"text",   label:"Text",   src:"/arena1/book.png",          blend:"normal", glowColor:"#c8a0ff", glowRgb:"200,160,255", vw:"8vw" },
   { key:"camera", id:"image",  label:"Image",  src:"/arena1/camera.png",        blend:"screen", glowColor:"#ff4488", glowRgb:"255,68,136",  vw:"8vw" },
-  { key:"clap",   id:"video",  label:"Video",  src:"/arena1/clapperboard.png",  blend:"screen", glowColor:"#ff7800", glowRgb:"255,120,0",   vw:"10vw" },
   { key:"js",     id:"json",   label:"JSON",   src:"/arena1/jscube.png",        blend:"screen", glowColor:"#00ff64", glowRgb:"0,255,100",   vw:"10vw" },
+  { key:"clap",   id:"video",  label:"Video",  src:"/arena1/clapperboard.png",  blend:"screen", glowColor:"#ff7800", glowRgb:"255,120,0",   vw:"10vw" },
+  { key:"slide",  id:"slides", label:"Slides", src:"/arena1/slide.png",         blend:"normal", glowColor:"#ffb400", glowRgb:"255,180,0",   vw:"15vw" },
 ];
 
 // ── Shelf thumbnail — rich visual preview for each output type ───────────────
@@ -239,13 +240,14 @@ function ShelfThumbnail({ c, glowColor, glowRgb }: { c: Creation; glowColor: str
 }
 
 // Simple list used for the output-type dot row and mobile pill selectors
+// Order matches the visible floor objects left→right so dots map visually
 const OUTPUT_TYPES: { id: OutputType; label: string }[] = [
-  { id: "image",  label: "Image"  },
   { id: "audio",  label: "Audio"  },
-  { id: "slides", label: "Slides" },
   { id: "text",   label: "Text"   },
-  { id: "video",  label: "Video"  },
+  { id: "image",  label: "Image"  },
   { id: "json",   label: "JSON"   },
+  { id: "video",  label: "Video"  },
+  { id: "slides", label: "Slides" },
 ];
 
 // ── Context formatter ────────────────────────────────────────────────────────
@@ -310,6 +312,7 @@ export function CreationsRoom({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   sessionId: _sessionId, onNewChat: _onNewChat,
 }: Props) {
+  // Default to text for chatbox stability; tray/dot ordering preserved separately
   const [selected,         setSelected]         = useState<OutputType>("text");
   const [selectedShelfType, setSelectedShelfType] = useState<OutputType | null>(null);
   const [input,            setInput]            = useState("");

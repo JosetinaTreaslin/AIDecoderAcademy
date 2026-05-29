@@ -186,6 +186,8 @@
   isolation: isolate;
   --arena-px: 0;
   --arena-py: 0;
+  top: -12px;
+  height: calc(100dvh + 12px);
 }
 
 /* P2 — depth planes (pointer parallax via --arena-px / --arena-py from JS) */
