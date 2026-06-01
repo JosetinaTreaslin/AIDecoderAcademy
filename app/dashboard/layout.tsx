@@ -14,10 +14,11 @@ import type { Profile } from "@/types";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isClassroom = pathname?.startsWith("/dashboard/classroom") ?? false;
-  const isHub       = pathname === "/dashboard";
-  const isWorld     = pathname?.startsWith("/dashboard/world") ?? false;
-  const isHideNav   = isClassroom || isHub || isWorld;
+  const isClassroom  = pathname?.startsWith("/dashboard/classroom") ?? false;
+  const isHub        = pathname === "/dashboard";
+  const isWorld      = pathname?.startsWith("/dashboard/world") ?? false;
+  const isPlayground = pathname?.startsWith("/dashboard/playground") ?? false;
+  const isHideNav    = isClassroom || isHub || isWorld || isPlayground;
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [arenaOverride, setArenaOverride] = useState<number | null>(null);
@@ -27,6 +28,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [navVisible, setNavVisible] = useState(!isHideNav);
   const navTimerRef = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => { setNavVisible(!isHideNav); }, [isHideNav]);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("nav-visibility-change", { detail: { visible: navVisible, height: 48 } }));
+  }, [navVisible]);
   const showNav = () => { clearTimeout(navTimerRef.current); setNavVisible(true); };
   const hideNav = () => {
     if (!isHideNav) return;
