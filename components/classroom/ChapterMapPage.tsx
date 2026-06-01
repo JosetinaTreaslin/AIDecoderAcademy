@@ -24,28 +24,32 @@ const PODIUM_META = [
   { rank:3, ring:"#CD7F32", glow:"rgba(205,127,50,0.35)",  platform:18, avatar:26, label:"🥉" },
 ];
 
-// ── Chapter tiles: positioned in a pentagon around the center ─────────────────
-// Center at (47%, 50%) of body. Radius = 290px. Tile size 300×145.
+// ── Chapter tiles: percentage-based pentagon, equal radius from circle center ──
+// Reference: 1400×843 body. Pentagon center (47%, 52%), r=295px.
+// top % = relative to body height, left % = relative to body width.
+// zIndex descends ch1→ch5 so on overlap ch1 is always on top.
+// Equal-radius pentagon: r=295px from circle center (47%,46%) at 1400×843.
+// All 5 tiles are the same pixel distance from the circle → equal connector lengths.
 const TILES = [
-  { key:"chemical", src:"/classroom/chapter/chemical.png", num:1, locked:false,
-    style:{ top:"calc(50% - 362px)", left:"calc(47% - 150px)" } },
-  { key:"acids",    src:"/classroom/chapter/acids.png",    num:2, locked:true,
-    style:{ top:"calc(50% - 162px)", left:"calc(47% + 131px)" } },
-  { key:"metals",   src:"/classroom/chapter/metals.png",   num:3, locked:true,
-    style:{ top:"calc(50% + 163px)", left:"calc(47% + 25px)" } },
-  { key:"carbon",   src:"/classroom/chapter/carbon.png",   num:4, locked:true,
-    style:{ top:"calc(50% + 163px)", left:"calc(47% - 315px)" } },
-  { key:"periodic", src:"/classroom/chapter/periodic.png", num:5, locked:true,
-    style:{ top:"calc(50% - 162px)", left:"calc(47% - 421px)" } },
+  { key:"chemical", src:"/classroom/chapter/chemical.png", num:1, locked:false, zIndex:9,
+    style:{ top:"2%",  left:"36.3%" } },
+  { key:"acids",    src:"/classroom/chapter/acids.png",    num:2, locked:true,  zIndex:8,
+    style:{ top:"26%", left:"56%"   } },
+  { key:"metals",   src:"/classroom/chapter/metals.png",   num:3, locked:true,  zIndex:7,
+    style:{ top:"65%", left:"49%"   } },
+  { key:"carbon",   src:"/classroom/chapter/carbon.png",   num:4, locked:true,  zIndex:6,
+    style:{ top:"65%", left:"24%"   } },
+  { key:"periodic", src:"/classroom/chapter/periodic.png", num:5, locked:true,  zIndex:5,
+    style:{ top:"26%", left:"16%"   } },
 ] as const;
 
-// SVG connectors — from pentagon center (47,50) to each tile center
+// SVG connector endpoints: (x1,y1) = circle center (47,46); (x2,y2) = tile centers
 const CONNECTORS = [
-  { id:"c1", x1:47, y1:50, x2:47,   y2:11  },  // → chemical (top)
-  { id:"c2", x1:47, y1:50, x2:66,   y2:38  },  // → acids    (right)
-  { id:"c3", x1:47, y1:50, x2:59,   y2:82  },  // → metals   (bottom-right)
-  { id:"c4", x1:47, y1:50, x2:35,   y2:82  },  // → carbon   (bottom-left)
-  { id:"c5", x1:47, y1:50, x2:28,   y2:38  },  // → periodic (left)
+  { id:"c1", x1:47, y1:46, x2:47, y2:11 },
+  { id:"c2", x1:47, y1:46, x2:67, y2:35 },
+  { id:"c3", x1:47, y1:46, x2:59, y2:74 },
+  { id:"c4", x1:47, y1:46, x2:35, y2:74 },
+  { id:"c5", x1:47, y1:46, x2:27, y2:35 },
 ];
 
 // ── Lock icon (reused from arena style) ───────────────────────────────────────
@@ -156,6 +160,19 @@ export function ChapterMapPage({ onChapterSelect, onBack }: Props) {
   const [lbData,   setLbData]   = useState<{top10:LeaderboardEntry[]}|null>(null);
   const [loading,  setLoading]  = useState(true);
 
+  const DESIGN_W = 1400;
+  const DESIGN_H = 900;
+  const [scaleX, setScaleX] = useState(1);
+  const [scaleY, setScaleY] = useState(1);
+  useEffect(() => {
+    const update = () => {
+      setScaleX(window.innerWidth  / DESIGN_W);
+      setScaleY(window.innerHeight / DESIGN_H);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
   useEffect(() => {
     Promise.all([
       fetch("/api/classroom/chapters").then(r=>r.json()),
@@ -185,34 +202,44 @@ export function ChapterMapPage({ onChapterSelect, onBack }: Props) {
   const ranked       = lbEntries.slice(3);
 
   return (
-    <div className="relative overflow-hidden"
-      style={{ height:"100dvh", fontFamily:"var(--font-dm-sans,'DM Sans',sans-serif)" }}>
+    <div className="relative w-full overflow-hidden"
+      style={{ height:"100dvh", fontFamily:"var(--font-dm-sans,'DM Sans',sans-serif)" }}
+    >
+      <div style={{
+        position: "absolute", top: 0, left: 0,
+        width: DESIGN_W, height: DESIGN_H,
+        transformOrigin: "top left",
+        transform: `scale(${scaleX}, ${scaleY})`,
+        display: "flex", flexDirection: "column",
+        overflow: "hidden",
+      }}>
 
       {/* Background */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/classroom/chapter/background.png" alt="" aria-hidden draggable={false}
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        className="absolute inset-0 w-full h-full object-cover object-top pointer-events-none select-none"
         style={{ zIndex:0 }} />
       <div className="absolute inset-0 pointer-events-none"
         style={{ background:"rgba(220,225,255,0.18)", zIndex:1 }} />
 
-      {/* ── Header ───────────────────────────────────────────────────────────── */}
-      <header className="relative flex items-center px-6 py-3.5 gap-4 flex-shrink-0"
-        style={{ zIndex:20, background:"rgba(255,255,255,0.9)", backdropFilter:"blur(20px)",
+      {/* ── Header — always visible ───────────────────────────────────────────── */}
+      <header className="relative flex-shrink-0 flex items-center px-4 sm:px-6 py-3 sm:py-3.5 gap-3 sm:gap-4"
+        style={{ zIndex:25, background:"rgba(255,255,255,0.93)", backdropFilter:"blur(20px)",
           borderBottom:"1px solid rgba(255,255,255,0.6)",
-          boxShadow:"0 2px 20px rgba(15,28,77,0.07)" }}>
-
+          boxShadow:"0 2px 20px rgba(15,28,77,0.07)" }}
+      >
         <button onClick={onBack}
-          className="flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-70"
+          className="flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-70 flex-shrink-0"
           style={{ color:"rgba(15,28,77,0.6)" }}>
           <ChevronLeft className="w-4 h-4" />
-          Back to Subjects
+          <span className="hidden sm:inline">Back to Subjects</span>
+          <span className="sm:hidden">Back</span>
         </button>
 
-        <div className="flex-1 flex flex-col items-center">
-          <div className="flex items-center gap-2.5">
-            <span className="text-2xl">🧪</span>
-            <span className="font-display font-black text-2xl tracking-tight" style={{ color:"#0f1c4d" }}>
+        <div className="flex-1 flex flex-col items-center min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xl sm:text-2xl">🧪</span>
+            <span className="font-display font-black text-xl sm:text-2xl tracking-tight" style={{ color:"#0f1c4d" }}>
               CHEMISTRY
             </span>
           </div>
@@ -221,114 +248,121 @@ export function ChapterMapPage({ onChapterSelect, onBack }: Props) {
           </span>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl flex-shrink-0"
           style={{ background:"rgba(124,58,237,0.07)", border:"1px solid rgba(124,58,237,0.18)" }}>
           <span className="text-sm">📋</span>
           <span className="text-xs font-bold" style={{ color:"#7C3AED" }}>Board: CBSE</span>
         </div>
       </header>
 
-      {/* ── Body ─────────────────────────────────────────────────────────────── */}
-      <div className="relative" style={{ height:"calc(100dvh - 57px)", zIndex:10 }}>
+      {/* ── Body — full remaining height ─────────────────────────────────────── */}
+      <div className="relative flex-1 min-h-0" style={{ zIndex:10 }}>
 
-        {/* SVG connector lines — drawn behind tiles */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex:2 }}
-          viewBox="0 0 100 100" preserveAspectRatio="none">
-          {CONNECTORS.map(c => (
-            <line key={c.id}
-              x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2}
-              stroke="rgba(255,255,255,0.6)" strokeWidth="0.4"
-              strokeDasharray="1.8 1.5" strokeLinecap="round" />
-          ))}
-        </svg>
+        <div className="absolute inset-0">
 
-        {/* Center exam circle — 300px, lock centered over image */}
-        <motion.div initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }}
-          transition={{ duration:0.5, delay:0.1 }}
-          className="absolute"
-          style={{ width:300, height:300, zIndex:3,
-            top:"calc(50% - 150px)", left:"calc(47% - 150px)" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/classroom/chapter/mid_term_exam.png" alt="Integrated Exam Practice"
-            className="w-full h-full object-contain select-none" draggable={false} />
-          {/* Lock centered over the image */}
-          <div className="absolute inset-0 flex items-center justify-center"
-            style={{ paddingTop:80 /* push below the title text in the image */ }}>
-            <div className="flex items-center justify-center rounded-full"
-              style={{ width:40, height:40,
-                background:"linear-gradient(180deg,#0B1A2F,#050E1F)",
-                border:"1.5px solid rgba(125,211,252,0.65)",
-                boxShadow:"0 0 18px rgba(0,212,255,0.55), inset 0 0 10px rgba(0,212,255,0.2)" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <rect x="5" y="11" width="14" height="10" rx="2" stroke="#E8F4FF" strokeWidth="1.8"/>
-                <path d="M8 11V8a4 4 0 1 1 8 0v3" stroke="#E8F4FF" strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
-            </div>
-          </div>
-        </motion.div>
+          {/* SVG connector dash lines — circle center to each tile center */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex:2 }}
+            viewBox="0 0 100 100" preserveAspectRatio="none">
+            {CONNECTORS.map(c => (
+              <line key={c.id}
+                x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2}
+                stroke="rgba(255,255,255,0.6)" strokeWidth="0.4"
+                strokeDasharray="2 7" strokeLinecap="round" />
+            ))}
+          </svg>
 
-        {/* Chapter tiles */}
-        {TILES.map((tile, i) => (
-          <motion.div key={tile.key}
+          {/* Center exam circle */}
+          <motion.div initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }}
+            transition={{ duration:0.5, delay:0.1 }}
             className="absolute"
-            style={{ ...tile.style, width:300, zIndex:4, cursor:tile.locked?"not-allowed":"pointer" }}
-            initial={{ opacity:0, scale:0.88 }} animate={{ opacity:1, scale:1 }}
-            transition={{ duration:0.4, delay:0.2 + i*0.08 }}
-            whileHover={!tile.locked ? { scale:1.04 } : {}}
-            whileTap={!tile.locked ? { scale:0.97 } : {}}
-            onClick={() => handleClick(tile.num, tile.locked)}
+            style={{ width:"21.4%", aspectRatio:"1 / 1", zIndex:3,
+              top:"28%", left:"36.3%" }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={tile.src} alt={tile.key}
-              className="w-full h-auto rounded-2xl select-none"
-              draggable={false}
-              style={{ boxShadow: tile.locked
-                ? "0 4px 16px rgba(15,28,77,0.12)"
-                : "0 6px 28px rgba(15,28,77,0.18), 0 0 0 2px rgba(99,102,241,0.3)" }} />
-            {tile.locked && <LockMedallion />}
+            <img src="/classroom/chapter/mid_term_exam.png" alt="Integrated Exam Practice"
+              className="w-full h-full object-contain select-none" draggable={false} />
+            <div className="absolute inset-0 flex items-center justify-center"
+              style={{ paddingTop:80 }}>
+              <div className="flex items-center justify-center rounded-full"
+                style={{ width:40, height:40,
+                  background:"linear-gradient(180deg,#0B1A2F,#050E1F)",
+                  border:"1.5px solid rgba(125,211,252,0.65)",
+                  boxShadow:"0 0 18px rgba(0,212,255,0.55), inset 0 0 10px rgba(0,212,255,0.2)" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <rect x="5" y="11" width="14" height="10" rx="2" stroke="#E8F4FF" strokeWidth="1.8"/>
+                  <path d="M8 11V8a4 4 0 1 1 8 0v3" stroke="#E8F4FF" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </div>
+            </div>
           </motion.div>
-        ))}
 
-        {/* Progress card — top-left */}
+          {/* Chapter tiles */}
+          {TILES.map((tile, i) => (
+            <motion.div key={tile.key}
+              className="absolute"
+              style={{ ...tile.style, width:"21.4%", maxWidth:300, zIndex:tile.zIndex, cursor:tile.locked?"not-allowed":"pointer" }}
+              initial={{ opacity:0, scale:0.88 }} animate={{ opacity:1, scale:1 }}
+              transition={{ duration:0.4, delay:0.2 + i*0.08 }}
+              whileHover={!tile.locked ? { scale:1.04 } : {}}
+              whileTap={!tile.locked ? { scale:0.97 } : {}}
+              onClick={() => handleClick(tile.num, tile.locked)}
+            >
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={tile.src} alt={tile.key}
+                  className="w-full h-auto rounded-xl select-none block"
+                  draggable={false}
+                  style={{ boxShadow: tile.locked
+                    ? "0 4px 16px rgba(15,28,77,0.12)"
+                    : "0 6px 28px rgba(15,28,77,0.18), 0 0 0 2px rgba(99,102,241,0.3)" }} />
+                {tile.locked && <LockMedallion />}
+              </div>
+            </motion.div>
+          ))}
+
+        </div>{/* end .cmap-map */}
+
+        {/* Progress card — top-left (outside scaled container, hidden <900px) */}
         <motion.div initial={{ opacity:0, x:-20 }} animate={{ opacity:1, x:0 }}
           transition={{ duration:0.45 }}
-          className="absolute rounded-2xl p-4"
-          style={{ top:20, left:20, width:260, zIndex:5,
+          className="cmap-progress absolute rounded-2xl p-4"
+          style={{ top:20, left:20, width:"19%", minWidth:180, zIndex:15,
             background:"rgba(255,255,255,0.92)", backdropFilter:"blur(20px)",
             border:"1px solid rgba(255,255,255,0.75)",
-            boxShadow:"0 8px 32px rgba(15,28,77,0.1)" }}>
+            boxShadow:"0 8px 32px rgba(15,28,77,0.1)",
+            overflow:"hidden" }}>
 
-          <p className="font-display font-black text-sm mb-3" style={{ color:"#0f1c4d" }}>
+          <p className="font-display font-black text-sm mb-3 truncate" style={{ color:"#0f1c4d" }}>
             Subject Progress
           </p>
 
-          <div className="flex items-center gap-4 mb-3">
+          <div className="flex items-center gap-2 mb-3 min-w-0">
             <ProgressRing pct={progressPct} color="#7C3AED" />
-            <div className="space-y-2 flex-1">
+            <div className="space-y-2 flex-1 min-w-0">
               {[
                 { label:"Chapters Completed", value:`${chemChapters.length}/5` },
                 { label:"Tests Attempted",    value:"—" },
                 { label:"Avg. Accuracy",      value:"—" },
               ].map(({ label, value }) => (
-                <div key={label} className="flex items-center justify-between">
-                  <span className="text-[11px]" style={{ color:"rgba(15,28,77,0.5)" }}>{label}</span>
-                  <span className="text-[11px] font-black" style={{ color:"#0f1c4d" }}>{value}</span>
+                <div key={label} className="flex items-center justify-between gap-1 min-w-0">
+                  <span className="text-[11px] truncate" style={{ color:"rgba(15,28,77,0.5)" }}>{label}</span>
+                  <span className="text-[11px] font-black flex-shrink-0" style={{ color:"#0f1c4d" }}>{value}</span>
                 </div>
               ))}
             </div>
           </div>
         </motion.div>
 
-        {/* Leaderboard panel — matches hub page exactly */}
+        {/* Leaderboard panel */}
         <motion.div initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }}
           transition={{ duration:0.45 }}
-          style={{ position:"absolute", top:80, right:20, height:"60%", width:320, zIndex:5,
+          className="cmap-lb"
+          style={{ position:"absolute", top:80, right:12, height:"65%", width:"20%", minWidth:180, zIndex:15,
             display:"flex", flexDirection:"column", borderRadius:16, overflow:"hidden",
             background:"rgba(255,255,255,0.90)", backdropFilter:"blur(20px)",
             boxShadow:"0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
             border:"1px solid rgba(255,255,255,0.75)" }}>
 
-          {/* Header */}
           <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2.5"
             style={{ background:"linear-gradient(135deg,rgba(124,58,237,0.10),rgba(0,212,255,0.05))",
               borderBottom:"1px solid rgba(0,0,0,0.06)" }}>
@@ -376,6 +410,7 @@ export function ChapterMapPage({ onChapterSelect, onBack }: Props) {
           )}
         </motion.div>
 
+      </div>
       </div>
     </div>
   );

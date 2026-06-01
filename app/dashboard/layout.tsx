@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { ArenaEnvironment } from "@/components/dashboard/ArenaEnvironment";
@@ -12,9 +13,25 @@ import type { Profile } from "@/types";
 
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isClassroom = pathname?.startsWith("/dashboard/classroom") ?? false;
+  const isHub       = pathname === "/dashboard";
+  const isWorld     = pathname?.startsWith("/dashboard/world") ?? false;
+  const isHideNav   = isClassroom || isHub || isWorld;
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [arenaOverride, setArenaOverride] = useState<number | null>(null);
   const prevArenaRef = useRef<number | null>(null);
+
+  // Nav visibility — auto-hides on classroom/hub pages, reveals on hover
+  const [navVisible, setNavVisible] = useState(!isHideNav);
+  const navTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => { setNavVisible(!isHideNav); }, [isHideNav]);
+  const showNav = () => { clearTimeout(navTimerRef.current); setNavVisible(true); };
+  const hideNav = () => {
+    if (!isHideNav) return;
+    navTimerRef.current = setTimeout(() => setNavVisible(false), 400);
+  };
 
   useEffect(() => {
     fetch("/api/profile")
@@ -71,14 +88,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     >
       <ArenaEnvironment preset={arena.environmentPreset} gradient={arena.gradient} />
 
-      {/* ── Top nav — always visible ── */}
+      {/* Hover zone — catches cursor at top edge when nav is hidden */}
+      {isHideNav && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-3" onMouseEnter={showNav} />
+      )}
+
+      {/* ── Top nav ── */}
       <header
         className="fixed top-0 left-0 right-0 z-40 border-b"
         style={{
-          background:       "#ffffff",
-          borderColor:      "rgba(0,0,0,0.07)",
-          backdropFilter:   "blur(20px)",
+          background:     "#ffffff",
+          borderColor:    "rgba(0,0,0,0.07)",
+          backdropFilter: "blur(20px)",
+          transform:      navVisible ? "translateY(0)" : "translateY(-100%)",
+          transition:     "transform 0.25s cubic-bezier(0.16,1,0.3,1)",
         }}
+        onMouseEnter={showNav}
+        onMouseLeave={hideNav}
       >
         <div className="flex items-center justify-between px-5 py-2.5 w-full gap-4">
 
@@ -144,8 +170,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      {/* ── Main content — spaced down below the fixed top nav ── */}
-      <main className="relative z-10 w-full overflow-y-auto" style={{ paddingTop: 48, minHeight: "calc(100dvh - 48px)" }}>
+      {/* ── Main content ── */}
+      <main className="relative z-10 w-full overflow-y-auto"
+        style={{
+          paddingTop: isHideNav ? (navVisible ? 48 : 0) : 48,
+          minHeight: isHideNav ? "100dvh" : "calc(100dvh - 48px)",
+          transition: "padding-top 0.25s cubic-bezier(0.16,1,0.3,1)",
+        }}>
         {children}
       </main>
 
