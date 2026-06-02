@@ -16,8 +16,13 @@ export function parseFlashcards(markdown: string): FlashCard[] {
 
   for (const line of markdown.split("\n")) {
     const trimmed = line.trim();
-    const qMatch = trimmed.match(/^\*\*Q:\*\*\s*(.+)/);
-    const aMatch = trimmed.match(/^\*\*A:\*\*\s*(.+)/);
+    // Match many AI formats:
+    // **Q:** / **Q1:** / Q1: / Q: / Question: / 1. Q: / - **Q:**
+    const qMatch = trimmed.match(/^(?:\d+[\.\)]\s*|[-*]\s*)?\*\*Q\d*(?:uestion)?:\*\*\s*(.+)/i)
+                ?? trimmed.match(/^Q\d*(?:uestion)?:\s*(.+)/i)
+                ?? trimmed.match(/^(?:\d+[\.\)]\s*)Q(?:uestion)?:\s*(.+)/i);
+    const aMatch = trimmed.match(/^(?:\d+[\.\)]\s*|[-*]\s*)?\*\*A\d*(?:nswer)?:\*\*\s*(.+)/i)
+                ?? trimmed.match(/^A\d*(?:nswer)?:\s*(.+)/i);
 
     if (qMatch) {
       if (currentQ && currentA) cards.push({ question: currentQ, answer: currentA });
@@ -25,7 +30,7 @@ export function parseFlashcards(markdown: string): FlashCard[] {
       currentA = "";
     } else if (aMatch) {
       currentA = aMatch[1].trim();
-    } else if (currentA && trimmed && !trimmed.startsWith("**")) {
+    } else if (currentA && trimmed && !trimmed.match(/^\*\*[QA]/i)) {
       currentA += " " + trimmed;
     }
   }

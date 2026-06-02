@@ -37,16 +37,19 @@ const COLOR_MAP: Record<string, { ring: string; bg: string; bar: string; text: s
   amber:  { ring: "border-[#FF6B2B]/35", bg: "bg-white/[0.04]", bar: "bg-[#FF6B2B] shadow-[0_0_14px_rgba(255,107,43,0.4)]",  text: "text-[#FFB38A]"  },
   volt:   { ring: "border-[#C8FF00]/35", bg: "bg-white/[0.04]", bar: "bg-[#C8FF00] shadow-[0_0_14px_rgba(200,255,0,0.4)]",   text: "text-[#DEFF70]"  },
   green:  { ring: "border-[#00FF94]/35", bg: "bg-white/[0.04]", bar: "bg-[#00FF94] shadow-[0_0_14px_rgba(0,255,148,0.4)]",   text: "text-[#7BFFC4]"  },
+  // Dark variant for classroom (light background)
+  dark:   { ring: "border-[#1e3a8a]/50", bg: "bg-[#1e3a8a]/[0.60]", bar: "bg-[#3b82f6]", text: "text-white"     },
 };
 
 // Map arena id to loading bubble color key
 const ARENA_COLOR: Record<number, string> = {
-  1: "purple",
-  2: "cyan",
-  3: "amber",
-  4: "green",
-  5: "pink",
-  6: "volt",
+  1:  "purple",
+  2:  "cyan",
+  3:  "amber",
+  4:  "green",
+  5:  "pink",
+  6:  "volt",
+  10: "dark",   // classroom context
 };
 
 function LoadingBubble({ outputType, arenaId }: { outputType?: string; arenaId?: number }) {
@@ -84,7 +87,7 @@ function LoadingBubble({ outputType, arenaId }: { outputType?: string; arenaId?:
           <p className={cn("text-xs font-display font-extrabold leading-tight tracking-tight", colors.text)}>
             {meta.label}{dots}
           </p>
-          <p className="text-[10px] text-white/35 mt-0.5">20–30 seconds</p>
+          <p className={cn("text-[10px] mt-0.5", meta.color === "dark" ? "text-white/50" : "text-white/35")}>20–30 seconds</p>
         </div>
       </div>
       <div className="h-1 w-full bg-[#1E1E30] rounded-full overflow-hidden border border-white/10">
