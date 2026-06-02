@@ -56,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html
         lang="en"
+        suppressHydrationWarning
         className={`${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} ${outfit.variable} ${nunito.variable} ${inter.variable}`}
       >
         <body className="font-body bg-[#08080F] text-white antialiased">

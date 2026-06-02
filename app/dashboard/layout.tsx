@@ -26,7 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Nav visibility — auto-hides on classroom/hub pages, reveals on hover
   const [navVisible, setNavVisible] = useState(!isHideNav);
-  const navTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => { setNavVisible(!isHideNav); }, [isHideNav]);
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("nav-visibility-change", { detail: { visible: navVisible, height: 48 } }));
