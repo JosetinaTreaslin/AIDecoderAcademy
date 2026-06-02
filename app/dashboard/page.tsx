@@ -572,7 +572,7 @@ export default function HubPage() {
   const firstName = (profile?.display_name ?? "Explorer").split(" ")[0];
 
   return (
-    <div className="relative w-full flex flex-col overflow-hidden"
+    <div className="relative w-full overflow-hidden"
       style={{ height: "100dvh", fontFamily: "var(--font-dm-sans,'DM Sans',sans-serif)" }}>
 
       {/* Onboarding modal — shown on first visit when profile is incomplete */}
@@ -590,101 +590,105 @@ export default function HubPage() {
 
       {/* Responsive styles */}
       <style>{`
-        .hub-grid { grid-template-columns: 23fr 34fr 23fr 20fr; }
+        /* Single scaled unit — expands inversely so after scale it fills the viewport exactly */
+        .hub-page {
+          position: absolute; top: 0; left: 0;
+          width: 100vw; height: 100dvh;
+          display: flex; flex-direction: column;
+          transform-origin: top left;
+        }
+        .hub-grid   { grid-template-columns: 23fr 34fr 23fr 20fr; }
         .hub-spacer { height: 18%; }
-        .hub-col-left  { padding-left: 12px; padding-top: 60px; transform: translateX(120px); overflow: hidden; }
-        .hub-col-right { padding-right: 12px; padding-top: 60px; transform: translateY(40px); overflow: hidden; }
-        .hub-img { display: block; width: 100%; height: calc((100dvh - 38dvh - 68px) / 4); margin: 0; padding: 0; }
-        @media (max-width: 1280px) {
-          .hub-grid { grid-template-columns: 25fr 30fr 25fr 20fr; }
+        .hub-col-left, .hub-col-right {
+          padding-top: 95px; overflow: hidden;
+          display: flex; flex-direction: column; gap: 0;
         }
-        @media (max-width: 1100px) {
-          .hub-grid { grid-template-columns: 26fr 48fr 26fr 0fr; }
-          .hub-leaderboard { display: none; }
-        }
-        @media (max-height: 760px) {
-          .hub-spacer { height: 14%; }
-          .hub-col-left  { padding-top: 32px; }
-          .hub-col-right { padding-top: 32px; }
-          .hub-img { height: calc((100dvh - 20dvh - 60px) / 4); }
-        }
-        @media (max-height: 600px) {
-          .hub-spacer { height: 10%; }
-          .hub-col-left  { padding-top: 16px; }
-          .hub-col-right { padding-top: 16px; }
-          .hub-img { height: calc((100dvh - 20dvh - 60px) / 4); }
-        }
+        .hub-col-left  { padding-left:  12px; transform: translateX(150px); }
+        .hub-col-right { padding-right: 12px; }
+        .hub-img { display: block; width: 100%; flex: 1; min-height: 0; margin: 0; padding: 0; margin-bottom: -1px; }
+
+        /* scale + inverse dimensions = fills viewport with no black borders */
+        @media (max-width:1400px) { .hub-page { transform:scale(0.88); width:calc(100vw/0.88); height:calc(100dvh/0.88); } }
+        @media (max-width:1200px) { .hub-page { transform:scale(0.76); width:calc(100vw/0.76); height:calc(100dvh/0.76); } }
+        @media (max-width:1000px) { .hub-page { transform:scale(0.64); width:calc(100vw/0.64); height:calc(100dvh/0.64); } }
+        @media (max-width:800px)  { .hub-page { transform:scale(0.52); width:calc(100vw/0.52); height:calc(100dvh/0.52); } }
+        @media (max-width:600px)  { .hub-page { transform:scale(0.42); width:calc(100vw/0.42); height:calc(100dvh/0.42); } }
+        @media (max-height:750px) and (min-width:601px) { .hub-page { transform:scale(0.82); width:calc(100vw/0.82); height:calc(100dvh/0.82); } }
+        @media (max-height:600px) { .hub-page { transform:scale(0.66); width:calc(100vw/0.66); height:calc(100dvh/0.66); } }
       `}</style>
 
-      {/* Background */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/panels/background.png" alt="" aria-hidden draggable={false}
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-        style={{ zIndex: 0 }} />
+      <div className="hub-page">
+        {/* Background */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/panels/background.png" alt="" aria-hidden draggable={false}
+          className="absolute inset-0 w-full h-full object-cover object-top pointer-events-none select-none"
+          style={{ zIndex: 0 }} />
 
-      {/* Title spacer + stats bar */}
-      <div className="hub-spacer relative flex-shrink-0" style={{ zIndex: 10 }}>
-        <div className="absolute bottom-[-24px]" style={{ left: "44%", transform: "translateX(-50%)" }}>
-          <div className="flex items-center px-4 py-2 rounded-2xl"
-            style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(16px)",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.08)", border: "1px solid rgba(255,255,255,0.7)",
-              whiteSpace: "nowrap" }}>
-            {[
-              { icon: "📄", label: "Projects",   value: "24"  },
-              { icon: "⭐", label: "Creations",  value: "156" },
-              { icon: "⏱",  label: "Time Saved", value: "82h" },
-              { icon: "✨", label: "AI Credits", value: "450" },
-            ].map((s, i) => (
-              <div key={s.label} className="flex items-center">
-                {i > 0 && <div className="w-px h-6 mx-3" style={{ background: "rgba(0,0,0,0.08)" }} />}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm">{s.icon}</span>
-                  <div>
-                    <div className="font-black text-[13px] leading-none" style={{ color: "#1a1a2e" }}>{s.value}</div>
-                    <div className="text-[10px] leading-none mt-0.5" style={{ color: "#aaa" }}>{s.label}</div>
+        {/* Title spacer + stats bar */}
+        <div className="hub-spacer relative flex-shrink-0" style={{ zIndex: 10 }}>
+          <div className="absolute bottom-[-60px]" style={{ left: "48%", transform: "translateX(-50%)" }}>
+            <div className="flex items-center px-4 py-2 rounded-2xl"
+              style={{ background: "rgba(255,255,255,0.92)", backdropFilter: "blur(16px)",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.08)", border: "1px solid rgba(255,255,255,0.7)",
+                whiteSpace: "nowrap" }}>
+              {[
+                { icon: "📄", label: "Projects",   value: "24"  },
+                { icon: "⭐", label: "Creations",  value: "156" },
+                { icon: "⏱",  label: "Time Saved", value: "82h" },
+                { icon: "✨", label: "AI Credits", value: "450" },
+              ].map((s, i) => (
+                <div key={s.label} className="flex items-center">
+                  {i > 0 && <div className="w-px h-6 mx-3" style={{ background: "rgba(0,0,0,0.08)" }} />}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">{s.icon}</span>
+                    <div>
+                      <div className="font-black text-[13px] leading-none" style={{ color: "#1a1a2e" }}>{s.value}</div>
+                      <div className="text-[10px] leading-none mt-0.5" style={{ color: "#aaa" }}>{s.label}</div>
+                    </div>
                   </div>
                 </div>
+              ))}
+              <div className="w-px h-6 mx-3" style={{ background: "rgba(0,0,0,0.08)" }} />
+              <div className="text-[12px] font-medium" style={{ color: "#666" }}>
+                Welcome back, <span className="font-black" style={{ color: "#7C3AED" }}>{firstName}!</span> 👋
               </div>
-            ))}
-            <div className="w-px h-6 mx-3" style={{ background: "rgba(0,0,0,0.08)" }} />
-            <div className="text-[12px] font-medium" style={{ color: "#666" }}>
-              Welcome back, <span className="font-black" style={{ color: "#7C3AED" }}>{firstName}!</span> 👋
-            </div>
-            <div className="ml-3 w-8 h-8 rounded-full flex items-center justify-center text-base flex-shrink-0"
-              style={{ background: "linear-gradient(135deg,rgba(124,58,237,0.15),rgba(124,58,237,0.3))",
-                border: "2px solid rgba(124,58,237,0.3)" }}>
-              {profile?.avatar_emoji ?? "🧑‍💻"}
+              <div className="ml-3 w-8 h-8 rounded-full flex items-center justify-center text-base flex-shrink-0"
+                style={{ background: "linear-gradient(135deg,rgba(124,58,237,0.15),rgba(124,58,237,0.3))",
+                  border: "2px solid rgba(124,58,237,0.3)" }}>
+                {profile?.avatar_emoji ?? "🧑‍💻"}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* 4-column panel grid */}
-      <div className="hub-grid relative flex-1 min-h-0"
-        style={{ display: "grid", gridTemplateRows: "100%", gap: "0", overflow: "hidden", zIndex: 10 }}>
+        {/* 4-column panel grid */}
+        <div className="hub-grid relative flex-1 min-h-0"
+          style={{ display: "grid", gridTemplateRows: "100%", gap: "0", overflow: "hidden", zIndex: 10 }}>
 
-        {/* Left — 4 images */}
-        <div className="hub-col-left">
-          {LEFT_PANELS.map(p => (
-            <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick}
-              locked={!isArenaUnlocked(p.arenaId)} />
-          ))}
-        </div>
+          {/* Left — 4 images */}
+          <div className="hub-col-left">
+            {LEFT_PANELS.map(p => (
+              <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick}
+                locked={!isArenaUnlocked(p.arenaId)} />
+            ))}
+          </div>
 
-        {/* Center — transparent */}
-        <div />
+          {/* Center — transparent */}
+          <div />
 
-        {/* Right — 3 images */}
-        <div className="hub-col-right">
-          {RIGHT_PANELS.map(p => (
-            <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick}
-              locked={!isArenaUnlocked(p.arenaId)} />
-          ))}
-        </div>
+          {/* Right — 3 images + invisible spacer so each item matches left column's 25% height */}
+          <div className="hub-col-right">
+            {RIGHT_PANELS.map(p => (
+              <PanelImage key={p.arenaId} arenaId={p.arenaId} src={p.src} alt={p.alt} onClick={handleClick}
+                locked={!isArenaUnlocked(p.arenaId)} />
+            ))}
+            <div className="hub-img" style={{ visibility: "hidden" }} />
+          </div>
 
-        {/* Far right — leaderboard */}
-        <div className="hub-leaderboard">
-          <LeaderboardPanel />
+          {/* Far right — leaderboard */}
+          <div className="hub-leaderboard">
+            <LeaderboardPanel />
+          </div>
         </div>
       </div>
 

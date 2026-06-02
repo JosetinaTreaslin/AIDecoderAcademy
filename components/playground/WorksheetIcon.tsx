@@ -36,65 +36,77 @@ interface Props {
 //   Auto-hides whenever the SAGE validator panel OR the worksheet popup is
 //   open — so the floor sprite never bleeds through the modal text.
 export function WorksheetIcon({ onClick, arenaAccent, arenaAccentGlow, hasDraft }: Props) {
-  const [hidden, setHidden] = useState(false);
+  const [hidden,    setHidden]    = useState(false);
+  const [navOffset, setNavOffset] = useState(0);
 
   useEffect(() => {
     const onValidatorOpen  = () => setHidden(true);
     const onValidatorClose = () => setHidden(false);
     const onWorksheetOpen  = () => setHidden(true);
     const onWorksheetClose = () => setHidden(false);
-    window.addEventListener("validator-panel-open",  onValidatorOpen);
-    window.addEventListener("validator-panel-close", onValidatorClose);
-    window.addEventListener("worksheet-popup-open",  onWorksheetOpen);
-    window.addEventListener("worksheet-popup-close", onWorksheetClose);
+    const onNavChange = (e: Event) => {
+      const ce = e as CustomEvent<{ visible: boolean; height: number }>;
+      setNavOffset(ce.detail.visible ? ce.detail.height : 0);
+    };
+    window.addEventListener("validator-panel-open",    onValidatorOpen);
+    window.addEventListener("validator-panel-close",   onValidatorClose);
+    window.addEventListener("worksheet-popup-open",    onWorksheetOpen);
+    window.addEventListener("worksheet-popup-close",   onWorksheetClose);
+    window.addEventListener("nav-visibility-change",   onNavChange);
     return () => {
-      window.removeEventListener("validator-panel-open",  onValidatorOpen);
-      window.removeEventListener("validator-panel-close", onValidatorClose);
-      window.removeEventListener("worksheet-popup-open",  onWorksheetOpen);
-      window.removeEventListener("worksheet-popup-close", onWorksheetClose);
+      window.removeEventListener("validator-panel-open",    onValidatorOpen);
+      window.removeEventListener("validator-panel-close",   onValidatorClose);
+      window.removeEventListener("worksheet-popup-open",    onWorksheetOpen);
+      window.removeEventListener("worksheet-popup-close",   onWorksheetClose);
+      window.removeEventListener("nav-visibility-change",   onNavChange);
     };
   }, []);
 
   if (hidden) return null;
 
   return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      className="fixed z-[100] flex items-end justify-center"
+    <motion.div
+      className="fixed z-[100]"
       style={{
-        // ↓ horizontal: right of viewport, plus AIDA's width, plus tight gap = sits left of AIDA
-        //   Keep the FIRST percentage in this calc identical to AIDA's `right`
-        //   in AidaAssistant.tsx (currently 62%). Change the final `+ Xpx` to
-        //   tune the gap between worksheet and AIDA.
         right:  "calc(53% + clamp(173px, 14.4vw, 269px) + 4px)",
-        bottom: "20px",                                    // ← matches AIDA's bottom
-        width:  "clamp(260px, 21.6vw, 404px)",             // ← SIZE knob: width  (2× original)
-        height: "clamp(260px, 21.6vw, 404px)",             // ← SIZE knob: height (keep equal to width)
-        background: "transparent",
-        border:     "none",
-        padding:    0,
-        cursor:     "pointer",
-        filter:     `drop-shadow(0 0 18px ${arenaAccentGlow})`,
+        bottom: "20px",
+        width:  "clamp(260px, 21.6vw, 404px)",
+        height: "clamp(260px, 21.6vw, 404px)",
       }}
-      whileHover={{ y: -3, scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
-      animate={{ y: [0, -2, 0] }}
-      transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-      aria-label="Open worksheet"
+      animate={{ y: navOffset }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
     >
-      <img
-        src="/worksheet-on-floor.png"
-        alt=""
-        draggable={false}
-        style={{ width: "100%", height: "100%", objectFit: "contain" }}
-      />
-      {hasDraft && (
-        <span
-          className="absolute top-2 right-2 w-3 h-3 rounded-full"
-          style={{ background: arenaAccent, boxShadow: `0 0 10px ${arenaAccentGlow}` }}
+      {/* Inner: float animation + click */}
+      <motion.button
+        type="button"
+        onClick={onClick}
+        className="w-full h-full flex items-end justify-center"
+        style={{
+          background: "transparent",
+          border:     "none",
+          padding:    0,
+          cursor:     "pointer",
+          filter:     `drop-shadow(0 0 18px ${arenaAccentGlow})`,
+        }}
+        whileHover={{ y: -3, scale: 1.04 }}
+        whileTap={{ scale: 0.96 }}
+        animate={{ y: [0, -2, 0] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+        aria-label="Open worksheet"
+      >
+        <img
+          src="/worksheet-on-floor.png"
+          alt=""
+          draggable={false}
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
         />
-      )}
-    </motion.button>
+        {hasDraft && (
+          <span
+            className="absolute top-2 right-2 w-3 h-3 rounded-full"
+            style={{ background: arenaAccent, boxShadow: `0 0 10px ${arenaAccentGlow}` }}
+          />
+        )}
+      </motion.button>
+    </motion.div>
   );
 }
