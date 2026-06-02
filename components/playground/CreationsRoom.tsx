@@ -285,6 +285,9 @@ function buildCreationContext(c: Creation): string {
   if (c.output_type === "video" && c.file_url) {
     return `[Video titled "${c.title}": ${c.file_url}]\n\n`;
   }
+  if (c.output_type === "json") {
+    return `[JSON titled "${c.title}": ${c.content.slice(0, 2000)}]\n\n`;
+  }
   return `[${c.output_type} titled "${c.title}": ${c.content.slice(0, 300)}]\n\n`;
 }
 
@@ -458,6 +461,7 @@ export function CreationsRoom({
         return;
       }
       const outType: OutputType = getOutputTypeForFile(file) ?? "text";
+      const isJson = outType === "json";
       const itemId = `local-upload-${file.name}-${Date.now()}`;
       const reader = new FileReader();
       reader.onload = ev => {
@@ -466,15 +470,18 @@ export function CreationsRoom({
           profile_id: "",
           title: file.name.replace(/\.[^.]+$/, ""),
           type: "chat", output_type: outType,
-          // Store data-URL as fallback while server upload is in progress
           content: ev.target?.result as string,
           tags: [], is_favourite: false, created_at: "", updated_at: "",
         };
         injectCreation(fake);
-        // Kick off background upload — updates file_url on the chip when done
-        uploadFileToServer(file, itemId);
+        // JSON is plain text — no server upload needed
+        if (!isJson) uploadFileToServer(file, itemId);
       };
-      reader.readAsDataURL(file);
+      if (isJson) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsDataURL(file);
+      }
     });
     e.target.value = "";
   };
@@ -506,6 +513,7 @@ export function CreationsRoom({
     if (["mp4","mov","webm","avi","mkv","m4v"].includes(ext)) return "video";
     if (["pdf","doc","docx"].includes(ext)) return "text";
     if (["ppt","pptx"].includes(ext)) return "slides";
+    if (ext === "json") return "json";
     return null;
   };
 
@@ -857,6 +865,60 @@ export function CreationsRoom({
                 </span>
                 <span style={{ fontSize: 10, color: "rgba(125,211,252,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
                   PDF · DOC · DOCX
+                </span>
+              </span>
+            </button>
+
+            {/* JSON file */}
+            <input type="file"
+              accept=".json,application/json"
+              style={{ display: "none" }}
+              id="json-upload-input"
+              onChange={handleFileUpload}/>
+            <button onClick={() => (document.getElementById("json-upload-input") as HTMLInputElement)?.click()}
+              style={{
+                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                border:     "1px solid rgba(0,255,100,0.28)",
+                background:
+                  "linear-gradient(180deg, " +
+                    "rgba(0,80,40,0.32) 0%, " +
+                    "rgba(0,40,20,0.55) 50%, " +
+                    "rgba(0,28,14,0.55) 100%" +
+                  ")",
+                color:      "rgba(180,255,220,0.92)",
+                fontSize:   13, fontWeight: 600, transition: "all 0.2s",
+                display:    "flex", flexDirection: "row", alignItems: "center", gap: 14,
+                textAlign:  "left",
+                boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,255,100,0)",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "linear-gradient(180deg, rgba(0,80,40,0.55) 0%, rgba(0,40,20,0.7) 50%, rgba(0,28,14,0.7) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,255,100,0.85)";
+                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,255,100,0.45)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "linear-gradient(180deg, rgba(0,80,40,0.32) 0%, rgba(0,40,20,0.55) 50%, rgba(0,28,14,0.55) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,255,100,0.28)";
+                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,255,100,0)";
+              }}
+            >
+              <span style={{
+                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "linear-gradient(180deg, #6EFF9E 0%, #00FF64 50%, #00A843 100%)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 14px rgba(0,255,100,0.55)",
+              }}>
+                <FileText size={20} style={{ color: "#001a0d" }} />
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 13, color: "white", letterSpacing: "-0.01em" }}>
+                  Upload JSON
+                </span>
+                <span style={{ fontSize: 10, color: "rgba(110,255,158,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
+                  .json — scripts, scenes, data
                 </span>
               </span>
             </button>
