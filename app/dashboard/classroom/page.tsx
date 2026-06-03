@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -626,7 +626,7 @@ export default function ClassroomPage() {
               {view === "written-result" && writtenResult && paper && (
                 <motion.div key="written-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
                   <WrittenScoreReport result={writtenResult} chapterTitle={paper.chapter.chapter_title}
-                    onRetry={retryWritten} onHome={() => setView("landing")} />
+                    onRetry={retryWritten} onHome={() => setView("landing")} onBack={() => setView("select-type")} />
                 </motion.div>
               )}
 
