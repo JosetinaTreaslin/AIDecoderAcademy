@@ -89,22 +89,23 @@ function hasQAContent(content: string): boolean {
 }
 
 function buildQAFlashcardPrompt(chapterTitle: string, content: string, count?: number | null): string {
-  const n = count ? `exactly ${count}` : "exactly 10";
-  const strict = count ? ` Produce EXACTLY ${count} cards — no more, no less.` : "";
-  return `Convert the student's content below into Q&A flashcards. Do NOT add any new information — only use what is provided.${strict}\n\nChapter: "${chapterTitle}"\n\nContent:\n"""\n${content}\n"""\n\nProduce ${n} cards. Only the label is bold:\n**Q1:** [question taken directly from the content]\n**A:** [answer taken directly from the content]\n\n**Q2:** [question]\n**A:** [answer]\n\nNo preamble. No invented content. Plain text only.`;
+  const n = count ? `exactly ${count}` : "one card per key point or concept in the content — do not pad or invent extra cards";
+  const strict = count ? ` Produce EXACTLY ${count} cards — no more, no less.` : " Produce only as many cards as there are distinct points — if the content has 4 points, produce 4 cards.";
+  return `Convert the student's content below into Q&A flashcards. Do NOT add any new information — only use what is provided.${strict}\n\nChapter: "${chapterTitle}"\n\nContent:\n"""\n${content}\n"""\n\nProduce ${n}. Only the label is bold:\n**Q1:** [question taken directly from the content]\n**A:** [answer taken directly from the content]\n\n**Q2:** [question]\n**A:** [answer]\n\nNo preamble. No invented content. Plain text only.`;
 }
 
 function buildVisualFlashcardPrompt(chapterTitle: string, content: string, count?: number | null): string {
-  const n = count ? `exactly ${count}` : "exactly 10";
-  const strict = count ? ` Produce EXACTLY ${count} cards — no more, no less.` : "";
-  return `Convert the student's content below into visual point cards. Do NOT add any new information — only use what is provided.${strict}\n\nChapter: "${chapterTitle}"\n\nContent:\n"""\n${content}\n"""\n\nProduce ${n} cards. Only the label is bold:\n**IMG1:** [short concept title — 3–6 words from the content]\n**PTS:**\n- [key point from the content]\n- [key point from the content]\n\n**IMG2:** [short concept title]\n**PTS:**\n- [key point]\n\nNo preamble. No invented content. Plain text only.`;
+  const n = count ? `exactly ${count}` : "one card per key point or concept in the content — do not pad or invent extra cards";
+  const strict = count ? ` Produce EXACTLY ${count} cards — no more, no less.` : " Produce only as many cards as there are distinct points — if the content has 4 points, produce 4 cards.";
+  return `Convert the student's content below into visual point cards. Do NOT add any new information — only use what is provided.${strict}\n\nChapter: "${chapterTitle}"\n\nContent:\n"""\n${content}\n"""\n\nProduce ${n}. Only the label is bold:\n**IMG1:** [short concept title — 3–6 words from the content]\n**PTS:**\n- [key point from the content]\n- [key point from the content]\n\n**IMG2:** [short concept title]\n**PTS:**\n- [key point]\n\nNo preamble. No invented content. Plain text only.`;
 }
 
-function buildAutoFlashcardPrompt(chapterTitle: string, content: string): string {
+function buildAutoFlashcardPrompt(chapterTitle: string, content: string, count?: number | null): string {
   // Match the format of what the user gave — Q&A in → Q&A out, points in → points out
+  // count = null means "match the content length exactly"
   return getInputFormat(content) === "qa"
-    ? buildQAFlashcardPrompt(chapterTitle, content)
-    : buildVisualFlashcardPrompt(chapterTitle, content);
+    ? buildQAFlashcardPrompt(chapterTitle, content, count)
+    : buildVisualFlashcardPrompt(chapterTitle, content, count);
 }
 
 // ── Visual card back — generates image lazily on first view, retries on error ──
@@ -121,7 +122,9 @@ function VisualCardBack({
 
   const generate = useCallback(() => {
     setCardImages(prev => ({ ...prev, [imageKey]: "loading" }));
-    const uniquePrompt = `Educational cartoon illustration specifically about: "${imagePrompt}". Draw a scene or diagram that clearly represents "${imagePrompt}". Colorful friendly cartoon style, bold outlines. Title text "${imagePrompt}" written large and bold at the top of the image. White background. For school students aged 11-16.`;
+    // Prompt style: title at top in fun bubble letters + cute cartoon characters
+    // interacting with the actual educational content (formulas, shapes, symbols).
+    const uniquePrompt = `Educational cartoon poster about "${imagePrompt}". Large fun bubble-letter title "${imagePrompt}" at the very top of the image in bold colourful letters. Below the title: cute cartoon characters (round-eyed stick figures or simple characters) interacting with the key educational content — show actual maths symbols, formulas, labelled shapes, or relevant objects specific to "${imagePrompt}". Bold ink outlines, vivid bright colours, clean white background, no scenery or landscape. The content must visually teach "${imagePrompt}". Style: flat 2D educational poster illustration for school students aged 11–16.`;
     fetch("/api/generate-image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -156,7 +159,7 @@ function VisualCardBack({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imgState, imageKey]);
 
-  // Permanently failed after 1 retry
+  // Permanently failed after 1 retry — show error with a manual retry button
   if (imgState === "retry" && retryCount >= 1) return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0F0F1A] px-8 text-center">
       <div className="absolute inset-0" style={{ background:"radial-gradient(ellipse at 50% 45%, rgba(239,68,68,0.08), transparent 60%)" }}/>
@@ -164,9 +167,12 @@ function VisualCardBack({
       <p className="text-sm font-display font-bold text-white/70 leading-snug relative z-[1]">
         Couldn't load the image
       </p>
-      <p className="text-[11px] text-white/45 leading-snug relative z-[1]">
-        Click the <strong className="text-white/70">Flashcards</strong> button on the left and try again
-      </p>
+      <button
+        onClick={() => { setRetryCount(0); setCardImages(prev => { const n = { ...prev }; delete n[imageKey]; return n; }); }}
+        className="relative z-[1] px-4 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95"
+        style={{ background:"rgba(200,255,0,0.15)", border:"1px solid rgba(200,255,0,0.4)", color:"#C8FF00" }}>
+        Try Again
+      </button>
     </div>
   );
 
@@ -193,9 +199,11 @@ function buildContentFlashcardPrompt(chapterTitle: string, content: string): str
   return `You are generating flashcards STRICTLY from the student's pasted content below. Do NOT use any outside knowledge. Every question and answer must come directly from the text provided.\n\nChapter context: "${chapterTitle}"\n\nStudent content:\n"""\n${content}\n"""\n\nCreate as many flashcards as needed to cover all the key points in the content (aim for 5–10).\n\nRules:\n- The label is bold; only the label. Answer text is plain.\n- Answers can be a sentence, bullet points, or an image reference — whatever best fits the content.\n- For lists/points in the content: make each key point a bullet under **A:**\n- For image URLs in the content: include them as ![label](url) in the answer\n\nFormat:\n**Q1:** [question from the content]\n**A:** [answer — sentence, bullets, or image]\n\n**Q2:** [question from the content]\n**A:** [answer]\n\nNo preamble, no commentary, just the cards.`;
 }
 
-const TILE_PROMPTS: Record<string, (t: string) => string> = {
-  notes:      (t) => `Generate comprehensive study notes for "${t}" — CBSE Class 10 Science. Use clear headings, bullet points, key definitions, important equations, and a quick-revision summary. For equations, use plain text format only — no LaTeX. Write fractions as a/b or a ÷ b, use characters like θ, π, °, ±. Examples: sin(90° - θ) = cos(θ), csc(θ) = 1/sin(θ).`,
-  flashcards: (t) => {
+const TILE_PROMPTS: Record<string, (t: string, count?: number) => string> = {
+  notes: (t) => `Generate comprehensive study notes for "${t}" — CBSE Class 10 Science. Use clear headings, bullet points, key definitions, important equations, and a quick-revision summary. For equations, use plain text format only — no LaTeX. Write fractions as a/b or a ÷ b, use characters like θ, π, °, ±. Examples: sin(90° - θ) = cos(θ), csc(θ) = 1/sin(θ).`,
+
+  // Q&A auto-generate — topic based, no content restriction
+  flashcards: (t, count = 10) => {
     const focuses = [
       "Focus on key definitions and terminology.",
       "Focus on important formulas and how to apply them.",
@@ -206,8 +214,11 @@ const TILE_PROMPTS: Record<string, (t: string) => string> = {
       "Focus on quick-recall facts, values, and identities.",
     ];
     const focus = focuses[Math.floor(Math.random() * focuses.length)];
-    return `Generate exactly 10 flashcards for "${t}" — CBSE Class 10. ${focus}\n\nRules:\n- Only the label is bold (**Q1:** / **A:**). Answer text is plain.\n- Answers can be a sentence, bullet points, or an image reference — choose what best explains the concept.\n- For visual concepts: describe a diagram or include a relevant image URL as ![label](url)\n- For formula/definition cards: Q = the term/formula name, A = definition + key points as bullets\n\nFormat:\n**Q1:** [question]\n**A:** [answer — sentence, bullets, or image]\n\n**Q2:** [question]\n**A:** [answer]\n\nContinue up to Q10. No preamble, no other text.`;
+    return `Generate exactly ${count} Q&A flashcards for "${t}" — CBSE Class 10. ${focus}\n\nOnly the label is bold. Plain text only.\n\n**Q1:** [question]\n**A:** [answer — sentence or short bullets]\n\n**Q2:** [question]\n**A:** [answer]\n\nContinue up to Q${count}. No preamble.`;
   },
+
+  // Visual auto-generate — topic based, no content restriction
+  visualFlashcards: (t, count = 10) => `Generate exactly ${count} visual point cards for "${t}" — CBSE Class 10.\n\nEach card: FRONT = short concept title (3–6 words), BACK = 2–3 key bullet points.\nOnly the label is bold.\n\n**IMG1:** [short concept title]\n**PTS:**\n- key point\n- key point\n\n**IMG2:** [short concept title]\n**PTS:**\n- key point\n\nContinue up to IMG${count}. Cover the most important concepts. No preamble. Plain text only.`,
 };
 
 const ACCENT     = "#2563eb";
@@ -405,12 +416,14 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       const fcCount   = extractPointCount(t);
       const requested = getRequestedOutput(t);
       const prompt = isGenerateCommand
+        // Generate command → use topic-based tile prompts (no content restriction)
         ? (requested === "visual"
-            ? buildVisualFlashcardPrompt(chapter.chapter_title, chapter.chapter_title, fcCount ?? 10)
-            : buildQAFlashcardPrompt(chapter.chapter_title, chapter.chapter_title, fcCount ?? 10))
+            ? TILE_PROMPTS.visualFlashcards(chapter.chapter_title, fcCount ?? 10)
+            : TILE_PROMPTS.flashcards(chapter.chapter_title, fcCount ?? 10))
+        // Content provided → convert that content to the requested format
         : (() => {
-            if (requested === "qa")     return buildQAFlashcardPrompt(chapter.chapter_title, t, fcCount ?? 10);
-            if (requested === "visual") return buildVisualFlashcardPrompt(chapter.chapter_title, t, fcCount ?? 10);
+            if (requested === "qa")     return buildQAFlashcardPrompt(chapter.chapter_title, t, fcCount);
+            if (requested === "visual") return buildVisualFlashcardPrompt(chapter.chapter_title, t, fcCount);
             return buildAutoFlashcardPrompt(chapter.chapter_title, t);
           })();
       flashcardMsgIdRef.current = null;
@@ -427,12 +440,14 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       const fcCount   = extractPointCount(t);
       const requested = getRequestedOutput(t);
       const prompt = isGenerateCommand
+        // Generate command → use topic-based tile prompts (no content restriction)
         ? (requested === "visual"
-            ? buildVisualFlashcardPrompt(chapter.chapter_title, chapter.chapter_title, fcCount ?? 10)
-            : buildQAFlashcardPrompt(chapter.chapter_title, chapter.chapter_title, fcCount ?? 10))
+            ? TILE_PROMPTS.visualFlashcards(chapter.chapter_title, fcCount ?? 10)
+            : TILE_PROMPTS.flashcards(chapter.chapter_title, fcCount ?? 10))
+        // Content provided → convert that content to the requested format
         : (() => {
-            if (requested === "qa")     return buildQAFlashcardPrompt(chapter.chapter_title, t, fcCount ?? 10);
-            if (requested === "visual") return buildVisualFlashcardPrompt(chapter.chapter_title, t, fcCount ?? 10);
+            if (requested === "qa")     return buildQAFlashcardPrompt(chapter.chapter_title, t, fcCount);
+            if (requested === "visual") return buildVisualFlashcardPrompt(chapter.chapter_title, t, fcCount);
             return buildAutoFlashcardPrompt(chapter.chapter_title, t);
           })();
       flashcardMsgIdRef.current = null;
