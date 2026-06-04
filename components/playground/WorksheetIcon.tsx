@@ -68,10 +68,10 @@ export function WorksheetIcon({ onClick, arenaAccent, arenaAccentGlow, hasDraft 
     <motion.div
       className="fixed z-[100]"
       style={{
-        right:  "calc(53% + clamp(173px, 14.4vw, 269px) + 4px)",
-        bottom: "20px",
-        width:  "clamp(260px, 21.6vw, 404px)",
-        height: "clamp(260px, 21.6vw, 404px)",
+        right:  "calc(53% + 14.4vw)",
+        bottom: "2%",
+        width:  "21.6vw",
+        height: "21.6vw",
       }}
       animate={{ y: navOffset }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}

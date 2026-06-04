@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Image as ImageIcon, FileText, X as XIcon } from "lucide-react";
 import { MessageBubble } from "@/components/playground/MessageBubble";
 import { ObjectiveCard } from "@/components/playground/ObjectiveCard";
@@ -290,23 +291,25 @@ function buildCreationContext(c: Creation): string {
 
 // ── Props ────────────────────────────────────────────────────────────────────
 interface Props {
-  profile:          { display_name: string; avatar_emoji: string; age_group: string; interests: string[] };
-  sessionId:        string | null;
-  messages:         Message[];
-  isStreaming:      boolean;
-  onSend:           (text: string, outputType: OutputType) => void;
-  onNewChat:        () => void;
-  onSave?:          (content: string, type: OutputType) => void;
-  arenaId?:         number;
-  arenaAccent?:     string;
-  arenaAccentGlow?: string;
-  objectiveId?:     string | null;
+  profile:            { display_name: string; avatar_emoji: string; age_group: string; interests: string[] };
+  sessionId:          string | null;
+  messages:           Message[];
+  isStreaming:        boolean;
+  onSend:             (text: string, outputType: OutputType) => void;
+  onNewChat:          () => void;
+  onSave?:            (content: string, type: OutputType) => void;
+  arenaId?:           number;
+  arenaAccent?:       string;
+  arenaAccentGlow?:   string;
+  objectiveId?:       string | null;
+  onWorksheetClick?:  () => void;
+  worksheetHasDraft?: boolean;
 }
 
 export function CreationsRoom({
   profile, messages, isStreaming, onSend, onSave,
   arenaId = 1, arenaAccent = "#7C3AED", arenaAccentGlow = "rgba(124,58,237,0.35)",
-  objectiveId,
+  objectiveId, onWorksheetClick, worksheetHasDraft = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   sessionId: _sessionId, onNewChat: _onNewChat,
 }: Props) {
@@ -319,6 +322,7 @@ export function CreationsRoom({
   const [isDragOver,       setIsDragOver]       = useState(false);
   const [binDragOver,      setBinDragOver]      = useState(false);
   const [deletingId,       setDeletingId]       = useState<string | null>(null);
+  const [navOffset,        setNavOffset]        = useState(0);
   const [pasteWarning,     setPasteWarning]     = useState<string | null>(null);
   // Track which injected item IDs are still uploading to the server
   const [uploadingIds,     setUploadingIds]     = useState<Set<string>>(new Set());
@@ -367,6 +371,16 @@ export function CreationsRoom({
   useEffect(() => {
     refreshCreations();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Smooth nav-bar offset — keeps bin + worksheet in sync with the top bar sliding in/out.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ visible: boolean; height: number }>;
+      setNavOffset(ce.detail.visible ? ce.detail.height : 0);
+    };
+    window.addEventListener("nav-visibility-change", handler);
+    return () => window.removeEventListener("nav-visibility-change", handler);
   }, []);
 
   // Wrap onSave to refresh the shelf after a save completes.
@@ -566,8 +580,8 @@ export function CreationsRoom({
   // ── Message list ─────────────────────────────────────────────────────────
   const renderMessageList = (ref: React.RefObject<HTMLDivElement | null>) => (
     <div ref={ref} className="select-text" style={{
-      flex: 1, overflowY: "auto", padding: "12px 14px 8px",
-      display: "flex", flexDirection: "column", gap: 8,
+      flex: 1, overflowY: "auto", padding: "1.3vh 1.2vw 0.8vh",
+      display: "flex", flexDirection: "column", gap: "0.8vh",
       scrollbarWidth: "none", minHeight: 0,
     }}>
       {messages.length === 0 && (
@@ -587,7 +601,7 @@ export function CreationsRoom({
         />
       ))}
       {isStreaming && (
-        <div style={{ display: "flex", gap: 4, padding: "2px 0 2px 28px" }}>
+        <div style={{ display: "flex", gap: "0.4vw", padding: "0.2vh 0 0.2vh 2.5vw" }}>
           {[0,1,2].map(i => (
             <span key={i} className="dot" style={{ width: 6, height: 6, borderRadius: "50%", display: "inline-block", background: arenaAccent, opacity: 0.7, animationDelay: `${i*0.15}s` }}/>
           ))}
@@ -653,7 +667,7 @@ export function CreationsRoom({
               ")",
             border:        "1px solid rgba(0,212,255,0.55)",
             borderRadius:  16,
-            padding:       14,
+            padding:       "1.5vh 1.2vw",
             boxShadow:
               "inset 0 1px 0 rgba(255,255,255,0.22), " +
               "inset 0 -1px 0 rgba(255,255,255,0.06), " +
@@ -662,7 +676,7 @@ export function CreationsRoom({
               "0 18px 60px rgba(0,0,0,0.7)",
             backdropFilter: "blur(22px)",
             zIndex:        50,
-            display:       "flex", flexDirection: "column", gap: 12,
+            display:       "flex", flexDirection: "column", gap: "1.3vh",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{
@@ -704,7 +718,7 @@ export function CreationsRoom({
               style={{ display: "none" }} onChange={handleFileUpload}/>
             <button onClick={() => fileRef.current?.click()}
               style={{
-                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                width: "100%", padding: "2vh 1.2vw", borderRadius: 12, cursor: "pointer",
                 border:     "1px solid rgba(0,212,255,0.28)",
                 background:
                   "linear-gradient(180deg, " +
@@ -732,7 +746,7 @@ export function CreationsRoom({
               }}
             >
               <span style={{
-                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                width: "4.5vh", height: "4.5vh", minWidth: 32, minHeight: 32, borderRadius: 10, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 background: "linear-gradient(180deg, #7DD3FC 0%, #00D4FF 50%, #0284C7 100%)",
                 border: "1px solid rgba(255,255,255,0.25)",
@@ -758,7 +772,7 @@ export function CreationsRoom({
               onChange={handleFileUpload}/>
             <button onClick={() => (document.getElementById("video-upload-input") as HTMLInputElement)?.click()}
               style={{
-                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                width: "100%", padding: "2vh 1.2vw", borderRadius: 12, cursor: "pointer",
                 border:     "1px solid rgba(255,120,0,0.28)",
                 background:
                   "linear-gradient(180deg, " +
@@ -786,7 +800,7 @@ export function CreationsRoom({
               }}
             >
               <span style={{
-                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                width: "4.5vh", height: "4.5vh", minWidth: 32, minHeight: 32, borderRadius: 10, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 background: "linear-gradient(180deg, #FCA47D 0%, #FF7800 50%, #C24E00 100%)",
                 border: "1px solid rgba(255,255,255,0.25)",
@@ -815,7 +829,7 @@ export function CreationsRoom({
               onChange={handleFileUpload}/>
             <button onClick={() => (document.getElementById("doc-upload-input") as HTMLInputElement)?.click()}
               style={{
-                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                width: "100%", padding: "2vh 1.2vw", borderRadius: 12, cursor: "pointer",
                 border:     "1px solid rgba(0,212,255,0.28)",
                 background:
                   "linear-gradient(180deg, " +
@@ -843,7 +857,7 @@ export function CreationsRoom({
               }}
             >
               <span style={{
-                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                width: "4.5vh", height: "4.5vh", minWidth: 32, minHeight: 32, borderRadius: 10, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 background: "linear-gradient(180deg, #7DD3FC 0%, #00D4FF 50%, #0284C7 100%)",
                 border: "1px solid rgba(255,255,255,0.25)",
@@ -876,11 +890,11 @@ export function CreationsRoom({
             } catch {}
           }}
           style={{
-          display: "flex", alignItems: "center", gap: 6,
+          display: "flex", alignItems: "center", gap: "0.6vw",
           background: isDragOver ? `rgba(${activeMeta.glowRgb},0.12)` : "rgba(10,5,50,0.65)",
           border: `2px solid ${isDragOver ? activeMeta.glowColor : `rgba(${activeMeta.glowRgb},0.8)`}`,
-          borderRadius: 40,
-          padding: mobile ? "6px 8px 6px 10px" : "7px 8px 7px 12px",
+          borderRadius: "3vh",
+          padding: mobile ? "0.7vh 0.9vw 0.7vh 1.1vw" : "0.8vh 0.9vw 0.8vh 1.3vw",
           boxShadow: isDragOver
             ? `0 0 32px rgba(${activeMeta.glowRgb},0.7), inset 0 0 16px rgba(${activeMeta.glowRgb},0.1)`
             : `0 0 24px rgba(${activeMeta.glowRgb},0.45)`,
@@ -901,7 +915,7 @@ export function CreationsRoom({
           )}
           <button onClick={() => setPlusOpen(v => !v)} title="Add context or upload"
             style={{
-              width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
+              width: "3.3vh", height: "3.3vh", borderRadius: "50%", flexShrink: 0,
               background: plusOpen ? `${arenaAccent}40` : "rgba(255,255,255,0.08)",
               border: `1.5px solid ${plusOpen ? arenaAccent : "rgba(255,255,255,0.15)"}`,
               color: plusOpen ? arenaAccent : "rgba(255,255,255,0.5)",
@@ -916,7 +930,7 @@ export function CreationsRoom({
               setInput(e.target.value);
               const t = e.target;
               t.style.height = "auto";
-              t.style.height = Math.min(t.scrollHeight, 80) + "px";
+              t.style.height = Math.min(t.scrollHeight, window.innerHeight * 0.09) + "px";
             }}
             onKeyDown={onKey}
             onPaste={handlePaste}
@@ -933,7 +947,7 @@ export function CreationsRoom({
 
           <button onClick={send} disabled={!canSend}
             style={{
-              width: mobile ? 38 : 36, height: mobile ? 38 : 36,
+              width: "3.8vh", height: "3.8vh",
               borderRadius: "50%", flexShrink: 0,
               background: canSend ? `rgba(${activeMeta.glowRgb},0.9)` : "rgba(255,255,255,0.1)",
               border: "none", cursor: canSend ? "pointer" : "not-allowed",
@@ -953,7 +967,7 @@ export function CreationsRoom({
   );
 
   return (
-    <div className="relative w-full h-full overflow-hidden" style={{ background: "#080814" }}>
+    <div className="relative w-full h-full overflow-hidden" style={{ background: "#000" }}>
       <style>{`
         @keyframes eq-bar {
           0%   { transform: scaleY(0.3); opacity: 0.5; }
@@ -1128,18 +1142,21 @@ export function CreationsRoom({
         onDrop={async e => {
           e.preventDefault();
           setBinDragOver(false);
+          const raw = e.dataTransfer.getData("application/creation");
+          if (!raw) return;
           try {
-            const c = JSON.parse(e.dataTransfer.getData("application/creation")) as Creation;
-            if (c?.id && c.id !== "local-upload") await deleteCreation(c.id);
-          } catch {}
+            const c = JSON.parse(raw) as Creation;
+            if (c?.id && !c.id.startsWith("local-upload")) {
+              setCreations(prev => prev.filter(x => x.id !== c.id));
+              await deleteCreation(c.id);
+            }
+          } catch { /* malformed data */ }
         }}
-        // SIZE knob: `width` below (doubled from 14vw). Use vw for fluid sizing.
-        // POSITION knobs: `bottom` (% from bottom), `left` (% from left edge of the room).
         style={{
           position: "absolute",
-          bottom: "7%",            // ← vertical position (% from bottom of the room)
-          left:   "2%",           // ← horizontal position (% from left of the room)
-          width:  "28vw",          // ← SIZE: doubled from 14vw
+          bottom: "7%",
+          left:   "2%",
+          width:  "28vw",
           zIndex: 15,
           alignItems: "flex-end", justifyContent: "center",
           cursor: "copy",
@@ -1184,6 +1201,44 @@ export function CreationsRoom({
         )}
       </div>
 
+      {/* ── Worksheet — same motion animation as bin, no size/shape change ── */}
+      {onWorksheetClick && (
+        <motion.button
+          className="hidden lg:block"
+          animate={{ y: navOffset }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          onClick={onWorksheetClick}
+          style={{
+            position: "absolute",
+            bottom: "7%",
+            left:   "31%",
+            width:  "14%",
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            zIndex: 15,
+            filter: `drop-shadow(0 0 12px ${arenaAccentGlow})`,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/worksheet-on-floor.png"
+            alt="Open worksheet"
+            draggable={false}
+            style={{ width: "100%", height: "auto", objectFit: "contain" }}
+          />
+          {worksheetHasDraft && (
+            <span style={{
+              position: "absolute", top: "8%", right: "8%",
+              width: 10, height: 10, borderRadius: "50%",
+              background: arenaAccent,
+              boxShadow: `0 0 10px ${arenaAccentGlow}`,
+            }} />
+          )}
+        </motion.button>
+      )}
+
       {/* ── Desktop chat panel — overlaid on the large blue screen ───────── */}
       <div className="hidden lg:flex flex-col"
         style={{
@@ -1194,18 +1249,18 @@ export function CreationsRoom({
         }}
       >
         {objectiveId && (
-          <div style={{ padding: "8px 12px 0", flexShrink: 0 }}>
+          <div style={{ padding: "0.8vh 1vw 0", flexShrink: 0 }}>
             <ObjectiveCard objectiveId={objectiveId} arenaAccent={arenaAccent} arenaAccentGlow={arenaAccentGlow} />
           </div>
         )}
         {renderMessageList(scrollRefDesktop)}
-        <div style={{ padding: "8px 12px 12px", flexShrink: 0 }}>
+        <div style={{ padding: "0.8vh 1vw 1.2vh", flexShrink: 0 }}>
           {/* Output-type dot row */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5vw", marginBottom: "0.6vh" }}>
             {OUTPUT_TYPES.map(t => (
               <button key={t.id} onClick={() => setSelected(t.id)} title={t.label}
                 style={{
-                  width: 8, height: 8, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer",
+                  width: "0.8vw", height: "0.8vw", minWidth: 6, minHeight: 6, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer",
                   background: selected === t.id ? (OUTPUT_META[t.id]?.glowColor ?? "#fff") : "rgba(0,0,0,0.2)",
                   transition: "all 0.2s",
                   boxShadow: selected === t.id ? `0 0 6px ${OUTPUT_META[t.id]?.glowColor}` : "none",

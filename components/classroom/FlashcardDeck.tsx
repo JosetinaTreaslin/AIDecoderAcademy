@@ -5,37 +5,69 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, RotateCcw } from "lucide-react";
 
 export interface FlashCard {
-  question: string;
-  answer: string;
+  question: string;  // for qa mode: the question; for visual mode: image prompt
+  answer: string;    // for qa mode: the answer; for visual mode: bullet points
+  mode?: "qa" | "visual"; // default "qa"
 }
 
 export function parseFlashcards(markdown: string): FlashCard[] {
   const cards: FlashCard[] = [];
-  let currentQ = "";
-  let currentA = "";
+  let front = "";
+  let back  = "";
+  let mode: "qa" | "visual" = "qa";
+  let state: "idle" | "front" | "back" = "idle";
 
-  for (const line of markdown.split("\n")) {
-    const trimmed = line.trim();
-    // Match many AI formats:
-    // **Q:** / **Q1:** / Q1: / Q: / Question: / 1. Q: / - **Q:**
-    const qMatch = trimmed.match(/^(?:\d+[\.\)]\s*|[-*]\s*)?\*\*Q\d*(?:uestion)?:\*\*\s*(.+)/i)
-                ?? trimmed.match(/^Q\d*(?:uestion)?:\s*(.+)/i)
-                ?? trimmed.match(/^(?:\d+[\.\)]\s*)Q(?:uestion)?:\s*(.+)/i);
-    const aMatch = trimmed.match(/^(?:\d+[\.\)]\s*|[-*]\s*)?\*\*A\d*(?:nswer)?:\*\*\s*(.+)/i)
-                ?? trimmed.match(/^A\d*(?:nswer)?:\s*(.+)/i);
+  const push = () => {
+    if (front.trim() && back.trim()) {
+      cards.push({ question: front.trim(), answer: back.trim(), mode });
+    }
+    front = ""; back = ""; state = "idle";
+  };
 
-    if (qMatch) {
-      if (currentQ && currentA) cards.push({ question: currentQ, answer: currentA });
-      currentQ = qMatch[1].trim();
-      currentA = "";
-    } else if (aMatch) {
-      currentA = aMatch[1].trim();
-    } else if (currentA && trimmed && !trimmed.match(/^\*\*[QA]/i)) {
-      currentA += " " + trimmed;
+  for (const raw of markdown.split("\n")) {
+    const t = raw.trim();
+
+    // Visual front: **IMG[n]:** / **VISUAL[n]:** / **FRONT[n]:**
+    const imgM = t.match(/^\*\*(?:IMG|VISUAL|FRONT)\d*:\*\*\s*(.*)/i)
+              ?? t.match(/^(?:IMG|VISUAL|FRONT)\d*:\s*(.*)/i);
+
+    // Visual back: **PTS:** / **POINTS:** / **BACK:**
+    const ptsM = t.match(/^\*\*(?:PTS|POINTS?|BACK):\*\*\s*(.*)/i)
+              ?? t.match(/^(?:PTS|POINTS?|BACK):\s*(.*)/i);
+
+    // Q&A front: **Q[n]:**
+    const qM = !imgM && (
+      t.match(/^\*\*Q\d*(?:uestion)?:\*\*\s*(.*)/i)
+      ?? t.match(/^Q\d*(?:uestion)?:\s*(.+)/i)
+      ?? t.match(/^\*\*Q\d*(?:uestion)?:\s*(.+?)\*\*\s*$/i)
+    );
+
+    // Q&A back: **A[n]:**
+    const aM = !ptsM && (
+      t.match(/^\*\*A\d*(?:nswer)?:\*\*\s*(.*)/i)
+      ?? t.match(/^A\d*(?:nswer)?:\s*(.+)/i)
+    );
+
+    if (imgM) {
+      push();
+      front = imgM[1].trim(); mode = "visual"; state = "front";
+    } else if (ptsM) {
+      back = ptsM[1]; state = "back";
+    } else if (qM) {
+      push();
+      front = (qM as RegExpMatchArray)[1].trim(); mode = "qa"; state = "front";
+    } else if (aM) {
+      back = (aM as RegExpMatchArray)[1]; state = "back";
+    } else if (state === "back" && t && !t.match(/^\*\*/)) {
+      // continuation of answer / points — preserve line breaks
+      back += (back ? "\n" : "") + t;
+    } else if (state === "front" && mode === "visual" && t && !t.match(/^\*\*/)) {
+      // continuation of image prompt
+      front += " " + t;
     }
   }
 
-  if (currentQ && currentA) cards.push({ question: currentQ, answer: currentA });
+  push();
   return cards;
 }
 

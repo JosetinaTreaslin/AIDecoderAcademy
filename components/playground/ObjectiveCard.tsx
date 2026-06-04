@@ -53,7 +53,7 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
       `}</style>
 
       <div style={{
-        flexShrink: 0, marginBottom: 8,
+        flexShrink: 0, marginBottom: "0.9vh",
         borderRadius: expanded ? 14 : 40,
         background: "rgba(255,255,255,0.92)",
         border: `1px solid rgba(${aRgb},${expanded ? "0.35" : "0.25"})`,
@@ -68,7 +68,7 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
         {/* ── Header ── */}
         <button onClick={() => setExpanded(v => !v)} style={{
           width: "100%", display: "flex", alignItems: "center", gap: 8,
-          padding: expanded ? "10px 14px" : "7px 14px",
+          padding: expanded ? "1.1vh 1.2vw" : "0.8vh 1.2vw",
           background: "none", border: "none", cursor: "pointer",
           borderBottom: expanded ? "1px solid rgba(0,0,0,0.07)" : "none",
         }}>
@@ -185,7 +185,7 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
                 background: `rgba(${aRgb},0.04)`,
                 border: `1px solid rgba(${aRgb},0.12)`,
                 borderRadius: 8, padding: "10px 12px",
-                maxHeight: 88, overflowY: "auto",
+                maxHeight: "10vh", overflowY: "auto",
                 scrollbarWidth: "none",
                 fontFamily: "'DM Sans', sans-serif",
               }}>
@@ -216,7 +216,7 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
                     border: `1px solid rgba(${lvl.rgb},0.18)`,
                     borderLeft: `3px solid rgba(${lvl.rgb},0.7)`,
                   }}>
-                    <div style={{ flexShrink: 0, width: 68, display: "flex", flexDirection: "column", gap: 2, paddingTop: 1 }}>
+                    <div style={{ flexShrink: 0, width: "5.5vw", minWidth: 52, display: "flex", flexDirection: "column", gap: 2, paddingTop: 1 }}>
                       <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: "0.1em", color: lvl.color, fontFamily: "'Syne', sans-serif" }}>
                         {lvl.icon} {lvl.label}
                       </span>

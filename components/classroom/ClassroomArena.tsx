@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FlashcardDeck, parseFlashcards } from "./FlashcardDeck";
+import { parseFlashcards } from "./FlashcardDeck";
 import type { FlashCard } from "./FlashcardDeck";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Play, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, X, Download, BookmarkPlus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { MessageBubble } from "@/components/playground/MessageBubble";
 import type { Message }  from "@/components/playground/useChat";
 import ReactMarkdown from "react-markdown";
@@ -54,9 +55,159 @@ const TILES = [
   { key:"podcast",    label:"Audio Podcast",    active:false, top:"77%" },
 ] as const;
 
+// ── Flashcard mode helpers ────────────────────────────────────────────────────
+/** What output format the user is explicitly asking for. "auto" = they didn't specify. */
+function getRequestedOutput(text: string): "qa" | "visual" | "auto" {
+  if (/\bQ\.?&\.?A\b|question.*answer|quiz\b/i.test(text)) return "qa";
+  if (/\bpoint|bullet|visual|image|diagram|picture|figure\b/i.test(text)) return "visual";
+  return "auto";
+}
+
+/** What format the user's INPUT content is already in. */
+function getInputFormat(content: string): "qa" | "points" {
+  // Q markers: "Q:", "Q1:", "**Q1:**", "Question:", "Question 1:"
+  if (/(?:^|\n)\s*(?:Q\d*\s*[:.!]|\*\*Q\d*[:.!]|Question\s*\d*\s*[:.!])/i.test(content)) return "qa";
+  // A / Answer markers: "A:", "A1:", "**A:**", "Answer:", "Ans:", "Answer 1:"
+  if (/(?:^|\n)\s*(?:A\d*\s*[:.!]|\*\*A\d*[:.!]|Ans(?:wer)?\s*\d*\s*[:.!])/i.test(content)) return "qa";
+  // Question followed by a line that starts with Answer (common paste format)
+  if (/\?\s*\n+\s*(?:Answer|Ans)\s*[:.!]/i.test(content)) return "qa";
+  // Otherwise treat as points / paragraph / numbered list
+  return "points";
+}
+
+/** Extracts an explicit count: "5 points", "3 questions", "give me 7" → number. */
+function extractPointCount(text: string): number | null {
+  const m = text.match(/\b(\d+)\s*(?:points?|cards?|flashcards?|questions?)\b/i)
+         ?? text.match(/\b(?:give|create|make|generate)\s+(\d+)\b/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return n >= 1 && n <= 30 ? n : null;
+}
+
+function hasQAContent(content: string): boolean {
+  return /^\s*(?:Q\d*:|Question\d*:|\*\*Q\d*:)/im.test(content);
+}
+
+function buildQAFlashcardPrompt(chapterTitle: string, content: string, count?: number | null): string {
+  const n = count ? `exactly ${count}` : "exactly 10";
+  const strict = count ? ` Produce EXACTLY ${count} cards — no more, no less.` : "";
+  return `Convert the student's content below into Q&A flashcards. Do NOT add any new information — only use what is provided.${strict}\n\nChapter: "${chapterTitle}"\n\nContent:\n"""\n${content}\n"""\n\nProduce ${n} cards. Only the label is bold:\n**Q1:** [question taken directly from the content]\n**A:** [answer taken directly from the content]\n\n**Q2:** [question]\n**A:** [answer]\n\nNo preamble. No invented content. Plain text only.`;
+}
+
+function buildVisualFlashcardPrompt(chapterTitle: string, content: string, count?: number | null): string {
+  const n = count ? `exactly ${count}` : "exactly 10";
+  const strict = count ? ` Produce EXACTLY ${count} cards — no more, no less.` : "";
+  return `Convert the student's content below into visual point cards. Do NOT add any new information — only use what is provided.${strict}\n\nChapter: "${chapterTitle}"\n\nContent:\n"""\n${content}\n"""\n\nProduce ${n} cards. Only the label is bold:\n**IMG1:** [short concept title — 3–6 words from the content]\n**PTS:**\n- [key point from the content]\n- [key point from the content]\n\n**IMG2:** [short concept title]\n**PTS:**\n- [key point]\n\nNo preamble. No invented content. Plain text only.`;
+}
+
+function buildAutoFlashcardPrompt(chapterTitle: string, content: string): string {
+  // Match the format of what the user gave — Q&A in → Q&A out, points in → points out
+  return getInputFormat(content) === "qa"
+    ? buildQAFlashcardPrompt(chapterTitle, content)
+    : buildVisualFlashcardPrompt(chapterTitle, content);
+}
+
+// ── Visual card back — generates image lazily on first view, retries on error ──
+function VisualCardBack({
+  imagePrompt, imageKey, cardImages, setCardImages,
+}: {
+  imagePrompt: string;
+  imageKey: string;
+  cardImages: Record<string, string>;
+  setCardImages: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+}) {
+  const imgState = cardImages[imageKey];
+  const [retryCount, setRetryCount] = useState(0);
+
+  const generate = useCallback(() => {
+    setCardImages(prev => ({ ...prev, [imageKey]: "loading" }));
+    const uniquePrompt = `Educational cartoon illustration specifically about: "${imagePrompt}". Draw a scene or diagram that clearly represents "${imagePrompt}". Colorful friendly cartoon style, bold outlines. Title text "${imagePrompt}" written large and bold at the top of the image. White background. For school students aged 11-16.`;
+    fetch("/api/generate-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: uniquePrompt, conversationHistory: `card:${imageKey}` }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d?.url) setCardImages(prev => ({ ...prev, [imageKey]: d.url }));
+        else setCardImages(prev => ({ ...prev, [imageKey]: "retry" }));
+      })
+      .catch(() => setCardImages(prev => ({ ...prev, [imageKey]: "retry" })));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageKey]);
+
+  // Reset retry counter whenever the card changes so each card gets its own 1 retry
+  useEffect(() => {
+    setRetryCount(0);
+  }, [imageKey]);
+
+  // First load — fire when card first appears and no image is cached yet
+  useEffect(() => {
+    if (!imgState) generate();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageKey]);
+
+  // Auto-retry once on failure; after 2 total attempts show the error state
+  useEffect(() => {
+    if (imgState !== "retry") return;
+    if (retryCount >= 1) return; // already retried once — show failed state
+    const t = setTimeout(() => { setRetryCount(n => n + 1); generate(); }, 3000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgState, imageKey]);
+
+  // Permanently failed after 1 retry
+  if (imgState === "retry" && retryCount >= 1) return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#0F0F1A] px-8 text-center">
+      <div className="absolute inset-0" style={{ background:"radial-gradient(ellipse at 50% 45%, rgba(239,68,68,0.08), transparent 60%)" }}/>
+      <p className="text-2xl relative z-[1]">🖼️</p>
+      <p className="text-sm font-display font-bold text-white/70 leading-snug relative z-[1]">
+        Couldn't load the image
+      </p>
+      <p className="text-[11px] text-white/45 leading-snug relative z-[1]">
+        Click the <strong className="text-white/70">Flashcards</strong> button on the left and try again
+      </p>
+    </div>
+  );
+
+  // Loading or first retry — show spinner + topic name
+  if (!imgState || imgState === "loading" || imgState === "retry") return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0F0F1A]">
+      <div className="absolute inset-0" style={{ background:"radial-gradient(ellipse at 50% 45%, rgba(124,58,237,0.15), transparent 60%)" }}/>
+      <div className="w-9 h-9 border-2 border-[#C8FF00]/25 border-t-[#C8FF00] rounded-full animate-spin relative z-[1]" />
+      <div className="flex flex-col items-center gap-1 relative z-[1]">
+        <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Loading image…</p>
+        <p className="text-sm font-display font-bold text-white/70 text-center px-8 leading-snug">{imagePrompt}</p>
+      </div>
+    </div>
+  );
+
+  // Loaded — full background image (topic is embedded in the image itself)
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={imgState} alt={imagePrompt} className="absolute inset-0 w-full h-full object-contain bg-white" />
+  );
+}
+
+function buildContentFlashcardPrompt(chapterTitle: string, content: string): string {
+  return `You are generating flashcards STRICTLY from the student's pasted content below. Do NOT use any outside knowledge. Every question and answer must come directly from the text provided.\n\nChapter context: "${chapterTitle}"\n\nStudent content:\n"""\n${content}\n"""\n\nCreate as many flashcards as needed to cover all the key points in the content (aim for 5–10).\n\nRules:\n- The label is bold; only the label. Answer text is plain.\n- Answers can be a sentence, bullet points, or an image reference — whatever best fits the content.\n- For lists/points in the content: make each key point a bullet under **A:**\n- For image URLs in the content: include them as ![label](url) in the answer\n\nFormat:\n**Q1:** [question from the content]\n**A:** [answer — sentence, bullets, or image]\n\n**Q2:** [question from the content]\n**A:** [answer]\n\nNo preamble, no commentary, just the cards.`;
+}
+
 const TILE_PROMPTS: Record<string, (t: string) => string> = {
   notes:      (t) => `Generate comprehensive study notes for "${t}" — CBSE Class 10 Science. Use clear headings, bullet points, key definitions, important equations, and a quick-revision summary. For equations, use plain text format only — no LaTeX. Write fractions as a/b or a ÷ b, use characters like θ, π, °, ±. Examples: sin(90° - θ) = cos(θ), csc(θ) = 1/sin(θ).`,
-  flashcards: (t) => `Generate exactly 10 flashcards for "${t}" — CBSE Class 10 Science.\n\nYou MUST use this exact format for every card, no numbering, no extra text:\n**Q:** [question here]\n**A:** [answer here]\n\nRepeat this pattern 10 times. Cover the most important definitions and concepts. Use plain text only — no LaTeX, no bullet points inside answers.`,
+  flashcards: (t) => {
+    const focuses = [
+      "Focus on key definitions and terminology.",
+      "Focus on important formulas and how to apply them.",
+      "Focus on worked examples and step-by-step problem solving.",
+      "Focus on comparing and contrasting related concepts.",
+      "Focus on real-world applications and practical examples.",
+      "Focus on common mistakes students make and the correct approach.",
+      "Focus on quick-recall facts, values, and identities.",
+    ];
+    const focus = focuses[Math.floor(Math.random() * focuses.length)];
+    return `Generate exactly 10 flashcards for "${t}" — CBSE Class 10. ${focus}\n\nRules:\n- Only the label is bold (**Q1:** / **A:**). Answer text is plain.\n- Answers can be a sentence, bullet points, or an image reference — choose what best explains the concept.\n- For visual concepts: describe a diagram or include a relevant image URL as ![label](url)\n- For formula/definition cards: Q = the term/formula name, A = definition + key points as bullets\n\nFormat:\n**Q1:** [question]\n**A:** [answer — sentence, bullets, or image]\n\n**Q2:** [question]\n**A:** [answer]\n\nContinue up to Q10. No preamble, no other text.`;
+  },
 };
 
 const ACCENT     = "#2563eb";
@@ -68,21 +219,22 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const [savedItems,   setSavedItems]   = useState<SavedItem[]>([]);
   const [viewingItem,  setViewingItem]  = useState<SavedItem | null>(null);
-  const [binDragOver,  setBinDragOver]  = useState(false);
   const [messages,     setMessages]     = useState<Message[]>([]);
   const [isStreaming,  setIsStreaming]  = useState(false);
   const [mode,           setMode]           = useState<"notes" | "videos">("notes");
   const [playingVideo,   setPlayingVideo]   = useState<VideoItem | null>(null);
-  const [flashcardCards,         setFlashcardCards]         = useState<FlashCard[] | null>(null);
   const [flashcardRaw,           setFlashcardRaw]           = useState("");
   const [awaitingFlashcardInput, setAwaitingFlashcardInput] = useState(false);
   // Inline flashcard viewer — map so multiple decks persist independently
   const [fcMap,    setFcMap]    = useState<Record<string, FlashCard[]>>({}); // msgId → cards
   const [fcState,  setFcState]  = useState<{ msgId: string; idx: number; flipped: boolean } | null>(null);
-  // legacy refs kept for save/raw
-  const [inlineFC, setInlineFC] = useState<{ msgId: string; cards: FlashCard[] } | null>(null);
+  // Modal flashcard viewer for saved decks (SlideCarousel-style)
+  const [modalFC,  setModalFC]  = useState<{ cards: FlashCard[]; raw: string; idx: number; flipped: boolean } | null>(null);
   const flashcardMsgIdRef  = useRef<string | null>(null);
   const [flashcardLoading, setFlashcardLoading] = useState(false);
+  const [binDragOver,      setBinDragOver]      = useState(false);
+  // Cache for generated images: key = `${msgId}-${cardIndex}`, value = image URL | "loading" | "error"
+  const [cardImages, setCardImages] = useState<Record<string, string>>({});
   const bottomRef           = useRef<HTMLDivElement>(null);
   const taRef               = useRef<HTMLTextAreaElement>(null);
   const pendingFlashcardRef = useRef(false);
@@ -190,12 +342,39 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       const lastAssistant = [...messagesRef.current].reverse().find(m => m.role === "assistant");
       if (lastAssistant?.content) {
         const parsed = parseFlashcards(lastAssistant.content);
+        setFlashcardLoading(false);
         if (parsed.length > 0) {
           setFlashcardRaw(lastAssistant.content);
-          setInlineFC({ msgId: lastAssistant.id, cards: parsed });
           setFcMap(prev => ({ ...prev, [lastAssistant.id]: parsed }));
           setFcState({ msgId: lastAssistant.id, idx: 0, flipped: false });
-          setFlashcardLoading(false);
+          // Pre-generate the first visual card's image immediately so it's ready when shown
+          const firstVisualIdx = parsed.findIndex(c => c.mode === "visual");
+          if (firstVisualIdx !== -1) {
+            const firstCard = parsed[firstVisualIdx];
+            const imgKey = `${lastAssistant.id}-${firstVisualIdx}`;
+            setCardImages(prev => ({ ...prev, [imgKey]: "loading" }));
+            fetch("/api/generate-image", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                prompt: `Educational cartoon illustration specifically about: "${firstCard.question}". Draw a scene or diagram that clearly represents "${firstCard.question}". Colorful friendly cartoon style, bold outlines. Title text "${firstCard.question}" written large and bold at the top of the image. White background. For school students aged 11-16.`,
+                conversationHistory: `card:${imgKey}`,
+              }),
+            })
+              .then(r => r.json())
+              .then(d => setCardImages(prev => ({ ...prev, [imgKey]: d?.url ?? "error" })))
+              .catch(() => setCardImages(prev => ({ ...prev, [imgKey]: "error" })));
+          }
+          // Re-prompt so the user can generate another deck immediately
+          const followUp: Message = {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: `Paste your notes, questions, points to study — or type **generate** to auto-create flashcards for **${chapter.chapter_title}**. 📚`,
+            outputType: "text",
+            createdAt: new Date(),
+          };
+          setMessages(prev => [...prev, followUp]);
+          setAwaitingFlashcardInput(true);
         }
       }
     }
@@ -208,16 +387,32 @@ export function ClassroomArena({ chapter, onBack }: Props) {
     setInput("");
     if (taRef.current) taRef.current.style.height = "auto";
 
-    // Also detect flashcard intent from any chat message (not just after tile click)
+    // True when the user typed a short keyword/count with no actual content to use as source.
+    // Covers: "generate", "Q&A", "points", "10 Q&A", "5 points", "question and answer", etc.
+    const hasRealContent = t.includes("\n") || t.split(/[.!?]/).filter(s => s.trim().length > 10).length > 1;
+    const isGenerateCommand = !hasRealContent && (
+      /^(generate|auto|yes|ok|go|create|make)(\s+(cards?|flashcards?))?$/i.test(t) ||
+      /^(Q\.?&\.?A\.?|qa|question.*answer|points?|visual|flashcard)s?(\s+\d+)?$/i.test(t) ||
+      /^\d+\s+(Q\.?&\.?A\.?|points?|cards?|flashcard|question|visual)s?$/i.test(t)
+    );
+
+    // Detect flashcard intent from any chat message (e.g. "make flashcards for X")
     const flashcardIntent = !awaitingFlashcardInput &&
       /flashcard|flash\s*card|generate.*card|create.*card|make.*card/i.test(t) && t.length < 200;
     if (flashcardIntent) {
       setAwaitingFlashcardInput(false);
       pendingFlashcardRef.current = true;
-      const looksLikeContent = t.length > 120 || t.includes("\n") || t.split(". ").length > 3;
-      const prompt = looksLikeContent
-        ? `Generate 10 flashcards from the following content about "${chapter.chapter_title}".\n\nContent:\n${t}\n\nFormat each as:\n**Q:** [question]\n**A:** [answer]\n\nCreate at least 10 flashcards.`
-        : TILE_PROMPTS.flashcards(chapter.chapter_title);
+      const fcCount   = extractPointCount(t);
+      const requested = getRequestedOutput(t);
+      const prompt = isGenerateCommand
+        ? (requested === "visual"
+            ? buildVisualFlashcardPrompt(chapter.chapter_title, chapter.chapter_title, fcCount ?? 10)
+            : buildQAFlashcardPrompt(chapter.chapter_title, chapter.chapter_title, fcCount ?? 10))
+        : (() => {
+            if (requested === "qa")     return buildQAFlashcardPrompt(chapter.chapter_title, t, fcCount ?? 10);
+            if (requested === "visual") return buildVisualFlashcardPrompt(chapter.chapter_title, t, fcCount ?? 10);
+            return buildAutoFlashcardPrompt(chapter.chapter_title, t);
+          })();
       flashcardMsgIdRef.current = null;
       setFlashcardLoading(true);
       const aid = await sendMessage(prompt, t);
@@ -228,11 +423,18 @@ export function ClassroomArena({ chapter, onBack }: Props) {
     if (awaitingFlashcardInput) {
       setAwaitingFlashcardInput(false);
       pendingFlashcardRef.current = true;
-      // Natural language: long/structured text = content to use; short = auto-generate command
-      const looksLikeContent = t.length > 120 || t.includes("\n") || t.split(". ").length > 3;
-      const prompt = looksLikeContent
-        ? `Generate 10 flashcards from the following content about "${chapter.chapter_title}".\n\nContent:\n${t}\n\nFormat each as:\n**Q:** [question]\n**A:** [answer]\n\nCover the most important concepts. Create at least 10 flashcards.`
-        : TILE_PROMPTS.flashcards(chapter.chapter_title);
+      // "generate" / "yes" / "ok" → auto-generate from topic; anything else → route by mode
+      const fcCount   = extractPointCount(t);
+      const requested = getRequestedOutput(t);
+      const prompt = isGenerateCommand
+        ? (requested === "visual"
+            ? buildVisualFlashcardPrompt(chapter.chapter_title, chapter.chapter_title, fcCount ?? 10)
+            : buildQAFlashcardPrompt(chapter.chapter_title, chapter.chapter_title, fcCount ?? 10))
+        : (() => {
+            if (requested === "qa")     return buildQAFlashcardPrompt(chapter.chapter_title, t, fcCount ?? 10);
+            if (requested === "visual") return buildVisualFlashcardPrompt(chapter.chapter_title, t, fcCount ?? 10);
+            return buildAutoFlashcardPrompt(chapter.chapter_title, t);
+          })();
       flashcardMsgIdRef.current = null;
       setFlashcardLoading(true);
       const aid = await sendMessage(prompt, t);
@@ -287,9 +489,12 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   }, [chapter.chapter_title]);
 
   const handleFlashcardSave = useCallback((content: string) => {
-    const count = flashcardCards?.length ?? 10;
-    const title = `Flashcards: ${chapter.chapter_title}`;
-    const preview = `${count} flashcard${count !== 1 ? "s" : ""}`;
+    const parsed = parseFlashcards(content);
+    const count   = parsed.length || 10;
+    const hasVisual = parsed.some(c => c.mode === "visual");
+    const type  = hasVisual ? "Visual Cards" : "Q&A Cards";
+    const title = `${count} ${type}: ${chapter.chapter_title}`;
+    const preview = `${count} ${type.toLowerCase()}`;
     const tempId = crypto.randomUUID();
     setSavedItems(prev => [
       { id: tempId, title, preview, content, tags: ["classroom", chapter.chapter_title, "flashcards"], createdAt: Date.now() },
@@ -310,7 +515,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         }
       })
       .catch(() => {});
-  }, [chapter.chapter_title, flashcardCards]);
+  }, [chapter.chapter_title]);
 
   const canSend = input.trim().length > 0 && !isStreaming && !!profile;
 
@@ -376,7 +581,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           const promptMsg: Message = {
             id: crypto.randomUUID(),
             role: "assistant",
-            content: `Sure! I can generate flashcards for **${chapter.chapter_title}**.\n\nWould you like me to **auto-generate 10 cards** from the chapter topic, or would you like to **paste your own notes or content** below and I'll create cards from that?\n\nJust type "generate" to auto-create, or paste your content and I'll get started! 📚`,
+            content: `Paste your notes, questions, points to study — or type **generate** to auto-create flashcards for **${chapter.chapter_title}**. 📚`,
             outputType: "text",
             createdAt: new Date(),
           };
@@ -422,7 +627,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                         onClick={() => {
                           if (isFC) {
                             const parsed = parseFlashcards(item.content);
-                            if (parsed.length > 0) { setFlashcardCards(parsed); setFlashcardRaw(item.content); }
+                            if (parsed.length > 0) { setModalFC({ cards: parsed, raw: item.content, idx: 0, flipped: false }); }
                           } else {
                             setViewingItem(item);
                           }
@@ -509,65 +714,10 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         </AnimatePresence>
       </div>
 
-      {/* ── Dustbin — drop a note card here to delete it ──────────────────── */}
-      <div
-        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setBinDragOver(true); }}
-        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setBinDragOver(false); }}
-        onDrop={e => {
-          e.preventDefault();
-          setBinDragOver(false);
-          const id = e.dataTransfer.getData("application/classroom-item");
-          if (!id) return;
-          setSavedItems(prev => prev.filter(item => item.id !== id));
-          fetch("/api/creations", {
-            method:  "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ id }),
-          }).catch(() => {});
-        }}
-        style={{
-          position: "absolute",
-          bottom: "2%",
-          left:   "9%",
-          width:  "18%",
-          zIndex: 18,
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "center",
-          cursor: "copy",
-          transition: "transform 0.2s ease",
-          transform: binDragOver ? "scale(1.18) translateY(-6px)" : "scale(1)",
-        }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/arena1/bin.png"
-          alt="Delete"
-          draggable={false}
-          style={{
-            width: "100%", height: "auto", objectFit: "contain",
-            filter: binDragOver
-              ? "brightness(1.6) drop-shadow(0 0 14px rgba(255,80,80,0.9)) drop-shadow(0 0 32px rgba(255,80,80,0.5))"
-              : "brightness(0.75) saturate(0.7)",
-            transition: "filter 0.2s ease",
-          }}
-        />
-        {binDragOver && (
-          <div style={{
-            position: "absolute", bottom: "50%", left: "50%", transform: "translateX(-50%)",
-            background: "rgba(8,4,22,0.92)", border: "1px solid rgba(255,80,80,0.5)",
-            borderRadius: 10, padding: "4px 10px", whiteSpace: "nowrap",
-            fontSize: 10, fontWeight: 700, color: "rgba(255,120,120,1)",
-            boxShadow: "0 0 16px rgba(255,80,80,0.4)", backdropFilter: "blur(8px)",
-            pointerEvents: "none",
-          }}>
-            Drop to delete
-          </div>
-        )}
-      </div>
 
-      {/* ── Dustbin — drop a note card here to delete it ──────────────────── */}
+      {/* ── Dustbin — same as playground, drag saved cards here to delete ──── */}
       <div
+        className="hidden lg:flex"
         onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setBinDragOver(true); }}
         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setBinDragOver(false); }}
         onDrop={e => {
@@ -576,19 +726,14 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           const id = e.dataTransfer.getData("application/classroom-item");
           if (!id) return;
           setSavedItems(prev => prev.filter(item => item.id !== id));
-          fetch("/api/creations", {
-            method:  "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ id }),
-          }).catch(() => {});
+          fetch("/api/creations", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).catch(() => {});
         }}
         style={{
           position: "absolute",
-          bottom: "2%",
-          left:   "9%",
-          width:  "18%",
+          bottom: "3%",
+          left:   "8%",
+          width:  "20vw",
           zIndex: 18,
-          display: "flex",
           alignItems: "flex-end",
           justifyContent: "center",
           cursor: "copy",
@@ -609,18 +754,6 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             transition: "filter 0.2s ease",
           }}
         />
-        {binDragOver && (
-          <div style={{
-            position: "absolute", bottom: "50%", left: "50%", transform: "translateX(-50%)",
-            background: "rgba(8,4,22,0.92)", border: "1px solid rgba(255,80,80,0.5)",
-            borderRadius: 10, padding: "4px 10px", whiteSpace: "nowrap",
-            fontSize: 10, fontWeight: 700, color: "rgba(255,120,120,1)",
-            boxShadow: "0 0 16px rgba(255,80,80,0.4)", backdropFilter: "blur(8px)",
-            pointerEvents: "none",
-          }}>
-            Drop to delete
-          </div>
-        )}
       </div>
 
       {/* ── Chat overlay — transparent bg, floats on whiteboard ────────────── */}
@@ -675,18 +808,20 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               );
             }
 
-            // Inline flashcard deck — show for any message that has cards in fcMap
+            // Inline flashcard deck — compact card viewer
             if (hasCards) {
               const cards = fcMap[msg.id];
               const isActive = fcState?.msgId === msg.id;
-              const idx     = isActive ? fcState.idx     : 0;
-              const flipped = isActive ? fcState.flipped  : false;
-              const card  = cards[idx];
-              const total = cards.length;
-              const setIdx = (fn: (i: number) => number) =>
-                setFcState({ msgId: msg.id, idx: fn(isActive ? fcState.idx : 0), flipped: false });
-              const flip = () =>
-                setFcState({ msgId: msg.id, idx: isActive ? fcState.idx : 0, flipped: !flipped });
+              const idx     = isActive ? fcState.idx    : 0;
+              const flipped = isActive ? fcState.flipped : false;
+              const card    = cards[idx];
+              const total   = cards.length;
+              const goTo = (i: number) => setFcState({ msgId: msg.id, idx: i, flipped: false });
+              const flip  = () => setFcState(prev =>
+                prev?.msgId === msg.id
+                  ? { ...prev, flipped: !prev.flipped }
+                  : { msgId: msg.id, idx: 0, flipped: true }
+              );
               return (
                 <div key={msg.id}>
                 <div className="rounded-2xl overflow-hidden"
@@ -694,7 +829,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                     boxShadow:"0 0 24px rgba(124,58,237,0.12)",
                     background:"rgba(15,15,26,0.95)", backdropFilter:"blur(20px)" }}>
 
-                  {/* Card viewport — compact height */}
+                  {/* Card viewport */}
                   <div className="relative w-full" style={{ paddingBottom:"42%", cursor:"pointer" }}
                     onClick={flip}>
                     <div className="absolute inset-0" style={{ perspective:"1000px" }}>
@@ -703,41 +838,77 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                         transition={{ duration: 0.45, ease:[0.16,1,0.3,1] }}
                         style={{ width:"100%", height:"100%", transformStyle:"preserve-3d", position:"relative" }}
                       >
-                        {/* Front — Question (dark, like TitleSlide) */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden"
-                          style={{ backfaceVisibility:"hidden",
-                            WebkitBackfaceVisibility:"hidden" as React.CSSProperties["WebkitBackfaceVisibility"],
-                            background:"#08080F" }}>
-                          <div className="absolute inset-0" style={{ background:"radial-gradient(ellipse at 50% 35%, rgba(37,99,235,0.25), transparent 60%)" }}/>
-                          <div className="absolute top-0 left-0 right-0 h-px" style={{ background:"linear-gradient(90deg,transparent,rgba(37,99,235,0.6),transparent)" }}/>
-                          <p className="text-xs font-mono font-bold uppercase tracking-widest mb-3 relative z-[1]"
-                            style={{ color:"rgba(37,99,235,0.8)" }}>
-                            Question {idx + 1} of {total}
-                          </p>
-                          <p className="text-sm font-display font-extrabold tracking-tight text-white text-center px-8 leading-tight relative z-[1]"
-                            style={{ maxWidth:"85%" }}>
-                            {card.question}
-                          </p>
-                          <p className="text-[10px] text-white/30 relative z-[1] mt-3">tap to reveal answer</p>
+                        {/* Front — Q&A: question | Visual: cartoon image */}
+                        <div className="absolute inset-0 overflow-hidden"
+                          style={{ backfaceVisibility:"hidden", WebkitBackfaceVisibility:"hidden" as React.CSSProperties["WebkitBackfaceVisibility"] }}>
+                          {card.mode === "visual" ? (
+                            <VisualCardBack
+                              imagePrompt={card.question}
+                              imageKey={`${msg.id}-${idx}`}
+                              cardImages={cardImages}
+                              setCardImages={setCardImages}
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#08080F]">
+                              <div className="absolute inset-0" style={{ background:"radial-gradient(ellipse at 50% 35%, rgba(124,58,237,0.2), transparent 55%)" }}/>
+                              <div className="absolute top-0 left-0 right-0 h-px" style={{ background:"linear-gradient(90deg,transparent,#C8FF00,transparent)", opacity:0.9 }}/>
+                              <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background:"linear-gradient(90deg,transparent,#7C3AED,transparent)", opacity:0.8 }}/>
+                              <p className="text-xs font-mono font-bold uppercase tracking-widest mb-3 relative z-[1]" style={{ color:"#C8FF00" }}>
+                                Question {idx + 1} of {total}
+                              </p>
+                              <p className="text-sm font-display font-extrabold tracking-tight text-white text-center px-8 leading-tight relative z-[1]"
+                                style={{ maxWidth:"85%" }}>
+                                {card.question}
+                              </p>
+                              <p className="text-[10px] text-white/30 relative z-[1] mt-3">tap to reveal answer</p>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Back — Answer */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden"
-                          style={{ backfaceVisibility:"hidden",
-                            WebkitBackfaceVisibility:"hidden" as React.CSSProperties["WebkitBackfaceVisibility"],
-                            transform:"rotateY(180deg)",
-                            background:"#0F0F1A" }}>
-                          <div className="w-2 absolute left-0 top-0 bottom-0"
-                            style={{ background:"linear-gradient(180deg,#C8FF00,#7C3AED,#00D4FF)", opacity:0.9 }}/>
-                          <div className="absolute inset-0" style={{ background:"radial-gradient(ellipse at 50% 50%, rgba(124,58,237,0.15), transparent 65%)" }}/>
-                          <p className="text-xs font-mono font-bold uppercase tracking-widest mb-3 relative z-[1]"
-                            style={{ color:"#9F67FF" }}>Answer</p>
-                          <div className="w-12 h-0.5 rounded-full mb-4 relative z-[1]"
-                            style={{ background:"#C8FF00", boxShadow:"0 0 12px rgba(200,255,0,0.35)" }}/>
-                          <p className="text-sm font-semibold text-white/90 text-center px-8 leading-relaxed relative z-[1]"
-                            style={{ fontFamily:"'DM Sans',sans-serif", maxWidth:"85%" }}>
-                            {card.answer}
-                          </p>
+                        {/* Back — Q&A: answer | Visual: key points */}
+                        <div className="absolute inset-0 overflow-hidden bg-[#0F0F1A]"
+                          style={{ backfaceVisibility:"hidden", WebkitBackfaceVisibility:"hidden" as React.CSSProperties["WebkitBackfaceVisibility"], transform:"rotateY(180deg)" }}>
+                          {card.mode === "visual" ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center px-6 gap-2">
+                              <div className="w-2 absolute left-0 top-0 bottom-0" style={{ background:"linear-gradient(180deg,#C8FF00,#7C3AED,#00D4FF)", opacity:0.9 }}/>
+                              <div className="absolute inset-0" style={{ background:"radial-gradient(ellipse at 50% 50%, rgba(124,58,237,0.12), transparent 65%)" }}/>
+                              <p className="text-xs font-mono font-bold uppercase tracking-widest relative z-[1]" style={{ color:"#C8FF00" }}>
+                                {card.question}
+                              </p>
+                              <div className="w-10 h-px rounded-full relative z-[1]" style={{ background:"rgba(200,255,0,0.35)" }}/>
+                              <div className="text-[11px] text-white/80 leading-relaxed relative z-[1] overflow-y-auto text-left w-full pl-4"
+                                style={{ fontFamily:"'DM Sans',sans-serif", maxHeight:"62%", scrollbarWidth:"none" }}>
+                                <ReactMarkdown
+                                  components={{
+                                    p: ({children}) => <p className="mb-1">{children}</p>,
+                                    ul: ({children}) => <ul className="list-disc list-inside space-y-0.5">{children}</ul>,
+                                    ol: ({children}) => <ol className="list-decimal list-inside space-y-0.5">{children}</ol>,
+                                    li: ({children}) => <li>{children}</li>,
+                                    strong: ({children}) => <strong className="text-white font-bold">{children}</strong>,
+                                  }}
+                                >{card.answer}</ReactMarkdown>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                              <div className="w-2 absolute left-0 top-0 bottom-0" style={{ background:"linear-gradient(180deg,#C8FF00,#7C3AED,#00D4FF)", opacity:0.9 }}/>
+                              <div className="absolute inset-0" style={{ background:"radial-gradient(ellipse at 50% 50%, rgba(124,58,237,0.15), transparent 65%)" }}/>
+                              <p className="text-xs font-mono font-bold uppercase tracking-widest mb-2 relative z-[1]" style={{ color:"#9F67FF" }}>Answer</p>
+                              <div className="w-12 h-0.5 rounded-full mb-3 relative z-[1]" style={{ background:"#C8FF00", boxShadow:"0 0 12px rgba(200,255,0,0.35)" }}/>
+                              <div className="text-sm text-white/90 px-6 leading-relaxed relative z-[1] overflow-y-auto"
+                                style={{ fontFamily:"'DM Sans',sans-serif", maxWidth:"90%", maxHeight:"58%", scrollbarWidth:"none" }}>
+                                <ReactMarkdown
+                                  components={{
+                                    p: ({children}) => <p className="mb-1 text-center">{children}</p>,
+                                    ul: ({children}) => <ul className="list-disc list-inside text-left space-y-0.5">{children}</ul>,
+                                    ol: ({children}) => <ol className="list-decimal list-inside text-left space-y-0.5">{children}</ol>,
+                                    li: ({children}) => <li className="text-white/85">{children}</li>,
+                                    strong: ({children}) => <strong className="text-white font-bold">{children}</strong>,
+                                  }}
+                                >{card.answer}</ReactMarkdown>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     </div>
@@ -747,68 +918,55 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                   <div className="flex items-center justify-between px-3 py-2"
                     style={{ borderTop:"1px solid rgba(255,255,255,0.08)", background:"rgba(15,15,26,0.98)" }}>
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setIdx(i => Math.max(0, i - 1))}
-                        disabled={idx === 0}
+                      <button onClick={() => goTo(Math.max(0, idx - 1))} disabled={idx === 0}
                         className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-all disabled:opacity-25"
                         style={{ color: idx === 0 ? "rgba(255,255,255,0.4)" : "#C8FF00" }}>
                         <ChevronLeft size={16}/>
                       </button>
 
-                      <span className="text-xs font-mono" style={{ color:"rgba(255,255,255,0.5)", minWidth:36, textAlign:"center" }}>
-                        {idx + 1} / {total}
-                      </span>
+                      <div className="flex gap-1">
+                        {cards.map((_, i) => (
+                          <button key={i} onClick={e => { e.stopPropagation(); goTo(i); }}
+                            className={cn("rounded-full transition-all",
+                              i === idx
+                                ? "w-5 h-2 bg-[#C8FF00] shadow-[0_0_12px_rgba(200,255,0,0.35)]"
+                                : "w-2 h-2 bg-white/15 hover:bg-white/30"
+                            )}
+                          />
+                        ))}
+                      </div>
 
-                      <button
-                        onClick={() => setIdx(i => Math.min(total - 1, i + 1))}
-                        disabled={idx === total - 1}
+                      <button onClick={() => goTo(Math.min(total - 1, idx + 1))} disabled={idx === total - 1}
                         className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-all disabled:opacity-25"
                         style={{ color: idx === total - 1 ? "rgba(255,255,255,0.4)" : "#C8FF00" }}>
                         <ChevronRight size={16}/>
                       </button>
 
-                      <span className="text-[10px] font-mono ml-1" style={{ color:"rgba(255,255,255,0.25)" }}>tap to flip</span>
+                      <span className="text-[10px] font-mono" style={{ color:"rgba(255,255,255,0.25)" }}>
+                        {idx + 1} / {total} · tap to flip
+                      </span>
                     </div>
                     <div/>
                   </div>
                 </div>
 
-                {/* Action buttons — same style as other chat messages */}
-                <div className="flex items-center justify-start gap-1.5 mt-2">
-                  {/* Copy */}
-                  <button
-                    onClick={() => navigator.clipboard.writeText(flashcardRaw)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-display font-semibold border transition-all duration-200 active:scale-95 hover:border-[#94A8C8]/70 hover:text-[#C8DBF0]"
-                    style={{ background:"rgba(148,168,200,0.10)", borderColor:"rgba(148,168,200,0.35)", color:"#94A8C8" }}>
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                      <rect x="4" y="4" width="7" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.3"/>
-                      <path d="M8 4V2.5A1.5 1.5 0 006.5 1h-4A1.5 1.5 0 001 2.5v4A1.5 1.5 0 002.5 8H4" stroke="currentColor" strokeWidth="1.3"/>
-                    </svg>
-                    Copy
+                {/* Save + Download — below the card, above the next message */}
+                <div className="flex items-center gap-2 mt-2 pl-1">
+                  <button onClick={() => handleFlashcardSave(flashcardRaw)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-display font-extrabold tracking-tight transition-all active:scale-95"
+                    style={{ color:"#1a2800", background:"#C8FF00", border:"2px solid #6b9900" }}>
+                    <BookmarkPlus size={12}/> Save
                   </button>
-                  {/* Download */}
-                  <button
-                    onClick={() => {
+                  <button onClick={() => {
                       const blob = new Blob([flashcardRaw], { type:"text/plain" });
                       const a = document.createElement("a");
                       a.href = URL.createObjectURL(blob);
                       a.download = `flashcards-${chapter.chapter_title.replace(/\s+/g,"-")}.txt`;
                       a.click();
                     }}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-display font-semibold border transition-all duration-200 active:scale-95 hover:border-[#94A8C8]/70 hover:text-[#C8DBF0]"
-                    style={{ background:"rgba(148,168,200,0.10)", borderColor:"rgba(148,168,200,0.35)", color:"#94A8C8" }}>
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                      <path d="M6 1v7M3.5 5.5L6 8l2.5-2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M1 9.5v1A1.5 1.5 0 002.5 12h7a1.5 1.5 0 001.5-1.5v-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                    </svg>
-                    Download
-                  </button>
-                  {/* Save */}
-                  <button
-                    onClick={() => handleFlashcardSave(flashcardRaw)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-display font-extrabold tracking-tight border transition-all duration-200 active:scale-95"
-                    style={{ background:"rgba(255,255,255,0.06)", borderColor:"rgba(255,255,255,0.12)", color:ACCENT }}>
-                    Save
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-display font-extrabold tracking-tight transition-all active:scale-95"
+                    style={{ color:"#0f1c4d", background:"rgba(37,99,235,0.12)", border:"2px solid #2563eb" }}>
+                    <Download size={12}/> Download
                   </button>
                 </div>
                 </div>
@@ -829,17 +987,17 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                   arenaAccent={ACCENT}
                   arenaAccentGlow={ACCENT_GLO}
                   arenaId={10}
-                  onSave={handleSave}
+                  onSave={msg.content.startsWith("Paste your notes") ? undefined : handleSave}
                 />
                 {hasQA && (
                   <button
                     onClick={() => {
                       const parsed = parseFlashcards(msg.content);
                       if (parsed.length > 0) {
-                        setInlineFC({ msgId: msg.id, cards: parsed });
                         setFlashcardRaw(msg.content);
-                        setFcIdx(0);
-                        setFcFlipped(false);
+                        setInlineFC({ msgId: msg.id, cards: parsed });
+                        setFcMap(prev => ({ ...prev, [msg.id]: parsed }));
+                        setFcState({ msgId: msg.id, idx: 0, flipped: false });
                       }
                     }}
                     style={{ marginTop:6, marginLeft:4, padding:"5px 12px", borderRadius:10, fontSize:12,
@@ -969,16 +1127,132 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         )}
       </AnimatePresence>
 
-      {/* ── Flashcard deck overlay ──────────────────────────────────────────── */}
+      {/* ── Flashcard slide modal (saved decks) — exact SlideCarousel style ── */}
       <AnimatePresence>
-        {flashcardCards && (
-          <FlashcardDeck
-            cards={flashcardCards}
-            rawContent={flashcardRaw}
-            chapterTitle={chapter.chapter_title}
-            onClose={() => setFlashcardCards(null)}
-            onSave={handleFlashcardSave}
-          />
+        {modalFC && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ zIndex: 60, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}
+            onClick={() => setModalFC(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 16 }}
+              transition={{ duration: 0.22 }}
+              onClick={e => e.stopPropagation()}
+              className="rounded-2xl overflow-hidden border border-white/[0.1] shadow-[0_0_36px_rgba(124,58,237,0.15)] bg-[#0F0F1A]/95 backdrop-blur-xl"
+              style={{ width: "72%" }}
+            >
+              {/* Slide viewport — 16:9, click to flip */}
+              <div className="relative w-full" style={{ paddingBottom: "56.25%", cursor: "pointer" }}
+                onClick={() => setModalFC(prev => prev ? { ...prev, flipped: !prev.flipped } : null)}>
+                <div className="absolute inset-0">
+                  <motion.div
+                    animate={{ rotateY: modalFC.flipped ? 180 : 0 }}
+                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                    style={{ width: "100%", height: "100%", transformStyle: "preserve-3d", position: "relative" }}
+                  >
+                    {/* Front — Question (TitleSlide) */}
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-[#08080F] relative overflow-hidden absolute inset-0"
+                      style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" as React.CSSProperties["WebkitBackfaceVisibility"] }}>
+                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,rgba(124,58,237,0.2),transparent_55%)]" />
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#C8FF00] to-transparent opacity-90" />
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#7C3AED] to-transparent opacity-80" />
+                      <p className="text-xs font-mono font-bold text-[#C8FF00] uppercase tracking-widest mb-3 relative z-[1]">
+                        Question {modalFC.idx + 1} of {modalFC.cards.length}
+                      </p>
+                      <h1 className="text-2xl font-display font-extrabold tracking-tight text-white text-center px-8 mb-4 leading-tight relative z-[1]"
+                        style={{ maxWidth: "80%" }}>
+                        {modalFC.cards[modalFC.idx].question}
+                      </h1>
+                      <p className="text-xs text-white/35 relative z-[1]">tap to reveal answer</p>
+                    </div>
+
+                    {/* Back — Answer (SectionSlide) */}
+                    <div className="w-full h-full flex absolute inset-0"
+                      style={{
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden" as React.CSSProperties["WebkitBackfaceVisibility"],
+                        transform: "rotateY(180deg)", background: "#0F0F1A",
+                      }}>
+                      <div className="w-2 bg-gradient-to-b from-[#C8FF00] via-[#7C3AED] to-[#00D4FF] flex-shrink-0 opacity-90" />
+                      <div className="flex-1 bg-[#12121C] flex flex-col justify-center px-10">
+                        <p className="text-xs font-mono font-bold text-[#9F67FF] uppercase tracking-widest mb-3">Answer</p>
+                        <div className="w-16 h-0.5 bg-[#C8FF00] mb-4 rounded-full shadow-[0_0_12px_rgba(200,255,0,0.35)]" />
+                        <p className="text-sm text-white/75 leading-relaxed" style={{ fontFamily: "'DM Sans',sans-serif" }}>
+                          {modalFC.cards[modalFC.idx].answer}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Controls — exact SlideCarousel layout */}
+              <div className="flex items-center justify-between px-4 py-3 border-t border-white/[0.08] bg-[#0F0F1A]/98 backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setModalFC(prev => prev ? { ...prev, idx: Math.max(0, prev.idx - 1), flipped: false } : null)}
+                    disabled={modalFC.idx === 0}
+                    className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-[#C8FF00] disabled:opacity-25 transition-all">
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  <div className="flex gap-1">
+                    {modalFC.cards.map((_, i) => (
+                      <button key={i}
+                        onClick={() => setModalFC(prev => prev ? { ...prev, idx: i, flipped: false } : null)}
+                        className={cn(
+                          "rounded-full transition-all",
+                          i === modalFC.idx
+                            ? "w-5 h-2 bg-[#C8FF00] shadow-[0_0_12px_rgba(200,255,0,0.35)]"
+                            : "w-2 h-2 bg-white/15 hover:bg-white/30"
+                        )}
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setModalFC(prev => prev ? { ...prev, idx: Math.min(prev.cards.length - 1, prev.idx + 1), flipped: false } : null)}
+                    disabled={modalFC.idx === modalFC.cards.length - 1}
+                    className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-[#C8FF00] disabled:opacity-25 transition-all">
+                    <ChevronRight size={18} />
+                  </button>
+
+                  <span className="text-xs text-white/35 ml-1 font-mono">
+                    {modalFC.idx + 1} / {modalFC.cards.length}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { handleFlashcardSave(modalFC.raw); setModalFC(null); }}
+                    className="flex items-center gap-1.5 text-xs font-display font-extrabold tracking-tight text-[#C8FF00] hover:bg-[#C8FF00]/10 px-3 py-1.5 rounded-lg transition-all">
+                    <BookmarkPlus size={14} /> Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([modalFC.raw], { type: "text/plain" });
+                      const a = document.createElement("a");
+                      a.href = URL.createObjectURL(blob);
+                      a.download = `flashcards-${chapter.chapter_title.replace(/\s+/g, "-")}.txt`;
+                      a.click();
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-display font-extrabold tracking-tight bg-[#C8FF00] text-[#08080F] px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_28px_rgba(200,255,0,0.4)] active:scale-95 shadow-[0_0_20px_rgba(200,255,0,0.25)]">
+                    <Download size={14} /> Download
+                  </button>
+                  <button onClick={() => setModalFC(null)}
+                    className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white transition-all">
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
