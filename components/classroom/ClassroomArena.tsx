@@ -75,10 +75,11 @@ function getInputFormat(content: string): "qa" | "points" {
   return "points";
 }
 
-/** Extracts an explicit count: "5 points", "3 questions", "give me 7" → number. */
+/** Extracts an explicit count: "5 Q&A", "3 points", "give me 7", "10 questions" → number. */
 function extractPointCount(text: string): number | null {
-  const m = text.match(/\b(\d+)\s*(?:points?|cards?|flashcards?|questions?)\b/i)
-         ?? text.match(/\b(?:give|create|make|generate)\s+(\d+)\b/i);
+  const m = text.match(/\b(\d+)\s*(?:Q\.?&?\.?A\.?|qa|points?|cards?|flashcards?|questions?|visual|items?)\b/i)
+         ?? text.match(/\b(?:give|create|make|generate)\s+(\d+)\b/i)
+         ?? text.match(/^(\d+)$/); // bare number alone
   if (!m) return null;
   const n = parseInt(m[1], 10);
   return n >= 1 && n <= 30 ? n : null;
