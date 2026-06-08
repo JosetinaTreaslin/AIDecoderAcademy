@@ -619,7 +619,7 @@ export default function ClassroomPage() {
               {view === "mcq-result" && mcqResult && paper && (
                 <motion.div key="mcq-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
                   <ScoreReport result={mcqResult} chapterTitle={paper.chapter.chapter_title}
-                    onRetry={retryMcq} onHome={() => setView("landing")} />
+                    onRetry={retryMcq} onHome={() => setView("landing")} onBack={() => setView("select-type")} />
                 </motion.div>
               )}
 
