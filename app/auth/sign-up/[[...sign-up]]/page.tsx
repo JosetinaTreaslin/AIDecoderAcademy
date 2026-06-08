@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSignUp, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -15,13 +15,13 @@ const BOARDS = ["CBSE", "ICSE", "State Board"];
 const GRADES = ["6", "7", "8", "9", "10"];
 function gradeToAgeGroup(g: string) { return parseInt(g) <= 7 ? "11-13" : "14+"; }
 
-// ── Background — fixed so it never crops ──────────────────────────────────────
-function BgFixed() {
+// ── Background — stretches to fill the viewport exactly, no crop, no gaps ─────
+function BgFixed({ image = "/Sign-in/page1.png" }: { image?: string }) {
   return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 0,
-      backgroundImage: "url('/Sign-in/page1.png')",
-      backgroundSize: "cover",
+      position: "fixed", inset: 0, zIndex: 0, width: "100vw", height: "100vh",
+      backgroundImage: `url('${image}')`,
+      backgroundSize: "100% 100%",
       backgroundPosition: "center",
       backgroundRepeat: "no-repeat",
     }}/>
@@ -39,21 +39,21 @@ function Inp({
 } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
-      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#6b7280", marginBottom: 6, textTransform: "uppercase" }}>
+      <p style={{ fontSize: "0.67vw", fontWeight: 700, letterSpacing: "0.1em", color: "#374151", marginBottom: "0.4vw", textTransform: "uppercase" }}>
         {label}
       </p>
       <div style={{ position: "relative" }}>
-        <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", display: "flex" }}>
+        <span style={{ position: "absolute", left: "0.8vw", top: "50%", transform: "translateY(-50%)", color: "#6b7280", display: "flex" }}>
           {icon}
         </span>
         <input
           {...props}
           style={{
             width: "100%", boxSizing: "border-box",
-            paddingLeft: 36, paddingRight: rightIcon ? 36 : 12,
-            paddingTop: 11, paddingBottom: 11,
+            paddingLeft: "2.4vw", paddingRight: rightIcon ? "2.4vw" : "0.8vw",
+            paddingTop: "0.73vw", paddingBottom: "0.73vw",
             background: IBKG, border: `1px solid ${BORDER}`,
-            borderRadius: 10, fontSize: 14, color: "#111827",
+            borderRadius: "0.67vw", fontSize: "0.93vw", color: "#111827",
             outline: "none", transition: "border-color 0.15s",
           }}
           onFocus={e => (e.currentTarget.style.borderColor = BLUE)}
@@ -61,7 +61,7 @@ function Inp({
         />
         {rightIcon && (
           <button type="button" onClick={onRightClick}
-            style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", display: "flex" }}>
+            style={{ position: "absolute", right: "0.8vw", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#6b7280", display: "flex" }}>
             {rightIcon}
           </button>
         )}
@@ -71,11 +71,12 @@ function Inp({
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
-const PersonIcon = () => <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
-const MailIcon   = () => <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M1 6l7 4 7-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
-const LockIcon   = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="6" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
-const EyeIcon    = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 7s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z" stroke="currentColor" strokeWidth="1.5"/><circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.5"/></svg>;
-const EyeOffIcon = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M5.5 5.7A2 2 0 019.3 9M2 3.5C.8 4.7 1 7 1 7s2 4 6 4c1.2 0 2.2-.3 3-.8M5 2.2C5.6 2.1 6.3 2 7 2c4 0 6 5 6 5s-.5 1.3-1.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
+const ICON_SIZE = "0.93vw";
+const PersonIcon = () => <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
+const MailIcon   = () => <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M1 6l7 4 7-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
+const LockIcon   = () => <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 14 14" fill="none"><rect x="2" y="6" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
+const EyeIcon    = () => <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 14 14" fill="none"><path d="M1 7s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z" stroke="currentColor" strokeWidth="1.5"/><circle cx="7" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.5"/></svg>;
+const EyeOffIcon = () => <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M5.5 5.7A2 2 0 019.3 9M2 3.5C.8 4.7 1 7 1 7s2 4 6 4c1.2 0 2.2-.3 3-.8M5 2.2C5.6 2.1 6.3 2 7 2c4 0 6 5 6 5s-.5 1.3-1.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>;
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SignUpPage() {
@@ -95,10 +96,26 @@ export default function SignUpPage() {
   const [password,  setPassword]  = useState("");
   const [board,     setBoard]     = useState("CBSE");
   const [grade,     setGrade]     = useState("8");
+  const digitRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     if (isSignedIn && !verifying) router.replace("/dashboard");
   }, [isSignedIn, router, verifying]);
+
+  // Hide the document-level scrollbar (and its purple hover thumb from globals.css)
+  // while this full-viewport page is mounted — it never needs to scroll.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+    };
+  }, []);
 
   const pwStrength =
     password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2
@@ -166,25 +183,57 @@ export default function SignUpPage() {
   // ── Verification ───────────────────────────────────────────────────────────
   if (verifying) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center px-4">
-        <BgFixed/>
-        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 420, background: "rgba(255,255,255,0.97)", borderRadius: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: "40px 36px", textAlign: "center" }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
-          <h2 style={{ fontWeight: 800, fontSize: 22, color: NAVY, marginBottom: 8 }}>Check your inbox!</h2>
-          <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 28 }}>We sent a 6-digit code to <strong style={{ color: LBLUE }}>{email}</strong></p>
-          <div id="clerk-captcha"/>
-          <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <input value={code} onChange={e => setCode(e.target.value)} placeholder="0 0 0 0 0 0" maxLength={6} autoFocus
-              style={{ width: "100%", boxSizing: "border-box", textAlign: "center", fontSize: 24, fontWeight: 900, letterSpacing: "0.4em", padding: "16px", background: IBKG, border: `2px solid ${BLUE}40`, borderRadius: 14, outline: "none", color: NAVY }}
-              onFocus={e => (e.currentTarget.style.borderColor = BLUE)}
-              onBlur={e  => (e.currentTarget.style.borderColor = `${BLUE}40`)}
-            />
-            {error && <p style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}>{error}</p>}
-            <button type="submit" disabled={loading || code.length < 6}
-              style={{ background: BLUE, color: "#fff", padding: "14px", borderRadius: 999, fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", opacity: (loading || code.length < 6) ? 0.4 : 1, boxShadow: "0 4px 20px rgba(29,78,216,0.4)" }}>
-              {loading ? "Verifying…" : "Verify & Launch 🚀"}
-            </button>
-          </form>
+      <div style={{ position: "fixed", inset: 0, overflow: "hidden" }}>
+        <BgFixed image="/Sign-in/page3.png"/>
+
+        {/* Card — same %-of-viewport coordinate system as the main form card, so it scales
+            1:1 with the stretched (100% 100%) background at any screen size. */}
+        <div style={{ position: "absolute", zIndex: 1, left: "41%", right: "25%", top: "16%", bottom: "10%" }}>
+          <div style={{
+            width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            background: "#ffffff", borderRadius: "1.87vw", border: "1px solid rgba(255,255,255,0.8)",
+            boxShadow: "0 8px 48px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(200,160,80,0.12)",
+            padding: "2.93vw 2.67vw", textAlign: "center", boxSizing: "border-box",
+          }}>
+            <img src="/Sign-in/email.png" alt="" style={{ width: "5.6vw", height: "5.6vw", objectFit: "contain", margin: "0 auto 1.2vw" }}/>
+            <h2 style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 800, fontSize: "1.87vw", color: NAVY, marginBottom: "0.67vw" }}>Check your inbox!</h2>
+            <p style={{ color: "#6b7280", fontSize: "0.93vw", marginBottom: "1.87vw" }}>
+              We sent a 6-digit code to<br/>
+              <strong style={{ color: LBLUE, fontWeight: 800, letterSpacing: "0.02em" }}>{email.toUpperCase()}</strong>
+            </p>
+            <div id="clerk-captcha"/>
+            <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: "1.47vw", width: "100%" }}>
+              <div style={{ display: "flex", gap: "0.67vw", justifyContent: "center" }}>
+                {[0, 1, 2, 3, 4, 5].map(i => (
+                  <input
+                    key={i}
+                    ref={el => { digitRefs.current[i] = el; }}
+                    value={code[i] ?? ""}
+                    onChange={e => {
+                      const digit = e.target.value.replace(/\D/g, "").slice(-1);
+                      const next = code.split("");
+                      next[i] = digit;
+                      const joined = next.join("").slice(0, 6);
+                      setCode(joined);
+                      if (digit && i < 5) digitRefs.current[i + 1]?.focus();
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === "Backspace" && !code[i] && i > 0) digitRefs.current[i - 1]?.focus();
+                    }}
+                    maxLength={1} inputMode="numeric" autoFocus={i === 0} placeholder="0"
+                    style={{ width: "2.93vw", height: "3.47vw", boxSizing: "border-box", textAlign: "center", fontSize: "1.33vw", fontWeight: 800, borderRadius: "0.8vw", background: IBKG, border: `1.5px solid ${BORDER}`, outline: "none", color: NAVY, caretColor: BLUE }}
+                    onFocus={e => (e.currentTarget.style.borderColor = BLUE)}
+                    onBlur={e  => (e.currentTarget.style.borderColor = BORDER)}
+                  />
+                ))}
+              </div>
+              {error && <p style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: "0.67vw", padding: "0.67vw 0.93vw", fontSize: "0.87vw" }}>{error}</p>}
+              <button type="submit" disabled={loading || code.length < 6}
+                style={{ width: "100%", fontSize: "1.15vw", fontWeight: 700, color: "#fff", background: BLUE, padding: "1vh 1.7vw", borderRadius: 999, border: `1.5px solid ${GOLD}`, cursor: "pointer", opacity: (loading || code.length < 6) ? 0.4 : 1, boxShadow: "0 4px 14px rgba(29,78,216,0.45), 0 0 12px rgba(200,160,80,0.35)" }}>
+                {loading ? "Verifying…" : "Verify & Launch 🚀"}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     );
@@ -192,65 +241,76 @@ export default function SignUpPage() {
 
   // ── Main layout ────────────────────────────────────────────────────────────
   return (
-    <div style={{ position: "fixed", inset: 0, overflow: "auto" }}>
-      <BgFixed/>
+    <div style={{ position: "fixed", inset: 0, overflow: "hidden" }}>
+      <BgFixed image={step === 2 ? "/Sign-in/page2.png" : "/Sign-in/page1.png"}/>
 
-      {/* Top-right nav */}
-      <div style={{ position: "fixed", top: 20, right: 28, display: "flex", alignItems: "center", gap: 12, zIndex: 20 }}>
-        <Link href="/auth/sign-in" style={{ fontSize: 14, fontWeight: 600, color: NAVY, textDecoration: "none" }}>
+      {/* Hide scrollbars on the form card while keeping it scrollable if content overflows */}
+      <style>{`
+        .signup-card-scroll::-webkit-scrollbar { display: none; }
+      `}</style>
+
+      {/* Top-right nav — anchored with the same %-of-viewport coordinate system as BgFixed (100% 100%
+          stretch) and the form card below, so background image + card + nav move and resize together
+          as one fixed composition at any screen size/aspect ratio. */}
+      <div style={{ position: "absolute", top: "7%", right: "6.5%", display: "flex", alignItems: "center", gap: "1.8vw", zIndex: 20 }}>
+        <Link href="/auth/sign-in" style={{ fontSize: "1.25vw", fontWeight: 600, color: BLUE, textDecoration: "none" }}>
           Log in
         </Link>
-        <Link href="/auth/sign-up" style={{ fontSize: 14, fontWeight: 700, color: "#fff", background: BLUE, padding: "9px 22px", borderRadius: 999, textDecoration: "none", boxShadow: "0 4px 14px rgba(29,78,216,0.45)" }}>
+        <Link href="/auth/sign-up" style={{
+          fontSize: "1.15vw", fontWeight: 700, color: "#fff", background: BLUE,
+          padding: "1vh 1.7vw", borderRadius: 999, textDecoration: "none",
+          border: `1.5px solid ${GOLD}`,
+          boxShadow: `0 4px 14px rgba(29,78,216,0.45), 0 0 12px rgba(200,160,80,0.35)`,
+        }}>
           Sign up
         </Link>
       </div>
 
-      {/* Body — card on right side */}
+      {/* Form card — positioned to sit exactly over the card painted into the background image.
+          Percentage offsets scale 1:1 with the stretched (100% 100%) background, so the live
+          card and the image move/resize together as a single unit at any screen size. */}
       <div style={{
-        position: "relative", zIndex: 1,
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-end",
-        padding: "80px clamp(16px, 6vw, 72px) 40px",
+        position: "absolute",
+        zIndex: 1,
+        left: "41%", right: "25%", top: "16%", bottom: "10%",
       }}>
-
-        {/* Form card */}
-        <div style={{ width: "100%", maxWidth: "min(460px, 90vw)" }}>
           <div style={{
             width: "100%",
-            background: "rgba(255,255,255,0.97)",
-            borderRadius: 20,
-            boxShadow: "0 8px 48px rgba(0,0,0,0.18)",
-            overflow: "hidden",
-          }}>
+            height: "100%",
+            background: "#ffffff",
+            borderRadius: "2vw",
+            border: "1px solid rgba(255,255,255,0.8)",
+            boxShadow: "0 8px 48px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(200,160,80,0.12)",
+            overflow: "auto",
+            scrollbarWidth: "none",
+          }} className="signup-card-scroll">
 
             {/* Card header */}
-            <div style={{ padding: "28px 32px 22px", borderBottom: `1px solid ${BORDER}` }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", background: "#eff6ff", color: LBLUE, border: "1px solid #bfdbfe", padding: "4px 12px", borderRadius: 999 }}>
+            <div style={{ padding: "1.87vw 2.13vw 1.47vw", borderBottom: `1px solid ${BORDER}` }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.2vw" }}>
+                <span style={{ fontSize: "0.73vw", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", background: "#eff6ff", color: LBLUE, border: "1px solid #bfdbfe", padding: "0.27vw 0.8vw", borderRadius: 999 }}>
                   Step {step} of 2
                 </span>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <div style={{ width: 36, height: 4, borderRadius: 999, background: step >= 1 ? BLUE : BORDER }}/>
-                  <div style={{ width: 20, height: 4, borderRadius: 999, background: step >= 2 ? BLUE : BORDER }}/>
+                <div style={{ display: "flex", gap: "0.4vw", alignItems: "center" }}>
+                  <div style={{ width: "2.4vw", height: "0.27vw", borderRadius: 999, background: step >= 1 ? BLUE : BORDER }}/>
+                  <div style={{ width: "1.33vw", height: "0.27vw", borderRadius: 999, background: step >= 2 ? BLUE : BORDER }}/>
                 </div>
               </div>
-              <h2 style={{ fontWeight: 800, fontSize: 26, color: "#111827", marginBottom: 6, letterSpacing: "-0.01em" }}>
+              <h2 style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: "1.4vw", color: "#111827", marginBottom: "0.4vw", letterSpacing: "-0.02em", whiteSpace: "nowrap" }}>
                 {step === 1 ? "Create your account" : "Academic profile"}
               </h2>
-              <p style={{ color: "#6b7280", fontSize: 14 }}>
+              <p style={{ color: "#374151", fontSize: "0.93vw" }}>
                 {step === 1 ? "Join students decoding the future of AI." : "Help us personalise your learning experience."}
               </p>
             </div>
 
             {/* Card body */}
-            <div style={{ padding: "24px 32px 28px" }}>
+            <div style={{ padding: "1.6vw 2.13vw 1.87vw" }}>
               <div id="clerk-captcha" style={{ display: "none" }}/>
 
               {step === 1 ? (
-                <form onSubmit={handleNext} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <form onSubmit={handleNext} style={{ display: "flex", flexDirection: "column", gap: "1.07vw" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.8vw" }}>
                     <Inp label="Full name" icon={<PersonIcon/>} value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Rahul Sharma"/>
                     <Inp label="Email" icon={<MailIcon/>} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@school.com"/>
                   </div>
@@ -261,33 +321,35 @@ export default function SignUpPage() {
                       rightIcon={showPw ? <EyeOffIcon/> : <EyeIcon/>} onRightClick={() => setShowPw(v => !v)}
                     />
                     {password.length > 0 && (
-                      <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center" }}>
+                      <div style={{ display: "flex", gap: "0.4vw", marginTop: "0.53vw", alignItems: "center" }}>
                         {[1, 2, 3, 4].map(i => (
-                          <div key={i} style={{ flex: 1, height: 3, borderRadius: 999, background: i <= pwStrength ? pwColors[pwStrength] : BORDER, transition: "background 0.2s" }}/>
+                          <div key={i} style={{ flex: 1, height: "0.2vw", borderRadius: 999, background: i <= pwStrength ? pwColors[pwStrength] : BORDER, transition: "background 0.2s" }}/>
                         ))}
-                        <span style={{ fontSize: 10, color: pwColors[pwStrength], minWidth: 36, textAlign: "right", fontWeight: 600 }}>
+                        <span style={{ fontSize: "0.67vw", color: pwColors[pwStrength], minWidth: "2.4vw", textAlign: "right", fontWeight: 600 }}>
                           {["", "Weak", "Fair", "Good", "Strong"][pwStrength]}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {error && <p style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}>{error}</p>}
+                  {error && <p style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: "0.67vw", padding: "0.67vw 0.93vw", fontSize: "0.87vw" }}>{error}</p>}
 
-                  <button type="submit" style={{ width: "100%", padding: "15px", background: BLUE, color: "#fff", borderRadius: 999, fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(29,78,216,0.4)" }}>
+                  <button type="submit" style={{ width: "100%", padding: "1vw", background: BLUE, color: "#fff", borderRadius: 999, fontSize: "1vw", fontWeight: 700, border: `1.5px solid ${GOLD}`, cursor: "pointer", boxShadow: "0 4px 20px rgba(29,78,216,0.4), 0 0 12px rgba(200,160,80,0.35)" }}>
                     Next – Academic profile →
                   </button>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ flex: 1, height: 1, background: BORDER }}/>
-                    <span style={{ fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>OR</span>
-                    <div style={{ flex: 1, height: 1, background: BORDER }}/>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.67vw" }}>
+                    <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, transparent, ${BORDER})` }}/>
+                    <div style={{ width: "0.4vw", height: "0.4vw", transform: "rotate(45deg)", border: `1px solid ${GOLD}`, background: "rgba(200,160,80,0.12)" }}/>
+                    <span style={{ fontSize: "0.8vw", color: "#6b7280", fontWeight: 500, letterSpacing: "0.08em" }}>OR</span>
+                    <div style={{ width: "0.4vw", height: "0.4vw", transform: "rotate(45deg)", border: `1px solid ${GOLD}`, background: "rgba(200,160,80,0.12)" }}/>
+                    <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${BORDER}, transparent)` }}/>
                   </div>
 
-                  <button type="button" onClick={handleGoogle} style={{ width: "100%", padding: "12px", background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 999, fontSize: 14, fontWeight: 600, color: "#374151", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
+                  <button type="button" onClick={handleGoogle} style={{ width: "100%", padding: "0.8vw", background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 999, fontSize: "0.93vw", fontWeight: 600, color: "#374151", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.67vw" }}
                     onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "#f9fafb"}
                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "#fff"}>
-                    <svg width="18" height="18" viewBox="0 0 18 18">
+                    <svg width="1.2vw" height="1.2vw" viewBox="0 0 18 18">
                       <path d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z" fill="#4285F4"/>
                       <path d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.01c-.72.48-1.63.76-2.7.76-2.08 0-3.84-1.4-4.47-3.29H1.87v2.07A8 8 0 008.98 17z" fill="#34A853"/>
                       <path d="M4.51 10.52A4.8 4.8 0 014.26 9c0-.52.09-1.02.25-1.52V5.41H1.87A8 8 0 001 9c0 1.29.31 2.51.87 3.59l2.64-2.07z" fill="#FBBC05"/>
@@ -296,67 +358,66 @@ export default function SignUpPage() {
                     Sign up with Google
                   </button>
 
-                  <p style={{ textAlign: "center", fontSize: 14, color: "#6b7280" }}>
+                  <p style={{ textAlign: "center", fontSize: "0.93vw", color: "#374151" }}>
                     Already a member?{" "}
                     <Link href="/auth/sign-in" style={{ color: LBLUE, fontWeight: 600, textDecoration: "none" }}>Log in</Link>
                   </p>
                 </form>
 
               ) : (
-                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.33vw" }}>
                   <div>
-                    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#6b7280", marginBottom: 10, textTransform: "uppercase" }}>Education board</p>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <p style={{ fontSize: "0.67vw", fontWeight: 700, letterSpacing: "0.1em", color: "#374151", marginBottom: "0.67vw", textTransform: "uppercase" }}>Education board</p>
+                    <div style={{ display: "flex", gap: "0.53vw", flexWrap: "wrap" }}>
                       {BOARDS.map(b => (
-                        <button key={b} type="button" onClick={() => setBoard(b)} style={{ padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", background: board === b ? "#eff6ff" : IBKG, border: `1.5px solid ${board === b ? BLUE : BORDER}`, color: board === b ? BLUE : "#6b7280" }}>{b}</button>
+                        <button key={b} type="button" onClick={() => setBoard(b)} style={{ padding: "0.6vw 1.2vw", borderRadius: "0.67vw", fontSize: "0.87vw", fontWeight: 700, cursor: "pointer", background: board === b ? BLUE : "#fff", border: `1.5px solid ${board === b ? BLUE : BORDER}`, color: board === b ? "#fff" : "#1f2937", boxShadow: board === b ? "0 4px 14px rgba(29,78,216,0.35)" : "none" }}>{b}</button>
                       ))}
                     </div>
                   </div>
 
                   <div>
-                    <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#6b7280", marginBottom: 10, textTransform: "uppercase" }}>Grade / Class</p>
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <p style={{ fontSize: "0.67vw", fontWeight: 700, letterSpacing: "0.1em", color: "#374151", marginBottom: "0.67vw", textTransform: "uppercase" }}>Grade / Class</p>
+                    <div style={{ display: "flex", gap: "0.53vw" }}>
                       {GRADES.map(g => (
-                        <button key={g} type="button" onClick={() => setGrade(g)} style={{ width: 44, height: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", background: grade === g ? "#eff6ff" : IBKG, border: `1.5px solid ${grade === g ? BLUE : BORDER}`, color: grade === g ? BLUE : "#6b7280" }}>{g}</button>
+                        <button key={g} type="button" onClick={() => setGrade(g)} style={{ width: "2.93vw", height: "2.93vw", borderRadius: "0.67vw", fontSize: "0.87vw", fontWeight: 700, cursor: "pointer", background: grade === g ? BLUE : "#fff", border: `1.5px solid ${grade === g ? BLUE : BORDER}`, color: grade === g ? "#fff" : "#1f2937", boxShadow: grade === g ? "0 4px 14px rgba(29,78,216,0.35)" : "none" }}>{g}</button>
                       ))}
                     </div>
-                    <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>Helps us adapt the AI curriculum to your level.</p>
+                    <p style={{ fontSize: "0.73vw", color: "#6b7280", marginTop: "0.4vw" }}>Helps us adapt the AI curriculum to your level.</p>
                   </div>
 
-                  <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
-                    <div style={{ marginTop: 2, flexShrink: 0 }}>
-                      <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ display: "none" }}/>
-                      <div onClick={() => setAgreed(v => !v)} style={{ width: 18, height: 18, borderRadius: 5, border: `2px solid ${agreed ? BLUE : BORDER}`, background: agreed ? BLUE : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                        {agreed && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "0.67vw", cursor: "pointer" }}>
+                    <div style={{ marginTop: "0.13vw", flexShrink: 0 }}>
+                      <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ position: "absolute", opacity: 0, width: 0, height: 0, pointerEvents: "none" }}/>
+                      <div onClick={() => setAgreed(v => !v)} style={{ width: "1.2vw", height: "1.2vw", boxSizing: "border-box", borderRadius: "0.33vw", border: `1.5px solid ${agreed ? BLUE : BORDER}`, background: agreed ? BLUE : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                        {agreed && <svg width="0.67vw" height="0.53vw" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </div>
                     </div>
-                    <span style={{ fontSize: 12.5, color: "#6b7280", lineHeight: 1.6 }}>
+                    <span style={{ fontSize: "0.83vw", color: "#374151", lineHeight: 1.6 }}>
                       I agree to the <span style={{ color: LBLUE, fontWeight: 600 }}>Privacy Policy</span> and{" "}
                       <span style={{ color: LBLUE, fontWeight: 600 }}>Student Safety Guidelines</span>. Ready to start my AI journey!
                     </span>
                   </label>
 
-                  {error && <p style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}>{error}</p>}
+                  {error && <p style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: "0.67vw", padding: "0.67vw 0.93vw", fontSize: "0.87vw" }}>{error}</p>}
 
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button type="button" onClick={() => setStep(1)} style={{ padding: "12px 20px", background: IBKG, border: `1px solid ${BORDER}`, borderRadius: 999, fontSize: 14, fontWeight: 600, color: "#6b7280", cursor: "pointer" }}>
+                  <div style={{ display: "flex", gap: "0.67vw" }}>
+                    <button type="button" onClick={() => setStep(1)} style={{ padding: "0.8vw 1.33vw", background: IBKG, border: `1px solid ${BORDER}`, borderRadius: 999, fontSize: "0.93vw", fontWeight: 600, color: "#374151", cursor: "pointer" }}>
                       ← Back
                     </button>
-                    <button type="submit" disabled={loading || !agreed} style={{ flex: 1, padding: "12px", background: BLUE, color: "#fff", borderRadius: 999, fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer", opacity: (loading || !agreed) ? 0.4 : 1, boxShadow: "0 4px 20px rgba(29,78,216,0.4)" }}>
+                    <button type="submit" disabled={loading || !agreed} style={{ flex: 1, padding: "1vw", background: BLUE, color: "#fff", borderRadius: 999, fontSize: "1.07vw", fontWeight: 800, border: `1.5px solid ${GOLD}`, cursor: "pointer", opacity: (loading || !agreed) ? 0.4 : 1, boxShadow: "0 4px 20px rgba(29,78,216,0.4), 0 0 12px rgba(200,160,80,0.35)" }}>
                       {loading ? "Creating account…" : "Launch my journey 🚀"}
                     </button>
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "center", gap: 24 }}>
+                  <div style={{ display: "flex", justifyContent: "center", gap: "1.6vw" }}>
                     {["✅ COPPA Compliant", "🔒 Student-safe", "🎓 Teacher monitored"].map(t => (
-                      <span key={t} style={{ fontSize: 10.5, color: "#9ca3af" }}>{t}</span>
+                      <span key={t} style={{ fontSize: "0.7vw", color: "#6b7280" }}>{t}</span>
                     ))}
                   </div>
                 </form>
               )}
             </div>
           </div>
-        </div>
       </div>
     </div>
   );
