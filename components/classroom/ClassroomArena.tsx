@@ -77,7 +77,7 @@ function getInputFormat(content: string): "qa" | "points" {
 
 /** Extracts an explicit count: "5 points", "3 questions", "give me 7" → number. */
 function extractPointCount(text: string): number | null {
-  const m = text.match(/\b(\d+)\s*(?:points?|cards?|flashcards?|questions?)\b/i)
+  const m = text.match(/\b(\d+)\s*(?:points?|cards?|flashcards?|questions?|q\s*(?:&|and)?\s*a\.?s?|qa)\b/i)
          ?? text.match(/\b(?:give|create|make|generate)\s+(\d+)\b/i);
   if (!m) return null;
   const n = parseInt(m[1], 10);
@@ -1010,7 +1010,6 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                       const parsed = parseFlashcards(msg.content);
                       if (parsed.length > 0) {
                         setFlashcardRaw(msg.content);
-                        setInlineFC({ msgId: msg.id, cards: parsed });
                         setFcMap(prev => ({ ...prev, [msg.id]: parsed }));
                         setFcState({ msgId: msg.id, idx: 0, flipped: false });
                       }
