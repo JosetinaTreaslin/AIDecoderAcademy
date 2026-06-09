@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSignIn, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -84,6 +84,7 @@ export default function SignInPage() {
   const [showPw,   setShowPw]   = useState(false);
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
+  const justLoggedIn = useRef(false);
 
   // Forgot password flow
   const [forgotMode,      setForgotMode]      = useState(false);
@@ -95,7 +96,7 @@ export default function SignInPage() {
   const [showConfirmPw,   setShowConfirmPw]   = useState(false);
 
   useEffect(() => {
-    if (isSignedIn) router.replace("/dashboard");
+    if (isSignedIn && !justLoggedIn.current) router.replace("/dashboard");
   }, [isSignedIn, router]);
 
   // Hide the document-level scrollbar (and its purple hover thumb from globals.css)
@@ -120,7 +121,9 @@ export default function SignInPage() {
     try {
       const result = await signIn.create({ identifier: email, password });
       if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId, beforeEmit: () => router.replace("/auth/profile-setup") });
+        justLoggedIn.current = true;
+        await setActive({ session: result.createdSessionId });
+        router.replace("/auth/profile-setup");
       }
     } catch (err: unknown) {
       setError((err as { errors?: { message: string }[] })?.errors?.[0]?.message ?? "Invalid email or password.");

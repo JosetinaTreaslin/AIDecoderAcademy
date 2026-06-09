@@ -151,7 +151,7 @@ export default function SignUpPage() {
       const result = await signUp.attemptEmailAddressVerification({ code });
       if (result.status === "complete") {
         await fetch("/api/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ display_name: fullName.split(" ")[0], avatar_emoji: "🚀", age_group: gradeToAgeGroup(grade), interests: [] }) }).catch(() => {});
-        await setActive({ session: result.createdSessionId, beforeEmit: () => router.replace("/dashboard") });
+        await setActive({ session: result.createdSessionId, beforeEmit: () => router.replace("/auth/profile-setup") });
       }
     } catch (err: unknown) {
       setError((err as { errors?: { message: string }[] })?.errors?.[0]?.message ?? "Invalid code.");
