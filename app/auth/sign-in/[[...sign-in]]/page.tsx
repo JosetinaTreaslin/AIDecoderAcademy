@@ -196,6 +196,9 @@ export default function SignInPage() {
               <div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4vw" }}>
                   <p style={{ fontSize: "0.67vw", fontWeight: 700, letterSpacing: "0.1em", color: "#374151", textTransform: "uppercase", margin: 0 }}>Password</p>
+                  <Link href="#" style={{ fontSize: "0.8vw", fontWeight: 600, color: LBLUE, textDecoration: "none" }}>
+                    Forgot password?
+                  </Link>
                 </div>
                 <div style={{ position: "relative" }}>
                   <span style={{ position: "absolute", left: "0.8vw", top: "50%", transform: "translateY(-50%)", color: "#6b7280", display: "flex" }}>
