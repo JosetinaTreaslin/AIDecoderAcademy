@@ -202,10 +202,8 @@ export default function SignInPage() {
   };
 
   const passReqs = [
-    { label: "At least 4 letters",       ok: (newPassword.match(/[a-zA-Z]/g)||[]).length >= 4 },
-    { label: "At least 1 capital letter", ok: (newPassword.match(/[A-Z]/g)||[]).length >= 1 },
-    { label: "At least 1 symbol (!@#…)",  ok: (newPassword.match(/[^a-zA-Z0-9]/g)||[]).length >= 1 },
-    { label: "At least 3 numbers",        ok: (newPassword.match(/[0-9]/g)||[]).length >= 3 },
+    { label: "At least 4 letters and 1 capital letter", ok: (newPassword.match(/[a-zA-Z]/g)||[]).length >= 4 && (newPassword.match(/[A-Z]/g)||[]).length >= 1 },
+    { label: "At least 3 numbers and 1 symbol (!@#…)", ok: (newPassword.match(/[0-9]/g)||[]).length >= 3 && (newPassword.match(/[^a-zA-Z0-9]/g)||[]).length >= 1 },
   ];
 
   if (!isLoaded || isSignedIn) {
