@@ -123,7 +123,7 @@ export default function SignInPage() {
       if (result.status === "complete") {
         justLoggedIn.current = true;
         await setActive({ session: result.createdSessionId });
-        router.replace("/auth/profile-setup");
+        router.replace("/dashboard");
       }
     } catch (err: unknown) {
       setError((err as { errors?: { message: string }[] })?.errors?.[0]?.message ?? "Invalid email or password.");
