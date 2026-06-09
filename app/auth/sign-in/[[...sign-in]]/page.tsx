@@ -120,7 +120,7 @@ export default function SignInPage() {
     try {
       const result = await signIn.create({ identifier: email, password });
       if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId, beforeEmit: () => router.replace("/dashboard") });
+        await setActive({ session: result.createdSessionId, beforeEmit: () => router.replace("/auth/profile-setup") });
       }
     } catch (err: unknown) {
       setError((err as { errors?: { message: string }[] })?.errors?.[0]?.message ?? "Invalid email or password.");
