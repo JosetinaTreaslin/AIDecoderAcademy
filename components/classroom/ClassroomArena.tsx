@@ -1011,7 +1011,6 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                       const parsed = parseFlashcards(msg.content);
                       if (parsed.length > 0) {
                         setFlashcardRaw(msg.content);
-                        setInlineFC({ msgId: msg.id, cards: parsed });
                         setFcMap(prev => ({ ...prev, [msg.id]: parsed }));
                         setFcState({ msgId: msg.id, idx: 0, flipped: false });
                       }
