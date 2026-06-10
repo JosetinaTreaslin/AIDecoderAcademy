@@ -24,26 +24,32 @@ const PODIUM_META = [
   { rank:3, ring:"#CD7F32", glow:"rgba(205,127,50,0.35)",  platform:18, avatar:26, label:"🥉" },
 ];
 
-// ── Chapter tiles: same pentagon layout as chemistry, math images ─────────────
+// ── Chapter tiles: proper pentagon, equal pixel radius from circle center ─────
+// Reference: 1400×843 body. Pentagon center (47%, 52%), r=295px.
+// top % = relative to body height, left % = relative to body width.
+// zIndex descends ch1→ch5 so on overlap ch1 is always on top.
+// Equal-radius pentagon: r=295px from circle center (47%,46%) at 1400×843.
+// All 5 tiles are the same pixel distance from the circle → equal connector lengths.
 const TILES = [
-  { key:"ch1", src:"/classroom/mathematics/trigonometry.png",  num:1, locked:false,
-    style:{ top:"calc(50% - 362px)", left:"calc(47% - 150px)" } },
-  { key:"ch2", src:"/classroom/mathematics/real_numbers.png",  num:2, locked:true,
-    style:{ top:"calc(50% - 162px)", left:"calc(47% + 131px)" } },
-  { key:"ch3", src:"/classroom/mathematics/polynomials.png",   num:3, locked:true,
-    style:{ top:"calc(50% + 163px)", left:"calc(47% + 25px)" } },
-  { key:"ch4", src:"/classroom/mathematics/quadratic.png",     num:4, locked:true,
-    style:{ top:"calc(50% + 163px)", left:"calc(47% - 315px)" } },
-  { key:"ch5", src:"/classroom/mathematics/statistics.png",    num:5, locked:true,
-    style:{ top:"calc(50% - 162px)", left:"calc(47% - 421px)" } },
+  { key:"ch1", src:"/classroom/mathematics/trigonometry.png",  num:1, locked:false, zIndex:9,
+    style:{ top:"2%",  left:"36.3%" } },
+  { key:"ch2", src:"/classroom/mathematics/real_numbers.png",  num:2, locked:true,  zIndex:8,
+    style:{ top:"32%", left:"56%"   } },
+  { key:"ch3", src:"/classroom/mathematics/polynomials.png",   num:3, locked:true,  zIndex:7,
+    style:{ top:"65%", left:"49%"   } },
+  { key:"ch4", src:"/classroom/mathematics/quadratic.png",     num:4, locked:true,  zIndex:6,
+    style:{ top:"65%", left:"24%"   } },
+  { key:"ch5", src:"/classroom/mathematics/statistics.png",    num:5, locked:true,  zIndex:5,
+    style:{ top:"32%", left:"16%"   } },
 ] as const;
 
+// SVG connector endpoints: (x1,y1) = circle center (47,46); (x2,y2) = tile centers
 const CONNECTORS = [
-  { id:"c1", x1:47, y1:50, x2:47, y2:11 },
-  { id:"c2", x1:47, y1:50, x2:66, y2:38 },
-  { id:"c3", x1:47, y1:50, x2:59, y2:82 },
-  { id:"c4", x1:47, y1:50, x2:35, y2:82 },
-  { id:"c5", x1:47, y1:50, x2:28, y2:38 },
+  { id:"c1", x1:47, y1:46, x2:47, y2:11 },
+  { id:"c2", x1:47, y1:46, x2:67, y2:35 },
+  { id:"c3", x1:47, y1:46, x2:59, y2:74 },
+  { id:"c4", x1:47, y1:46, x2:35, y2:74 },
+  { id:"c5", x1:47, y1:46, x2:27, y2:35 },
 ];
 
 function LockMedallion() {
@@ -177,14 +183,38 @@ export function MathChapterMapPage({ onChapterSelect, onBack }: Props) {
   const podium    = lbEntries.slice(0, 3);
   const ranked    = lbEntries.slice(3);
 
+  // Continuous JS scale — locks all elements to background as one unit
+  const DESIGN_W = 1400;
+  const DESIGN_H = 900;
+  const [scaleX, setScaleX] = useState(1);
+  const [scaleY, setScaleY] = useState(1);
+  useEffect(() => {
+    const update = () => {
+      setScaleX(window.innerWidth  / DESIGN_W);
+      setScaleY(window.innerHeight / DESIGN_H);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   return (
-    <div className="relative overflow-hidden"
+    <div className="relative w-full overflow-hidden"
       style={{ height:"100dvh", fontFamily:"var(--font-dm-sans,'DM Sans',sans-serif)" }}>
+
+      <div style={{
+        position: "absolute", top: 0, left: 0,
+        width: DESIGN_W, height: DESIGN_H,
+        transformOrigin: "top left",
+        transform: `scale(${scaleX}, ${scaleY})`,
+        display: "flex", flexDirection: "column",
+        overflow: "hidden",
+      }}>
 
       {/* Background */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/classroom/mathematics/background.png" alt="" aria-hidden draggable={false}
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        className="absolute inset-0 w-full h-full object-cover object-top pointer-events-none select-none"
         style={{ zIndex:0 }} />
       <div className="absolute inset-0 pointer-events-none"
         style={{ background:"rgba(220,225,255,0.18)", zIndex:1 }} />
@@ -222,16 +252,18 @@ export function MathChapterMapPage({ onChapterSelect, onBack }: Props) {
       </header>
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}
-      <div className="relative" style={{ height:"calc(100dvh - 57px)", zIndex:10 }}>
+      <div className="relative flex-1 min-h-0" style={{ zIndex:10 }}>
 
-        {/* SVG connector lines */}
+        <div className="absolute inset-0">
+
+        {/* SVG connector dash lines — circle center to each tile center */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex:2 }}
           viewBox="0 0 100 100" preserveAspectRatio="none">
           {CONNECTORS.map(c => (
             <line key={c.id}
               x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2}
               stroke="rgba(255,255,255,0.6)" strokeWidth="0.4"
-              strokeDasharray="1.8 1.5" strokeLinecap="round" />
+              strokeDasharray="2 7" strokeLinecap="round" />
           ))}
         </svg>
 
@@ -239,8 +271,8 @@ export function MathChapterMapPage({ onChapterSelect, onBack }: Props) {
         <motion.div initial={{ opacity:0, scale:0.8 }} animate={{ opacity:1, scale:1 }}
           transition={{ duration:0.5, delay:0.1 }}
           className="absolute"
-          style={{ width:300, height:300, zIndex:3,
-            top:"calc(50% - 150px)", left:"calc(47% - 150px)" }}>
+          style={{ width:"21.4%", aspectRatio:"1 / 1", zIndex:3,
+            top:"28%", left:"36.3%" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/classroom/mathematics/mid_term_exam.png" alt="Integrated Exam Practice"
             className="w-full h-full object-contain select-none" draggable={false} />
@@ -263,54 +295,55 @@ export function MathChapterMapPage({ onChapterSelect, onBack }: Props) {
         {TILES.map((tile, i) => (
           <motion.div key={tile.key}
             className="absolute"
-            style={{ ...tile.style, width:300, zIndex:4, cursor:tile.locked?"not-allowed":"pointer" }}
+            style={{ ...tile.style, width:"21.4%", maxWidth:300, zIndex:tile.zIndex, cursor:tile.locked?"not-allowed":"pointer" }}
             initial={{ opacity:0, scale:0.88 }} animate={{ opacity:1, scale:1 }}
             transition={{ duration:0.4, delay:0.2 + i*0.08 }}
             whileHover={!tile.locked ? { scale:1.04 } : {}}
             whileTap={!tile.locked ? { scale:0.97 } : {}}
             onClick={() => handleClick(tile.num, tile.locked)}
           >
-            {/* White card wrapper — matches chemistry tile appearance */}
-            <div className="relative rounded-xl overflow-hidden"
-              style={{
-                backdropFilter: "blur(12px)",
-                boxShadow: tile.locked
-                  ? "0 4px 16px rgba(15,28,77,0.12)"
-                  : "0 6px 28px rgba(15,28,77,0.18), 0 0 0 2px rgba(37,99,235,0.3)",
-              }}>
+            <div className="relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={tile.src} alt={tile.key}
-                className="w-full h-auto select-none"
-                draggable={false} />
+                className="w-full h-auto rounded-xl select-none block"
+                draggable={false}
+                style={{
+                  boxShadow: tile.locked
+                    ? "0 4px 16px rgba(15,28,77,0.12)"
+                    : "0 6px 28px rgba(15,28,77,0.18), 0 0 0 2px rgba(37,99,235,0.3)",
+                }} />
               {tile.locked && <LockMedallion />}
             </div>
           </motion.div>
         ))}
 
+        </div>{/* end .mmap-map */}
+
         {/* Progress card — top-left */}
         <motion.div initial={{ opacity:0, x:-20 }} animate={{ opacity:1, x:0 }}
           transition={{ duration:0.45 }}
-          className="absolute rounded-2xl p-4"
-          style={{ top:20, left:20, width:260, zIndex:5,
+          className="mmap-progress absolute rounded-2xl p-4"
+          style={{ top:20, left:20, width:"19%", minWidth:180, zIndex:15,
             background:"rgba(255,255,255,0.92)", backdropFilter:"blur(20px)",
             border:"1px solid rgba(255,255,255,0.75)",
-            boxShadow:"0 8px 32px rgba(15,28,77,0.1)" }}>
+            boxShadow:"0 8px 32px rgba(15,28,77,0.1)",
+            overflow:"hidden" }}>
 
-          <p className="font-display font-black text-sm mb-3" style={{ color:"#0f1c4d" }}>
+          <p className="font-display font-black text-sm mb-3 truncate" style={{ color:"#0f1c4d" }}>
             Subject Progress
           </p>
 
-          <div className="flex items-center gap-4 mb-3">
+          <div className="flex items-center gap-2 mb-3 min-w-0">
             <ProgressRing pct={progressPct} color="#2563eb" />
-            <div className="space-y-2 flex-1">
+            <div className="space-y-2 flex-1 min-w-0">
               {[
                 { label:"Chapters Completed", value:`${mathChapters.length}/5` },
                 { label:"Tests Attempted",    value:"—" },
                 { label:"Avg. Accuracy",      value:"—" },
               ].map(({ label, value }) => (
-                <div key={label} className="flex items-center justify-between">
-                  <span className="text-[11px]" style={{ color:"rgba(15,28,77,0.5)" }}>{label}</span>
-                  <span className="text-[11px] font-black" style={{ color:"#0f1c4d" }}>{value}</span>
+                <div key={label} className="flex items-center justify-between gap-1 min-w-0">
+                  <span className="text-[11px] truncate" style={{ color:"rgba(15,28,77,0.5)" }}>{label}</span>
+                  <span className="text-[11px] font-black flex-shrink-0" style={{ color:"#0f1c4d" }}>{value}</span>
                 </div>
               ))}
             </div>
@@ -320,7 +353,8 @@ export function MathChapterMapPage({ onChapterSelect, onBack }: Props) {
         {/* Leaderboard panel — top-right */}
         <motion.div initial={{ opacity:0, x:20 }} animate={{ opacity:1, x:0 }}
           transition={{ duration:0.45 }}
-          style={{ position:"absolute", top:80, right:20, height:"60%", width:320, zIndex:5,
+          className="mmap-lb"
+          style={{ position:"absolute", top:80, right:12, height:"65%", width:"20%", minWidth:180, zIndex:15,
             display:"flex", flexDirection:"column", borderRadius:16, overflow:"hidden",
             background:"rgba(255,255,255,0.90)", backdropFilter:"blur(20px)",
             boxShadow:"0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
@@ -373,6 +407,7 @@ export function MathChapterMapPage({ onChapterSelect, onBack }: Props) {
           )}
         </motion.div>
 
+      </div>
       </div>
     </div>
   );

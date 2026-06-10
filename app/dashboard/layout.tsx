@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { ArenaEnvironment } from "@/components/dashboard/ArenaEnvironment";
@@ -12,20 +13,29 @@ import type { Profile } from "@/types";
 
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isClassroom  = pathname?.startsWith("/dashboard/classroom") ?? false;
+  const isHub        = pathname === "/dashboard";
+  const isWorld      = pathname?.startsWith("/dashboard/world") ?? false;
+  const isPlayground = pathname?.startsWith("/dashboard/playground") ?? false;
+  const isHideNav    = isClassroom || isHub || isWorld || isPlayground;
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [arenaOverride, setArenaOverride] = useState<number | null>(null);
-  const [navVisible, setNavVisible] = useState(false);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevArenaRef = useRef<number | null>(null);
 
-  const showNav = useCallback(() => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    setNavVisible(true);
-  }, []);
-
-  const scheduleHide = useCallback(() => {
-    hideTimerRef.current = setTimeout(() => setNavVisible(false), 300);
-  }, []);
+  // Nav visibility — auto-hides on classroom/hub pages, reveals on hover
+  const [navVisible, setNavVisible] = useState(!isHideNav);
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => { setNavVisible(!isHideNav); }, [isHideNav]);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("nav-visibility-change", { detail: { visible: navVisible, height: 48 } }));
+  }, [navVisible]);
+  const showNav = () => { clearTimeout(navTimerRef.current); setNavVisible(true); };
+  const hideNav = () => {
+    if (!isHideNav) return;
+    navTimerRef.current = setTimeout(() => setNavVisible(false), 400);
+  };
 
   useEffect(() => {
     fetch("/api/profile")
@@ -82,25 +92,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     >
       <ArenaEnvironment preset={arena.environmentPreset} gradient={arena.gradient} />
 
-      {/* ── Hover trigger strip — always visible, sits at top ── */}
-      <div
-        className="fixed top-0 left-0 right-0 z-50"
-        style={{ height: 10 }}
-        onMouseEnter={showNav}
-      />
+      {/* Hover zone — catches cursor at top edge when nav is hidden */}
+      {isHideNav && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-3" onMouseEnter={showNav} />
+      )}
 
-      {/* ── Top nav — slides in from top on hover ── */}
+      {/* ── Top nav ── */}
       <header
         className="fixed top-0 left-0 right-0 z-40 border-b"
         style={{
-          background:       "rgba(255,255,255,0.92)",
-          borderColor:      "rgba(0,0,0,0.07)",
-          backdropFilter:   "blur(20px)",
-          transform:        navVisible ? "translateY(0)" : "translateY(-100%)",
-          transition:       "transform 0.3s cubic-bezier(0.16,1,0.3,1)",
+          background:     "#ffffff",
+          borderColor:    "rgba(0,0,0,0.07)",
+          backdropFilter: "blur(20px)",
+          transform:      navVisible ? "translateY(0)" : "translateY(-100%)",
+          transition:     "transform 0.25s cubic-bezier(0.16,1,0.3,1)",
         }}
         onMouseEnter={showNav}
-        onMouseLeave={scheduleHide}
+        onMouseLeave={hideNav}
       >
         <div className="flex items-center justify-between px-5 py-2.5 w-full gap-4">
 
@@ -166,8 +174,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      {/* ── Main content — always full-height since nav is overlaid ── */}
-      <main className="relative z-10 w-full overflow-hidden" style={{ height: "100dvh" }}>
+      {/* ── Main content ── */}
+      <main className="relative z-10 w-full overflow-y-auto"
+        style={{
+          paddingTop: isHideNav ? (navVisible ? 48 : 0) : 48,
+          minHeight: isHideNav ? "100dvh" : "calc(100dvh - 48px)",
+          transition: "padding-top 0.25s cubic-bezier(0.16,1,0.3,1)",
+        }}>
         {children}
       </main>
 
