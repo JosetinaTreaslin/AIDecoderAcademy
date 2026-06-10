@@ -101,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header
         className="fixed top-0 left-0 right-0 z-40 border-b"
         style={{
-          background:     "#ffffff",
+          background:     "rgba(255,255,255,0.92)",
           borderColor:    "rgba(0,0,0,0.07)",
           backdropFilter: "blur(20px)",
           transform:      navVisible ? "translateY(0)" : "translateY(-100%)",
