@@ -47,22 +47,19 @@ export default function Arena1CenterOverlay({
   const firstName = profile?.display_name?.split(" ")[0] ?? "Creator";
 
   return (
-    <div style={{
-      position:   "absolute",
-      left:       "51%",
-      top:        "50%",
-      transform:  "translate(-50%, -50%)",
-      width:      "24%",
-      maxWidth:   340,
-      minWidth:   180,
-      zIndex:     35,
-      pointerEvents: "none",
-    }}>
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, scale: 0.94, y: 8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
-      style={{ width: "100%" }}
+      style={{
+        position:  "absolute",
+        left:      "41%",
+        top:       "29%",
+        transform: "translate(-50%, -50%)",
+        width:     "clamp(260px, 22vw, 340px)",
+        zIndex:    35,
+        pointerEvents: "none",
+      }}
     >
       <div
         style={{
@@ -73,7 +70,6 @@ export default function Arena1CenterOverlay({
           boxShadow:      "0 8px 40px rgba(0,80,255,0.18), 0 2px 0 rgba(255,255,255,0.9) inset",
           padding:        "20px",
           pointerEvents:  "auto",
-          overflow:       "hidden",
         }}
       >
         {/* Top accent line */}
@@ -257,6 +253,5 @@ export default function Arena1CenterOverlay({
         </div>
       </div>
     </motion.div>
-    </div>
   );
 }

@@ -57,22 +57,7 @@ export default function WorldPage() {
   const allDone         = completedCount === objectives.length;
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: "100dvh" }}>
-      <style>{`
-        .world-page {
-          position: absolute; top: 0; left: 0;
-          width: 100vw; height: 100dvh;
-          transform-origin: top left;
-        }
-        @media (max-width:1400px) { .world-page { transform:scale(0.88); width:calc(100vw/0.88); height:calc(100dvh/0.88); } }
-        @media (max-width:1200px) { .world-page { transform:scale(0.76); width:calc(100vw/0.76); height:calc(100dvh/0.76); } }
-        @media (max-width:1000px) { .world-page { transform:scale(0.64); width:calc(100vw/0.64); height:calc(100dvh/0.64); } }
-        @media (max-width:800px)  { .world-page { transform:scale(0.52); width:calc(100vw/0.52); height:calc(100dvh/0.52); } }
-        @media (max-width:600px)  { .world-page { transform:scale(0.42); width:calc(100vw/0.42); height:calc(100dvh/0.42); } }
-        @media (max-height:750px) and (min-width:601px) { .world-page { transform:scale(0.82); width:calc(100vw/0.82); height:calc(100dvh/0.82); } }
-        @media (max-height:600px) { .world-page { transform:scale(0.66); width:calc(100vw/0.66); height:calc(100dvh/0.66); } }
-      `}</style>
-      <div className="world-page">
+    <div className="relative w-full overflow-hidden" style={{ height: "100vh" }}>
 
       {/* ── World background ── */}
       {arenaId === 1 ? (
@@ -88,9 +73,12 @@ export default function WorldPage() {
           <div
             style={{
               position: "absolute",
-              top: 0, left: 0,
-              width: "100%",
-              height: "100%",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              // Cover the viewport: whichever dimension is the bottleneck, fill it.
+              width:  `max(100vw, calc(100vh * ${arena1Aspect}))`,
+              height: `max(100vh, calc(100vw / ${arena1Aspect}))`,
             }}
           >
             <img
@@ -135,7 +123,7 @@ export default function WorldPage() {
           <img
             src={`/worlds/arena-${arenaId}.png`}
             alt={arena.name}
-            className="w-full h-full" style={{ objectFit: "fill" }}
+            className="w-full h-full object-cover"
             onError={(e) => {
               const el = e.currentTarget as HTMLImageElement;
               if (el.src.endsWith(".png")) {
@@ -167,8 +155,8 @@ export default function WorldPage() {
       {/* ── Arenas 2–6: Mission cards grid ── */}
       {arenaId !== 1 && (
         <div className="absolute inset-0 flex items-center justify-center z-30 px-4 sm:px-8"
-          style={{ paddingTop: "clamp(60px, 10vh, 120px)", paddingBottom: "clamp(12px, 2vh, 32px)" }}>
-          <div className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 overflow-y-auto" style={{ maxHeight: "100%" }}>
+          style={{ paddingTop: "100px", paddingBottom: "20px" }}>
+          <div className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-3 gap-4">
             {objectives.map((obj, i) => {
               const done           = completed.has(obj.id);
               const prevDone       = i === 0 || completed.has(objectives[i - 1].id);
@@ -199,7 +187,7 @@ export default function WorldPage() {
                   >
                     <div className="h-0.5 w-full" style={{ background: done ? arena.accent : "rgba(255,255,255,0.08)" }}/>
 
-                    <div className="p-4 sm:p-5">
+                    <div className="p-5">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">{obj.emoji}</span>
@@ -335,7 +323,6 @@ export default function WorldPage() {
           </button>
         </motion.div>
       )}
-      </div>{/* end .world-page */}
     </div>
   );
 }
