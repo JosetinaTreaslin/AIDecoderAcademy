@@ -174,13 +174,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      {/* ── Main content ── */}
-      <main className="relative z-10 w-full overflow-y-auto"
-        style={{
-          paddingTop: isHideNav ? (navVisible ? 48 : 0) : 48,
-          minHeight: isHideNav ? "100dvh" : "calc(100dvh - 48px)",
-          transition: "padding-top 0.25s cubic-bezier(0.16,1,0.3,1)",
-        }}>
+      {/* ── Main content — nav is fixed so no padding needed ── */}
+      <main className="relative z-10 w-full overflow-hidden" style={{ height: "100dvh" }}>
         {children}
       </main>
 
