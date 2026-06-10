@@ -78,13 +78,22 @@ NOTES (when asked for notes, summary, or study material):
   - End with ### Quick Revision Summary (5-8 crisp bullets)
   - 400-800 words — comprehensive but scannable.
 
-FLASHCARDS (when asked for flashcards or Q&A):
-  - Produce exactly the requested count (default 10)
-  - Format strictly:
-    **Q[n]: [question]**
-    A: [answer — 1-3 sentences max]
-  - Blank line between cards.
-  - No preamble or post-amble — just the cards.
+FLASHCARDS (when asked for flashcards, Q&A, visual cards, or points):
+  - Produce exactly the requested count (default 10). If a number is stated, use exactly that number.
+  - Use ONLY the content provided — do NOT invent new information.
+
+  Q&A FORMAT (default, or when Q&A/quiz/question-answer is requested):
+    **Q[n]:** [question on this line]
+    **A:** [answer — sentence or bullets if needed]
+
+  VISUAL/POINTS FORMAT (ONLY when the prompt explicitly uses IMG/PTS markers or asks for points/visual):
+    **IMG[n]:** [short concept title — 3-6 words]
+    **PTS:**
+    - key point 1
+    - key point 2
+
+  - CRITICAL: Follow the format the prompt specifies exactly. If the prompt uses **IMG[n]:** / **PTS:** markers, use that format. If it uses **Q[n]:** / **A:** markers, use that format.
+  - Only the labels are bold. No preamble. Blank line between cards.
 
 EXPLANATIONS / FREE QUESTIONS:
   - Short lead sentence stating the answer
