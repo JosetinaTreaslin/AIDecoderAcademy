@@ -337,6 +337,7 @@ export function CreationsRoom({
   const [input,            setInput]            = useState("");
   const [creations,        setCreations]        = useState<Creation[]>([]);
   const [injected,         setInjected]         = useState<Creation[]>([]);
+  const [previewImgUrl,    setPreviewImgUrl]    = useState<string | null>(null);
   const [plusOpen,         setPlusOpen]         = useState(false);
   const [isDragOver,       setIsDragOver]       = useState(false);
   const [binDragOver,      setBinDragOver]      = useState(false);
@@ -915,34 +916,57 @@ export function CreationsRoom({
 
           {/* Image preview section — ChatGPT-style at the top */}
           {injected.filter(i => i.output_type === "image").length > 0 && (
-            <div style={{
-              display: "flex", gap: 4, alignItems: "flex-start", flexWrap: "wrap",
-            }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
               {injected.filter(i => i.output_type === "image").map(item => {
                 const isUploading = uploadingIds.has(item.id);
                 const trimmedContent = typeof item.content === "string" ? item.content.trim() : "";
                 const imgUrl = item.file_url
                   || (/^data:image\//i.test(trimmedContent) ? trimmedContent : null)
                   || (/^https?:\/\//i.test(trimmedContent) ? trimmedContent : null);
+                const size = mobile ? 48 : 56;
                 return (
                   <div key={item.id} style={{
                     position: "relative", flexShrink: 0,
-                    width: mobile ? 44 : 52, height: mobile ? 44 : 52,
-                    borderRadius: 12, overflow: "hidden",
-                    background: `rgba(${activeMeta.glowRgb},0.15)`,
-                    border: `1.5px solid rgba(${activeMeta.glowRgb},0.5)`,
-                    boxShadow: `0 0 7px rgba(${activeMeta.glowRgb},0.18)`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "default",
+                    width: size, height: size,
                   }}>
+                    {/* Thumbnail — click opens preview modal */}
+                    <div
+                      onClick={() => imgUrl && !isUploading && setPreviewImgUrl(imgUrl)}
+                      style={{
+                        width: "100%", height: "100%",
+                        borderRadius: 10, overflow: "hidden",
+                        background: `rgba(${activeMeta.glowRgb},0.15)`,
+                        border: `1.5px solid rgba(${activeMeta.glowRgb},0.5)`,
+                        boxShadow: `0 0 7px rgba(${activeMeta.glowRgb},0.18)`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: imgUrl && !isUploading ? "zoom-in" : "default",
+                      }}>
+                      {imgUrl && !isUploading ? (
+                        <ShelfThumbnail c={item} glowColor={activeMeta.glowColor} glowRgb={activeMeta.glowRgb} />
+                      ) : isUploading ? (
+                        <span style={{ fontSize: 22, animation: "spin 1.5s linear infinite" }}>⏳</span>
+                      ) : (
+                        <span style={{ fontSize: 22 }}>🖼️</span>
+                      )}
+                    </div>
 
-                    {imgUrl && !isUploading ? (
-                      <ShelfThumbnail c={item} glowColor={activeMeta.glowColor} glowRgb={activeMeta.glowRgb} />
-                    ) : isUploading ? (
-                      <span style={{ fontSize: 24, animation: "spin 1.5s linear infinite" }}>⏳</span>
-                    ) : (
-                      <span style={{ fontSize: 24 }}>🖼️</span>
-                    )}
+                    {/* Close (×) button — top-right, inside container */}
+                    <button
+                      onClick={e => { e.stopPropagation(); setInjected(prev => prev.filter(x => x.id !== item.id)); }}
+                      title="Remove"
+                      style={{
+                        position: "absolute", top: 2, right: 2,
+                        width: 16, height: 16, borderRadius: "50%",
+                        background: "rgba(0,0,0,0.65)",
+                        border: "1px solid rgba(255,255,255,0.35)",
+                        color: "#fff", fontSize: 9, fontWeight: 700,
+                        lineHeight: 1, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        zIndex: 10, padding: 0,
+                        backdropFilter: "blur(4px)",
+                      }}>
+                      ×
+                    </button>
                   </div>
                 );
               })}
@@ -1313,6 +1337,50 @@ export function CreationsRoom({
         </div>
       )}
 
+      {/* ── Image preview modal ──────────────────────────────────────────────── */}
+      {previewImgUrl && (
+        <div
+          onClick={() => setPreviewImgUrl(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.82)", backdropFilter: "blur(6px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+          {/* Image container — click inside stops propagation */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position: "relative", maxWidth: "88vw", maxHeight: "84vh" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewImgUrl}
+              alt="Preview"
+              draggable={false}
+              style={{
+                display: "block",
+                maxWidth: "88vw", maxHeight: "84vh",
+                borderRadius: 16,
+                boxShadow: "0 8px 48px rgba(0,0,0,0.6)",
+                objectFit: "contain",
+              }}
+            />
+            {/* Close button */}
+            <button
+              onClick={() => setPreviewImgUrl(null)}
+              style={{
+                position: "absolute", top: -14, right: -14,
+                width: 32, height: 32, borderRadius: "50%",
+                background: "rgba(20,10,40,0.92)",
+                border: "1.5px solid rgba(255,255,255,0.25)",
+                color: "#fff", fontSize: 18, fontWeight: 700,
+                lineHeight: 1, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.5)",
+              }}>
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
