@@ -110,17 +110,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onMouseEnter={showNav}
         onMouseLeave={hideNav}
       >
-        <div className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 w-full gap-2 sm:gap-4">
+        <div className="flex items-center justify-between w-full px-3 md:px-5 py-1.5 md:py-2.5 gap-2 md:gap-4">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-md sm:rounded-lg flex items-center justify-center"
+          <Link href="/" className="flex items-center gap-1.5 md:gap-2.5 flex-shrink-0">
+            <div className="w-5 h-5 md:w-7 md:h-7 rounded-md md:rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: arena.accent }}>
-              <svg width="12" height="12" className="sm:w-[14px] sm:h-[14px]" viewBox="0 0 16 16" fill="none">
+              <svg className="w-2.5 h-2.5 md:w-3.5 md:h-3.5" viewBox="0 0 16 16" fill="none">
                 <path d="M8 2L14 6V10L8 14L2 10V6L8 2Z" fill="#08080F"/>
               </svg>
             </div>
-            <span className="font-display font-black text-sm sm:text-base tracking-tight hidden sm:block" style={{ color: "#1a1a2e" }}>
+            <span className="font-display font-black text-xs md:text-base tracking-tight hidden sm:block" style={{ color: "#1a1a2e" }}>
               AI<span style={{ color: arena.accent }}>Decoder</span>
             </span>
           </Link>
@@ -128,40 +128,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex-1" />
 
           {/* Right — XP + level + avatar */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
             {profile && (
-              <div className="hidden sm:flex items-center gap-2 sm:gap-2.5">
+              <div className="hidden sm:flex items-center gap-1.5 md:gap-2.5">
                 {/* Level badge */}
-                <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border"
+                <div className="flex items-center gap-1 md:gap-1.5 px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-lg md:rounded-xl border"
                   style={{ background: arena.accentDim, borderColor: arena.accent + "40" }}>
-                  <span className="text-xs sm:text-sm">{arena.emoji}</span>
-                  <span className="font-display font-black text-[10px] sm:text-xs" style={{ color: arena.accent }}>
+                  <span className="text-xs md:text-sm">{arena.emoji}</span>
+                  <span className="font-display font-black text-[9px] md:text-xs" style={{ color: arena.accent }}>
                     Lv {level}
                   </span>
                 </div>
 
                 {/* XP bar */}
-                <div className="w-16 sm:w-24 space-y-0.5">
+                <div className="w-16 md:w-24 space-y-0.5">
                   <div className="flex justify-between">
-                    <span className="text-[8px] sm:text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.35)" }}>{xp} XP</span>
-                    {!isMaxed && <span className="text-[8px] sm:text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.25)" }}>{nextThreshold}</span>}
+                    <span className="text-[7px] md:text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.35)" }}>{xp} XP</span>
+                    {!isMaxed && <span className="text-[7px] md:text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.25)" }}>{nextThreshold}</span>}
                   </div>
                   <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.10)" }}>
                     <div className="h-full rounded-full transition-all duration-1000"
-                      style={{
-                        width:      `${progress}%`,
-                        background: arena.accent,
-                        boxShadow:  `0 0 6px ${arena.accentGlow}`,
-                      }}/>
+                      style={{ width: `${progress}%`, background: arena.accent, boxShadow: `0 0 6px ${arena.accentGlow}` }}/>
                   </div>
                 </div>
 
                 {/* Streak */}
                 {(profile.streak_days ?? 0) > 0 && (
-                  <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg border border-orange-500/20"
+                  <div className="flex items-center gap-0.5 md:gap-1 px-1 md:px-2 py-0.5 md:py-1 rounded-md md:rounded-lg border border-orange-500/20"
                     style={{ background: "rgba(255,107,43,0.1)" }}>
-                    <span className="text-xs sm:text-sm">🔥</span>
-                    <span className="font-display font-black text-[10px] sm:text-xs text-orange-400">
+                    <span className="text-xs md:text-sm">🔥</span>
+                    <span className="font-display font-black text-[9px] md:text-xs text-orange-400">
                       {profile.streak_days}
                     </span>
                   </div>
@@ -177,7 +173,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="relative z-10 w-full overflow-y-auto"
         style={{
           paddingTop: isHideNav ? (navVisible ? 48 : 0) : 48,
-          minHeight: isHideNav ? "100dvh" : "calc(100dvh - 48px)",
+          minHeight: "100dvh",
           transition: "padding-top 0.25s cubic-bezier(0.16,1,0.3,1)",
         }}>
         {children}
