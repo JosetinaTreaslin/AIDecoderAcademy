@@ -247,13 +247,7 @@ export default function SignUpPage() {
       {/* Hide scrollbars on the form card while keeping it scrollable if content overflows */}
       <style>{`
         .signup-card-scroll::-webkit-scrollbar { display: none; }
-        .nav-login {
-          font-size: 1.25vw; font-weight: 600; color: #1d4ed8; text-decoration: none;
-          transition: color 0.18s, transform 0.18s;
-          display: inline-block;
-        }
-        .nav-login:hover { color: #1e3a8a; transform: translateY(-1px); text-decoration: underline; }
-        .nav-signup {
+        .nav-active {
           font-size: 1.15vw; font-weight: 700; color: #fff; background: #1d4ed8;
           padding: 1vh 1.7vw; border-radius: 999px; text-decoration: none;
           border: 1.5px solid #C8A050;
@@ -261,19 +255,27 @@ export default function SignUpPage() {
           transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
           display: inline-block;
         }
-        .nav-signup:hover {
+        .nav-active:hover {
           background: #2563eb;
           box-shadow: 0 6px 22px rgba(29,78,216,0.6), 0 0 20px rgba(200,160,80,0.5);
           transform: translateY(-2px);
         }
+        .nav-inactive {
+          font-size: 1.35vw; font-weight: 800; color: #1d4ed8; text-decoration: none;
+          text-shadow: 0 -2px 6px rgba(255,255,255,1), 0 -1px 3px rgba(255,255,255,0.9), 0 0 3px rgba(255,255,255,0.6);
+          transition: color 0.18s, transform 0.18s, text-shadow 0.18s;
+          display: inline-block;
+        }
+        .nav-inactive:hover { color: #1e3a8a; transform: translateY(-1px); text-decoration: underline; text-shadow: 0 -2px 6px rgba(255,255,255,1), 0 -1px 3px rgba(255,255,255,0.9), 0 0 3px rgba(255,255,255,0.6); }
+        .nav-inactive:active { text-decoration: underline; }
       `}</style>
 
       {/* Top-right nav */}
       <div style={{ position: "absolute", top: "7%", right: "6.5%", display: "flex", alignItems: "center", gap: "1.8vw", zIndex: 20 }}>
-        <Link href="/auth/sign-in" className="nav-login">
+        <Link href="/auth/sign-in" className="nav-inactive">
           Log in
         </Link>
-        <Link href="/auth/sign-up" className="nav-signup">
+        <Link href="/auth/sign-up" className="nav-active">
           Sign up
         </Link>
       </div>
