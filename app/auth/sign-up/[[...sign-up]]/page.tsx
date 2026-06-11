@@ -184,7 +184,7 @@ export default function SignUpPage() {
   if (verifying) {
     return (
       <div style={{ position: "fixed", inset: 0, overflow: "hidden" }}>
-        <BgFixed image="/Sign-in/page3.png"/>
+        <BgFixed image="/Sign-in/page1.png"/>
 
         {/* Card — same %-of-viewport coordinate system as the main form card, so it scales
             1:1 with the stretched (100% 100%) background at any screen size. */}
@@ -242,26 +242,38 @@ export default function SignUpPage() {
   // ── Main layout ────────────────────────────────────────────────────────────
   return (
     <div style={{ position: "fixed", inset: 0, overflow: "hidden" }}>
-      <BgFixed image={step === 2 ? "/Sign-in/page2.png" : "/Sign-in/page1.png"}/>
+      <BgFixed image="/Sign-in/page1.png"/>
 
       {/* Hide scrollbars on the form card while keeping it scrollable if content overflows */}
       <style>{`
         .signup-card-scroll::-webkit-scrollbar { display: none; }
+        .nav-login {
+          font-size: 1.25vw; font-weight: 600; color: #1d4ed8; text-decoration: none;
+          transition: color 0.18s, transform 0.18s;
+          display: inline-block;
+        }
+        .nav-login:hover { color: #1e3a8a; transform: translateY(-1px); text-decoration: underline; }
+        .nav-signup {
+          font-size: 1.15vw; font-weight: 700; color: #fff; background: #1d4ed8;
+          padding: 1vh 1.7vw; border-radius: 999px; text-decoration: none;
+          border: 1.5px solid #C8A050;
+          box-shadow: 0 4px 14px rgba(29,78,216,0.45), 0 0 12px rgba(200,160,80,0.35);
+          transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
+          display: inline-block;
+        }
+        .nav-signup:hover {
+          background: #2563eb;
+          box-shadow: 0 6px 22px rgba(29,78,216,0.6), 0 0 20px rgba(200,160,80,0.5);
+          transform: translateY(-2px);
+        }
       `}</style>
 
-      {/* Top-right nav — anchored with the same %-of-viewport coordinate system as BgFixed (100% 100%
-          stretch) and the form card below, so background image + card + nav move and resize together
-          as one fixed composition at any screen size/aspect ratio. */}
+      {/* Top-right nav */}
       <div style={{ position: "absolute", top: "7%", right: "6.5%", display: "flex", alignItems: "center", gap: "1.8vw", zIndex: 20 }}>
-        <Link href="/auth/sign-in" style={{ fontSize: "1.25vw", fontWeight: 600, color: BLUE, textDecoration: "none" }}>
+        <Link href="/auth/sign-in" className="nav-login">
           Log in
         </Link>
-        <Link href="/auth/sign-up" style={{
-          fontSize: "1.15vw", fontWeight: 700, color: "#fff", background: BLUE,
-          padding: "1vh 1.7vw", borderRadius: 999, textDecoration: "none",
-          border: `1.5px solid ${GOLD}`,
-          boxShadow: `0 4px 14px rgba(29,78,216,0.45), 0 0 12px rgba(200,160,80,0.35)`,
-        }}>
+        <Link href="/auth/sign-up" className="nav-signup">
           Sign up
         </Link>
       </div>

@@ -21,7 +21,7 @@ function BgFixed() {
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 0,
-      backgroundImage: "url('/Sign-in/page4.png')",
+      backgroundImage: "url('/Sign-in/page1.png')",
       backgroundSize: "100% 100%",
       backgroundPosition: "center",
       backgroundRepeat: "no-repeat",
