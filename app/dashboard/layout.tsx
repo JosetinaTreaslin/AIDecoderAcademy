@@ -110,42 +110,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onMouseEnter={showNav}
         onMouseLeave={hideNav}
       >
-        <div className="flex items-center justify-between px-5 py-2.5 w-full gap-4">
+        <div className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-2.5 w-full gap-2 sm:gap-4">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+          <Link href="/" className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-md sm:rounded-lg flex items-center justify-center"
               style={{ background: arena.accent }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <svg width="12" height="12" className="sm:w-[14px] sm:h-[14px]" viewBox="0 0 16 16" fill="none">
                 <path d="M8 2L14 6V10L8 14L2 10V6L8 2Z" fill="#08080F"/>
               </svg>
             </div>
-            <span className="font-display font-black text-base tracking-tight hidden sm:block" style={{ color: "#1a1a2e" }}>
+            <span className="font-display font-black text-sm sm:text-base tracking-tight hidden sm:block" style={{ color: "#1a1a2e" }}>
               AI<span style={{ color: arena.accent }}>Decoder</span>
             </span>
           </Link>
 
-
           <div className="flex-1" />
 
           {/* Right — XP + level + avatar */}
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             {profile && (
-              <div className="hidden sm:flex items-center gap-2.5">
+              <div className="hidden sm:flex items-center gap-2 sm:gap-2.5">
                 {/* Level badge */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border"
+                <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border"
                   style={{ background: arena.accentDim, borderColor: arena.accent + "40" }}>
-                  <span className="text-sm">{arena.emoji}</span>
-                  <span className="font-display font-black text-xs" style={{ color: arena.accent }}>
+                  <span className="text-xs sm:text-sm">{arena.emoji}</span>
+                  <span className="font-display font-black text-[10px] sm:text-xs" style={{ color: arena.accent }}>
                     Lv {level}
                   </span>
                 </div>
 
                 {/* XP bar */}
-                <div className="w-24 space-y-0.5">
+                <div className="w-16 sm:w-24 space-y-0.5">
                   <div className="flex justify-between">
-                    <span className="text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.35)" }}>{xp} XP</span>
-                    {!isMaxed && <span className="text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.25)" }}>{nextThreshold}</span>}
+                    <span className="text-[8px] sm:text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.35)" }}>{xp} XP</span>
+                    {!isMaxed && <span className="text-[8px] sm:text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.25)" }}>{nextThreshold}</span>}
                   </div>
                   <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.10)" }}>
                     <div className="h-full rounded-full transition-all duration-1000"
@@ -159,10 +158,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Streak */}
                 {(profile.streak_days ?? 0) > 0 && (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-orange-500/20"
+                  <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg border border-orange-500/20"
                     style={{ background: "rgba(255,107,43,0.1)" }}>
-                    <span className="text-sm">🔥</span>
-                    <span className="font-display font-black text-xs text-orange-400">
+                    <span className="text-xs sm:text-sm">🔥</span>
+                    <span className="font-display font-black text-[10px] sm:text-xs text-orange-400">
                       {profile.streak_days}
                     </span>
                   </div>
