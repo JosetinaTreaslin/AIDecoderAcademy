@@ -56,6 +56,12 @@
   );
 }
 
+/* Disable WorksheetIcon pointer events while a creation is being dragged,
+   so it cannot block drag events from reaching the bin drop target. */
+body.is-dragging-creation .worksheet-icon {
+  pointer-events: none !important;
+}
+
 @keyframes aida-slide-up {
   from { opacity: 0; transform: translateY(14px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }

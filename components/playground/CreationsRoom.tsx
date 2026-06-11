@@ -318,6 +318,7 @@ export function CreationsRoom({
   const [plusOpen,         setPlusOpen]         = useState(false);
   const [isDragOver,       setIsDragOver]       = useState(false);
   const [binDragOver,      setBinDragOver]      = useState(false);
+  const [isDragging,       setIsDragging]       = useState(false);
   const [deletingId,       setDeletingId]       = useState<string | null>(null);
   const [pasteWarning,     setPasteWarning]     = useState<string | null>(null);
   // Track which injected item IDs are still uploading to the server
@@ -391,6 +392,26 @@ export function CreationsRoom({
   useEffect(() => {
     refreshCreations();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Raise bin above TeacherCharacter (z-[55]) during any drag, restore after.
+  // Also toggles body class so WorksheetIcon can disable its pointer events via CSS.
+  useEffect(() => {
+    const onStart = () => {
+      setIsDragging(true);
+      document.body.classList.add("is-dragging-creation");
+    };
+    const onEnd = () => {
+      setIsDragging(false);
+      setBinDragOver(false);
+      document.body.classList.remove("is-dragging-creation");
+    };
+    document.addEventListener("dragstart", onStart);
+    document.addEventListener("dragend",   onEnd);
+    return () => {
+      document.removeEventListener("dragstart", onStart);
+      document.removeEventListener("dragend",   onEnd);
+    };
   }, []);
 
   // Wrap onSave to refresh the shelf after a save completes.
@@ -1157,14 +1178,12 @@ export function CreationsRoom({
             if (c?.id && c.id !== "local-upload") await deleteCreation(c.id);
           } catch {}
         }}
-        // SIZE knob: `width` below (doubled from 14vw). Use vw for fluid sizing.
-        // POSITION knobs: `bottom` (% from bottom), `left` (% from left edge of the room).
         style={{
           position: "absolute",
-          bottom: "7%",            // ← vertical position (% from bottom of the room)
-          left:   "2%",           // ← horizontal position (% from left of the room)
-          width:  "28vw",          // ← SIZE: doubled from 14vw
-          zIndex: 15,
+          bottom: "17%",
+          left:   "11.7%",
+          width:  "8.5vw",
+          zIndex: isDragging ? 60 : 1,
           alignItems: "flex-end", justifyContent: "center",
           cursor: "copy",
           transition: "transform 0.2s ease",
