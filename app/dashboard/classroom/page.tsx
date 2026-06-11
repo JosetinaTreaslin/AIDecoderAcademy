@@ -612,7 +612,7 @@ export default function ClassroomPage() {
                 <motion.div key="written-test" {...FADE} className="flex-1 overflow-hidden flex flex-col">
                   <WrittenTest paperId={paper.paperId} questions={paper.questions as WrittenQuestion[]}
                     chapter={paper.chapter} onComplete={handleWrittenComplete}
-                    onBack={() => setView("select-type")} onPhaseChange={setWrittenPhase} />
+                    onBack={() => setView("objective")} onPhaseChange={setWrittenPhase} />
                 </motion.div>
               )}
 
@@ -626,7 +626,7 @@ export default function ClassroomPage() {
               {view === "written-result" && writtenResult && paper && (
                 <motion.div key="written-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
                   <WrittenScoreReport result={writtenResult} chapterTitle={paper.chapter.chapter_title}
-                    onRetry={retryWritten} onHome={() => setView("landing")} onBack={() => setView("select-type")} />
+                    onRetry={retryWritten} onHome={() => setView("landing")} onBack={() => setView("objective")} />
                 </motion.div>
               )}
 
