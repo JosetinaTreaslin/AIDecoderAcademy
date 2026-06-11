@@ -261,12 +261,16 @@ export default function SignUpPage() {
           transform: translateY(-2px);
         }
         .nav-inactive {
-          font-size: 1.35vw; font-weight: 800; color: #1d4ed8; text-decoration: none;
+          font-size: 1.15vw; font-weight: 700; color: #1d4ed8; text-decoration: none;
+          padding: 1vh 1.7vw; border-radius: 999px;
+          background: rgba(255,255,255,0.75);
+          backdrop-filter: blur(8px);
+          border: 1.5px solid #C8A050;
           text-shadow: 0 -2px 6px rgba(255,255,255,1), 0 -1px 3px rgba(255,255,255,0.9), 0 0 3px rgba(255,255,255,0.6);
-          transition: color 0.18s, transform 0.18s, text-shadow 0.18s;
+          transition: background 0.18s, color 0.18s, transform 0.18s;
           display: inline-block;
         }
-        .nav-inactive:hover { color: #1e3a8a; transform: translateY(-1px); text-decoration: underline; text-shadow: 0 -2px 6px rgba(255,255,255,1), 0 -1px 3px rgba(255,255,255,0.9), 0 0 3px rgba(255,255,255,0.6); }
+        .nav-inactive:hover { background: rgba(255,255,255,0.92); color: #1e3a8a; transform: translateY(-1px); text-decoration: underline; }
         .nav-inactive:active { text-decoration: underline; }
       `}</style>
 
