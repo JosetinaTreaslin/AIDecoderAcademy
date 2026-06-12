@@ -22,11 +22,19 @@
   width: 0.97vw !important;
   height: 0.97vw !important;
 }
-.cl-userPreviewMainIdentifier {
+.cl-userPreviewMainIdentifier,
+.cl-userPreviewMainIdentifier *,
+.cl-userButtonPopoverUserPreview__userButton,
+.cl-userPreviewTextContainer span,
+.cl-userPreviewTextContainer p,
+.cl-userPreviewTextContainer div {
   font-size: 0.97vw !important;
+  line-height: 1.3 !important;
 }
-.cl-userPreviewSecondaryIdentifier {
+.cl-userPreviewSecondaryIdentifier,
+.cl-userPreviewSecondaryIdentifier * {
   font-size: 0.76vw !important;
+  line-height: 1.3 !important;
 }
 .cl-userButtonPopoverFooter {
   font-size: 0.69vw !important;
