@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { validateBeforeUpload } from "@/lib/canvasUploadValidator";
 
 export const runtime  = "nodejs";
 export const maxDuration = 60;
@@ -176,8 +177,19 @@ export async function POST(req: Request) {
       response_format: { type: "json_object" },
     });
 
-    const result = JSON.parse(res.choices[0]?.message?.content ?? "{}") as object;
-    return NextResponse.json({ result });
+    const jsonString = res.choices[0]?.message?.content ?? "{}";
+    const result = JSON.parse(jsonString) as object;
+
+    const validation = validateBeforeUpload(jsonString, true);
+    if (!validation.success) {
+      console.error("[generate-json] Validation failed:", validation.errors);
+      return NextResponse.json(
+        { error: "Generated JSON failed validation", details: validation.errors, raw: jsonString },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ result: validation.data, validated: true });
   } catch (err) {
     console.error("[generate-json]", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : "JSON generation failed" }, { status: 500 });

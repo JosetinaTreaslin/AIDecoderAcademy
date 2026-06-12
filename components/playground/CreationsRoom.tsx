@@ -76,11 +76,21 @@ const FLOOR_OBJECTS: {
 
 // ── Shelf thumbnail — rich visual preview for each output type ───────────────
 function ShelfThumbnail({ c, glowColor, glowRgb }: { c: Creation; glowColor: string; glowRgb: string }) {
-  if (c.output_type === "image" && (c.file_url || /^https?:/.test(c.content))) {
-    return (
-      <img src={c.file_url ?? c.content.trim()} alt={c.title}
-        draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-    );
+  if (c.output_type === "image") {
+    const src = c.file_url ?? (typeof c.content === "string" ? c.content.trim() : undefined);
+    if (src) {
+      return (
+        <div style={{
+          width: "100%", height: "100%",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.05)",
+        }}>
+          <img src={src} alt={c.title}
+            draggable={false}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </div>
+      );
+    }
   }
 
   if (c.output_type === "audio") {
@@ -285,7 +295,22 @@ function buildCreationContext(c: Creation): string {
   if (c.output_type === "video" && c.file_url) {
     return `[Video titled "${c.title}": ${c.file_url}]\n\n`;
   }
+  if (c.output_type === "json") {
+    return `[JSON titled "${c.title}": ${c.content.slice(0, 2000)}]\n\n`;
+  }
   return `[${c.output_type} titled "${c.title}": ${c.content.slice(0, 300)}]\n\n`;
+}
+
+function buildPromptMarker(c: Creation): string {
+  if (c.output_type === "image") {
+    const url = c.file_url
+      ? c.file_url
+      : c.content.startsWith("data:")
+        ? "(uploading image)"
+        : c.content.trim();
+    return `[Image titled "${c.title}": ${url}]\n\n`;
+  }
+  return buildCreationContext(c);
 }
 
 // ── Props ────────────────────────────────────────────────────────────────────
@@ -315,6 +340,7 @@ export function CreationsRoom({
   const [input,            setInput]            = useState("");
   const [creations,        setCreations]        = useState<Creation[]>([]);
   const [injected,         setInjected]         = useState<Creation[]>([]);
+  const [previewImgUrl,    setPreviewImgUrl]    = useState<string | null>(null);
   const [plusOpen,         setPlusOpen]         = useState(false);
   const [isDragOver,       setIsDragOver]       = useState(false);
   const [binDragOver,      setBinDragOver]      = useState(false);
@@ -443,7 +469,10 @@ export function CreationsRoom({
     // without typing anything. Block only when truly empty.
     if ((!t && !hasAttachments) || isStreaming) return;
     // Build context from all injected items (image, doc, saved creations etc.)
-    const ctx     = injected.map(buildCreationContext).join("");
+    const ctx     = injected
+      .filter(c => !input.includes(buildPromptMarker(c).trim()))
+      .map(buildCreationContext)
+      .join("");
     // Output type is ALWAYS what the user selected — injected items are context only
     const outType = selected;
     // If no text but attachments are present, synthesise a short auto-prompt
@@ -503,6 +532,7 @@ export function CreationsRoom({
         return;
       }
       const outType: OutputType = getOutputTypeForFile(file) ?? "text";
+      const isJson = outType === "json";
       const itemId = `local-upload-${file.name}-${Date.now()}`;
       const reader = new FileReader();
       reader.onload = ev => {
@@ -511,15 +541,18 @@ export function CreationsRoom({
           profile_id: "",
           title: file.name.replace(/\.[^.]+$/, ""),
           type: "chat", output_type: outType,
-          // Store data-URL as fallback while server upload is in progress
           content: ev.target?.result as string,
           tags: [], is_favourite: false, created_at: "", updated_at: "",
         };
         injectCreation(fake);
-        // Kick off background upload — updates file_url on the chip when done
-        uploadFileToServer(file, itemId);
+        // JSON is plain text — no server upload needed
+        if (!isJson) uploadFileToServer(file, itemId);
       };
-      reader.readAsDataURL(file);
+      if (isJson) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsDataURL(file);
+      }
     });
     e.target.value = "";
   };
@@ -551,6 +584,7 @@ export function CreationsRoom({
     if (["mp4","mov","webm","avi","mkv","m4v"].includes(ext)) return "video";
     if (["pdf","doc","docx"].includes(ext)) return "text";
     if (["ppt","pptx"].includes(ext)) return "slides";
+    if (ext === "json") return "json";
     return null;
   };
 
@@ -644,41 +678,6 @@ export function CreationsRoom({
   // ── Input row ─────────────────────────────────────────────────────────────
   const renderInputRow = (mobile = false) => (
     <div style={{ flexShrink: 0 }}>
-      {injected.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6, padding: "0 4px" }}>
-          {injected.map((item, i) => {
-            const isUploading = uploadingIds.has(item.id);
-            return (
-            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 5,
-                padding: "3px 8px 3px 7px", borderRadius: 20,
-                background: isUploading
-                  ? "rgba(255,255,255,0.07)"
-                  : `rgba(${OUTPUT_META[item.output_type]?.glowRgb ?? "200,160,255"},0.2)`,
-                border: `1px solid ${isUploading ? "rgba(255,255,255,0.2)" : `rgba(${OUTPUT_META[item.output_type]?.glowRgb ?? "200,160,255"},0.5)`}`,
-                fontSize: 10, fontWeight: 600,
-                color: isUploading ? "rgba(255,255,255,0.4)" : (OUTPUT_META[item.output_type]?.glowColor ?? "#c8a0ff"),
-                maxWidth: 180,
-                transition: "all 0.3s ease",
-              }}>
-                <span style={{ fontSize: 9, opacity: 0.7 }}>
-                  {isUploading ? "⏳" : item.output_type === "image" ? "🖼️" : item.output_type === "audio" ? "🎵" : item.output_type === "slides" ? "📊" : "📄"}
-                </span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {isUploading ? `Uploading ${item.title}…` : item.title}
-                </span>
-              </div>
-              <button onClick={() => setInjected(prev => prev.filter((_, j) => j !== i))}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", fontSize: 14, lineHeight: 1, padding: "0 1px" }}>
-                ×
-              </button>
-            </div>
-            );
-          })}
-        </div>
-      )}
-
       <div style={{ position: "relative" }}>
         {plusOpen && (
           <div style={{
@@ -905,37 +904,114 @@ export function CreationsRoom({
                 </span>
               </span>
             </button>
+
+            {/* JSON file */}
+            <input type="file"
+              accept=".json,application/json"
+              style={{ display: "none" }}
+              id="json-upload-input"
+              onChange={handleFileUpload}/>
+            <button onClick={() => (document.getElementById("json-upload-input") as HTMLInputElement)?.click()}
+              style={{
+                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                border:     "1px solid rgba(0,255,100,0.28)",
+                background:
+                  "linear-gradient(180deg, " +
+                    "rgba(0,80,40,0.32) 0%, " +
+                    "rgba(0,40,20,0.55) 50%, " +
+                    "rgba(0,28,14,0.55) 100%" +
+                  ")",
+                color:      "rgba(180,255,220,0.92)",
+                fontSize:   13, fontWeight: 600, transition: "all 0.2s",
+                display:    "flex", flexDirection: "row", alignItems: "center", gap: 14,
+                textAlign:  "left",
+                boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,255,100,0)",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "linear-gradient(180deg, rgba(0,80,40,0.55) 0%, rgba(0,40,20,0.7) 50%, rgba(0,28,14,0.7) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,255,100,0.85)";
+                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,255,100,0.45)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background =
+                  "linear-gradient(180deg, rgba(0,80,40,0.32) 0%, rgba(0,40,20,0.55) 50%, rgba(0,28,14,0.55) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,255,100,0.28)";
+                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,255,100,0)";
+              }}
+            >
+              <span style={{
+                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "linear-gradient(180deg, #6EFF9E 0%, #00FF64 50%, #00A843 100%)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 14px rgba(0,255,100,0.55)",
+              }}>
+                <FileText size={20} style={{ color: "#001a0d" }} />
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 13, color: "white", letterSpacing: "-0.01em" }}>
+                  Upload JSON
+                </span>
+                <span style={{ fontSize: 10, color: "rgba(110,255,158,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
+                  .json — scripts, scenes, data
+                </span>
+              </span>
+            </button>
           </div>
         )}
 
-        {/* Input bar */}
+        {/* Input bar — ChatGPT-style vertical layout with image preview on top, text below */}
         <div
           onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setIsDragOver(true); }}
           onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false); }}
           onDrop={e => {
             e.preventDefault();
             setIsDragOver(false);
+            const injectedItems: Creation[] = [];
             try {
-              const c = JSON.parse(e.dataTransfer.getData("application/creation")) as Creation;
-              if (c?.id) injectCreation(c);
+              const raw = e.dataTransfer.getData("application/creation");
+              if (raw) {
+                const c = JSON.parse(raw) as Creation;
+                if (c?.id) injectedItems.push(c);
+              }
             } catch {}
+
+            if (injectedItems.length > 0) {
+              injectedItems.forEach(c => injectCreation(c));
+              return;
+            }
+
+            if (e.dataTransfer.items?.length) {
+              for (let i = 0; i < e.dataTransfer.items.length; i += 1) {
+                const item = e.dataTransfer.items[i];
+                if (item.kind === "string" && item.type === "application/creation") {
+                  item.getAsString(str => {
+                    try {
+                      const c = JSON.parse(str) as Creation;
+                      if (c?.id) injectCreation(c);
+                    } catch {}
+                  });
+                }
+              }
+            }
           }}
           style={{
-          display: "flex", alignItems: "center", gap: "0.42vw",
-          background: isDragOver ? `rgba(${activeMeta.glowRgb},0.12)` : "rgba(10,5,50,0.65)",
-          border: `2px solid ${isDragOver ? activeMeta.glowColor : `rgba(${activeMeta.glowRgb},0.8)`}`,
-          borderRadius: "999px",
-          padding: "0.49vw 0.56vw 0.49vw 0.83vw",
-          boxShadow: isDragOver
-            ? `0 0 32px rgba(${activeMeta.glowRgb},0.7), inset 0 0 16px rgba(${activeMeta.glowRgb},0.1)`
-            : `0 0 24px rgba(${activeMeta.glowRgb},0.45)`,
-          backdropFilter: "blur(16px)",
-          transition: "border-color 0.15s, box-shadow 0.15s, background 0.15s",
-          position: "relative",
-        }}>
+              display: "flex", flexDirection: "column", gap: "0.21vw",
+              background: isDragOver ? `rgba(${activeMeta.glowRgb},0.12)` : "rgba(10,5,50,0.65)",
+              border: `2px solid ${isDragOver ? activeMeta.glowColor : `rgba(${activeMeta.glowRgb},0.8)`}`,
+              borderRadius: "1.39vw",
+              padding: "0.49vw",
+              boxShadow: isDragOver
+                ? `0 0 32px rgba(${activeMeta.glowRgb},0.7), inset 0 0 16px rgba(${activeMeta.glowRgb},0.1)`
+                : `0 0 24px rgba(${activeMeta.glowRgb},0.45)`,
+              backdropFilter: "blur(16px)",
+              transition: "border-color 0.15s, box-shadow 0.15s, background 0.15s",
+              position: "relative",
+            }}>
           {isDragOver && (
             <div style={{
-              position: "absolute", inset: 0, borderRadius: 40,
+              position: "absolute", inset: 0, borderRadius: 20,
               display: "flex", alignItems: "center", justifyContent: "center",
               pointerEvents: "none", zIndex: 2,
             }}>
@@ -944,54 +1020,119 @@ export function CreationsRoom({
               </span>
             </div>
           )}
-          <button onClick={() => setPlusOpen(v => !v)} title="Add context or upload"
-            style={{
-              width: "2.08vw", height: "2.08vw", borderRadius: "50%", flexShrink: 0,
-              background: plusOpen ? `${arenaAccent}40` : "rgba(255,255,255,0.08)",
-              border: `1.5px solid ${plusOpen ? arenaAccent : "rgba(255,255,255,0.15)"}`,
-              color: plusOpen ? arenaAccent : "rgba(255,255,255,0.5)",
-              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1.25vw", lineHeight: 1, transition: "all 0.2s",
-            }}>
-            {plusOpen ? "×" : "+"}
-          </button>
 
-          <textarea ref={taRef} value={input}
-            onChange={e => {
-              setInput(e.target.value);
-              const t = e.target;
-              t.style.height = "auto";
-              t.style.height = Math.min(t.scrollHeight, 80) + "px";
-            }}
-            onKeyDown={onKey}
-            onPaste={handlePaste}
-            placeholder="What do you want to create today?"
-            rows={1}
-            style={{
-              flex: 1, resize: "none", border: "none", outline: "none",
-              background: "transparent", fontSize: "0.9vw", fontWeight: 500,
-              color: "rgba(255,255,255,0.92)", fontFamily: "inherit",
-              lineHeight: 1.5, overflowY: "hidden",
-              caretColor: activeMeta.glowColor, userSelect: "text",
-            }}
-          />
+          {/* Image preview section — ChatGPT-style at the top */}
+          {injected.filter(i => i.output_type === "image").length > 0 && (
+            <div style={{ display: "flex", gap: "0.42vw", alignItems: "flex-start", flexWrap: "wrap" }}>
+              {injected.filter(i => i.output_type === "image").map(item => {
+                const isUploading = uploadingIds.has(item.id);
+                const trimmedContent = typeof item.content === "string" ? item.content.trim() : "";
+                const imgUrl = item.file_url
+                  || (/^data:image\//i.test(trimmedContent) ? trimmedContent : null)
+                  || (/^https?:\/\//i.test(trimmedContent) ? trimmedContent : null);
+                return (
+                  <div key={item.id} style={{
+                    position: "relative", flexShrink: 0,
+                    width: "3.89vw", height: "3.89vw",
+                  }}>
+                    {/* Thumbnail — click opens preview modal */}
+                    <div
+                      onClick={() => imgUrl && !isUploading && setPreviewImgUrl(imgUrl)}
+                      style={{
+                        width: "100%", height: "100%",
+                        borderRadius: "0.69vw", overflow: "hidden",
+                        background: `rgba(${activeMeta.glowRgb},0.15)`,
+                        border: `1.5px solid rgba(${activeMeta.glowRgb},0.5)`,
+                        boxShadow: `0 0 7px rgba(${activeMeta.glowRgb},0.18)`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: imgUrl && !isUploading ? "zoom-in" : "default",
+                      }}>
+                      {imgUrl && !isUploading ? (
+                        <ShelfThumbnail c={item} glowColor={activeMeta.glowColor} glowRgb={activeMeta.glowRgb} />
+                      ) : isUploading ? (
+                        <span style={{ fontSize: "1.53vw", animation: "spin 1.5s linear infinite" }}>⏳</span>
+                      ) : (
+                        <span style={{ fontSize: "1.53vw" }}>🖼️</span>
+                      )}
+                    </div>
 
-          <button onClick={send} disabled={!canSend}
-            style={{
-              width: "2.5vw", height: "2.5vw",
-              borderRadius: "50%", flexShrink: 0,
-              background: canSend ? `rgba(${activeMeta.glowRgb},0.9)` : "rgba(255,255,255,0.1)",
-              border: "none", cursor: canSend ? "pointer" : "not-allowed",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "all 0.2s",
-              boxShadow: canSend ? `0 0 18px rgba(${activeMeta.glowRgb},0.7)` : "none",
-            }}>
-            <svg width="13" height="13" viewBox="0 0 18 18" fill="none">
-              <path d="M2 9h14M9 2l7 7-7 7"
-                stroke={canSend ? "#fff" : "rgba(255,255,255,0.25)"}
-                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
+                    {/* Close (×) button — top-right, inside container */}
+                    <button
+                      onClick={e => { e.stopPropagation(); setInjected(prev => prev.filter(x => x.id !== item.id)); }}
+                      title="Remove"
+                      style={{
+                        position: "absolute", top: "0.14vw", right: "0.14vw",
+                        width: "1.11vw", height: "1.11vw", borderRadius: "50%",
+                        background: "rgba(0,0,0,0.65)",
+                        border: "1px solid rgba(255,255,255,0.35)",
+                        color: "#fff", fontSize: "0.63vw", fontWeight: 700,
+                        lineHeight: 1, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        zIndex: 10, padding: 0,
+                        backdropFilter: "blur(4px)",
+                      }}>
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Text input row — below image, with + button and send button */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.35vw", width: "100%" }}>
+            {/* + button */}
+            <button onClick={() => setPlusOpen(v => !v)} title="Add context or upload"
+              style={{
+                width: "2.08vw", height: "2.08vw", borderRadius: "50%", flexShrink: 0,
+                background: plusOpen ? `${arenaAccent}40` : "rgba(255,255,255,0.08)",
+                border: `1.5px solid ${plusOpen ? arenaAccent : "rgba(255,255,255,0.15)"}`,
+                color: plusOpen ? arenaAccent : "rgba(255,255,255,0.5)",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "1.25vw", lineHeight: 1, transition: "all 0.2s",
+              }}>
+              {plusOpen ? "×" : "+"}
+            </button>
+
+            {/* Textarea */}
+            <textarea ref={taRef} value={input}
+              onChange={e => {
+                setInput(e.target.value);
+                const t = e.target;
+                t.style.height = "auto";
+                t.style.height = Math.min(t.scrollHeight, 56) + "px";
+              }}
+              onKeyDown={onKey}
+              onPaste={handlePaste}
+              placeholder="What do you want to create today?"
+              rows={1}
+              style={{
+                flex: 1, resize: "none", border: "none", outline: "none",
+                background: "transparent", fontSize: "0.9vw", fontWeight: 500,
+                color: "rgba(255,255,255,0.92)", fontFamily: "inherit",
+                lineHeight: 1.3, overflowY: "hidden",
+                caretColor: activeMeta.glowColor, userSelect: "text",
+              }}
+            />
+
+            {/* Send button */}
+            <button onClick={send} disabled={!canSend}
+              style={{
+                width: "2.5vw", height: "2.5vw",
+                borderRadius: "50%", flexShrink: 0,
+                background: canSend ? `rgba(${activeMeta.glowRgb},0.9)` : "rgba(255,255,255,0.1)",
+                border: "none", cursor: canSend ? "pointer" : "not-allowed",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.2s",
+                boxShadow: canSend ? `0 0 18px rgba(${activeMeta.glowRgb},0.7)` : "none",
+              }}>
+              <svg width="13" height="13" viewBox="0 0 18 18" fill="none">
+                <path d="M2 9h14M9 2l7 7-7 7"
+                  stroke={canSend ? "#fff" : "rgba(255,255,255,0.25)"}
+                  strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1300,6 +1441,52 @@ export function CreationsRoom({
           {pasteWarning}
         </div>
       )}
+
+      {/* ── Image preview modal ──────────────────────────────────────────────── */}
+      {previewImgUrl && (
+        <div
+          onClick={() => setPreviewImgUrl(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.82)", backdropFilter: "blur(6px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+          {/* Image container — click inside stops propagation */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position: "relative", maxWidth: "88vw", maxHeight: "84vh" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewImgUrl}
+              alt="Preview"
+              draggable={false}
+              style={{
+                display: "block",
+                maxWidth: "88vw", maxHeight: "84vh",
+                borderRadius: 16,
+                boxShadow: "0 8px 48px rgba(0,0,0,0.6)",
+                objectFit: "contain",
+              }}
+            />
+            {/* Close button */}
+            <button
+              onClick={() => setPreviewImgUrl(null)}
+              style={{
+                position: "absolute", top: -14, right: -14,
+                width: 32, height: 32, borderRadius: "50%",
+                background: "rgba(20,10,40,0.92)",
+                border: "1.5px solid rgba(255,255,255,0.25)",
+                color: "#fff", fontSize: 18, fontWeight: 700,
+                lineHeight: 1, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.5)",
+              }}>
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
