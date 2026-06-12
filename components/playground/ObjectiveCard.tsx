@@ -53,8 +53,8 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
       `}</style>
 
       <div style={{
-        flexShrink: 0, marginBottom: 8,
-        borderRadius: expanded ? 14 : 40,
+        flexShrink: 0, marginBottom: "0.56vw",
+        borderRadius: expanded ? "0.97vw" : "999px",
         background: "rgba(255,255,255,0.92)",
         border: `1px solid rgba(${aRgb},${expanded ? "0.35" : "0.25"})`,
         boxShadow: expanded
@@ -67,20 +67,20 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
 
         {/* ── Header ── */}
         <button onClick={() => setExpanded(v => !v)} style={{
-          width: "100%", display: "flex", alignItems: "center", gap: 8,
-          padding: expanded ? "10px 14px" : "7px 14px",
+          width: "100%", display: "flex", alignItems: "center", gap: "0.56vw",
+          padding: expanded ? "0.69vw 0.97vw" : "0.49vw 0.97vw",
           background: "none", border: "none", cursor: "pointer",
           borderBottom: expanded ? "1px solid rgba(0,0,0,0.07)" : "none",
         }}>
 
           {/* Pulsing dot + label */}
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.35vw", flexShrink: 0 }}>
             <span className="obj-dot" style={{
-              width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+              width: "0.42vw", height: "0.42vw", borderRadius: "50%", flexShrink: 0,
               background: arenaAccent, boxShadow: `0 0 6px ${arenaAccent}`,
             }}/>
             <span style={{
-              fontSize: 8, fontWeight: 800, letterSpacing: "0.12em",
+              fontSize: "0.56vw", fontWeight: 800, letterSpacing: "0.12em",
               color: arenaAccent, textTransform: "uppercase",
               fontFamily: "'Syne', sans-serif",
             }}>
@@ -88,11 +88,11 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
             </span>
           </div>
 
-          <div style={{ width: 1, height: 12, background: "rgba(0,0,0,0.12)", flexShrink: 0 }}/>
+          <div style={{ width: 1, height: "0.83vw", background: "rgba(0,0,0,0.12)", flexShrink: 0 }}/>
 
           {/* Title */}
           <span style={{
-            flex: 1, fontSize: 11, fontWeight: 700, textAlign: "left",
+            flex: 1, fontSize: "0.76vw", fontWeight: 700, textAlign: "left",
             color: "#0a0a2e",
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
             fontFamily: "'DM Sans', sans-serif",
@@ -102,8 +102,8 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
 
           {/* Tier pill */}
           <span style={{
-            fontSize: 8, fontWeight: 800, letterSpacing: "0.08em",
-            padding: "3px 8px", borderRadius: 20, flexShrink: 0,
+            fontSize: "0.56vw", fontWeight: 800, letterSpacing: "0.08em",
+            padding: "0.21vw 0.56vw", borderRadius: "999px", flexShrink: 0,
             background: `rgba(${tier.rgb},0.12)`,
             color: tier.color,
             border: `1px solid rgba(${tier.rgb},0.3)`,
@@ -113,13 +113,14 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
           </span>
 
           {/* Stars */}
-          <span style={{ flexShrink: 0, fontSize: 10, color: arenaAccent }}>
+          <span style={{ flexShrink: 0, fontSize: "0.69vw", color: arenaAccent }}>
             {"★".repeat(rubric.difficulty)}
             <span style={{ opacity: 0.2, color: "#000" }}>{"★".repeat(6 - rubric.difficulty)}</span>
           </span>
 
           {/* Chevron */}
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{
+          <svg viewBox="0 0 12 12" fill="none" style={{
+            width: "0.83vw", height: "0.83vw",
             flexShrink: 0, transition: "transform 0.3s cubic-bezier(0.16,1,0.3,1)",
             transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
           }}>
@@ -135,29 +136,29 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
 
             {/* Meta row: ID + tools */}
             <div style={{
-              display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
-              padding: "9px 14px",
+              display: "flex", alignItems: "center", gap: "0.56vw", flexWrap: "wrap",
+              padding: "0.63vw 0.97vw",
               borderBottom: "1px solid rgba(0,0,0,0.06)",
             }}>
               <span style={{
-                fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
+                fontSize: "0.63vw", fontWeight: 700, letterSpacing: "0.1em",
                 color: `rgba(${aRgb},0.8)`,
                 fontFamily: "'JetBrains Mono', monospace",
                 background: `rgba(${aRgb},0.08)`,
-                padding: "2px 7px", borderRadius: 4,
+                padding: "0.14vw 0.49vw", borderRadius: "0.28vw",
                 border: `1px solid rgba(${aRgb},0.2)`,
               }}>
                 {lmsId.toUpperCase()}
               </span>
 
-              <div style={{ width: 1, height: 10, background: "rgba(0,0,0,0.1)" }}/>
+              <div style={{ width: 1, height: "0.69vw", background: "rgba(0,0,0,0.1)" }}/>
 
-              <span style={{ fontSize: 9, fontWeight: 600, color: "rgba(0,0,0,0.35)", letterSpacing: "0.06em" }}>
+              <span style={{ fontSize: "0.63vw", fontWeight: 600, color: "rgba(0,0,0,0.35)", letterSpacing: "0.06em" }}>
                 TOOLS
               </span>
               {rubric.tools.map(t => (
                 <span key={t} style={{
-                  fontSize: 9, fontWeight: 700, padding: "2px 9px", borderRadius: 20,
+                  fontSize: "0.63vw", fontWeight: 700, padding: "0.14vw 0.63vw", borderRadius: "999px",
                   background: "rgba(0,0,0,0.05)",
                   color: "rgba(0,0,0,0.6)",
                   border: "1px solid rgba(0,0,0,0.1)",
@@ -168,11 +169,11 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
             </div>
 
             {/* Mission brief */}
-            <div style={{ padding: "10px 14px 0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
+            <div style={{ padding: "0.69vw 0.97vw 0" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.42vw", marginBottom: "0.49vw" }}>
                 <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }}/>
                 <span style={{
-                  fontSize: 8, fontWeight: 800, letterSpacing: "0.12em",
+                  fontSize: "0.56vw", fontWeight: 800, letterSpacing: "0.12em",
                   color: `rgba(${aRgb},0.7)`, textTransform: "uppercase",
                   fontFamily: "'Syne', sans-serif",
                 }}>
@@ -181,11 +182,11 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
                 <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }}/>
               </div>
               <div style={{
-                fontSize: 11, color: "rgba(0,0,0,0.65)", lineHeight: 1.65,
+                fontSize: "0.76vw", color: "rgba(0,0,0,0.65)", lineHeight: 1.65,
                 background: `rgba(${aRgb},0.04)`,
                 border: `1px solid rgba(${aRgb},0.12)`,
-                borderRadius: 8, padding: "10px 12px",
-                maxHeight: 88, overflowY: "auto",
+                borderRadius: "0.56vw", padding: "0.69vw 0.83vw",
+                maxHeight: "6.11vw", overflowY: "auto",
                 scrollbarWidth: "none",
                 fontFamily: "'DM Sans', sans-serif",
               }}>
@@ -194,11 +195,11 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
             </div>
 
             {/* Grading rubric */}
-            <div style={{ padding: "10px 14px 14px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <div style={{ padding: "0.69vw 0.97vw 0.97vw" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.42vw", marginBottom: "0.56vw" }}>
                 <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }}/>
                 <span style={{
-                  fontSize: 8, fontWeight: 800, letterSpacing: "0.12em",
+                  fontSize: "0.56vw", fontWeight: 800, letterSpacing: "0.12em",
                   color: `rgba(${aRgb},0.7)`, textTransform: "uppercase",
                   fontFamily: "'Syne', sans-serif",
                 }}>
@@ -207,28 +208,28 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
                 <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }}/>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.35vw" }}>
                 {CRITERIA.map((lvl, i) => (
                   <div key={lvl.key} style={{
-                    display: "flex", gap: 10, alignItems: "flex-start",
-                    padding: "8px 10px", borderRadius: 8,
+                    display: "flex", gap: "0.69vw", alignItems: "flex-start",
+                    padding: "0.56vw 0.69vw", borderRadius: "0.56vw",
                     background: `rgba(${lvl.rgb},0.06)`,
                     border: `1px solid rgba(${lvl.rgb},0.18)`,
-                    borderLeft: `3px solid rgba(${lvl.rgb},0.7)`,
+                    borderLeft: `0.21vw solid rgba(${lvl.rgb},0.7)`,
                   }}>
-                    <div style={{ flexShrink: 0, width: 68, display: "flex", flexDirection: "column", gap: 2, paddingTop: 1 }}>
-                      <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: "0.1em", color: lvl.color, fontFamily: "'Syne', sans-serif" }}>
+                    <div style={{ flexShrink: 0, width: "4.72vw", display: "flex", flexDirection: "column", gap: "0.14vw", paddingTop: "0.07vw" }}>
+                      <span style={{ fontSize: "0.49vw", fontWeight: 800, letterSpacing: "0.1em", color: lvl.color, fontFamily: "'Syne', sans-serif" }}>
                         {lvl.icon} {lvl.label}
                       </span>
-                      <div style={{ display: "flex", gap: 2 }}>
+                      <div style={{ display: "flex", gap: "0.14vw" }}>
                         {Array.from({ length: i + 1 }).map((_, s) => (
-                          <div key={s} style={{ width: 14, height: 2, borderRadius: 2, background: lvl.color, opacity: 0.6 }}/>
+                          <div key={s} style={{ width: "0.97vw", height: "0.14vw", borderRadius: "0.14vw", background: lvl.color, opacity: 0.6 }}/>
                         ))}
                       </div>
                     </div>
                     <div style={{ width: 1, alignSelf: "stretch", background: `rgba(${lvl.rgb},0.18)`, flexShrink: 0 }}/>
                     <p style={{
-                      margin: 0, fontSize: 10, color: "rgba(0,0,0,0.6)",
+                      margin: 0, fontSize: "0.69vw", color: "rgba(0,0,0,0.6)",
                       lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif",
                     }}>
                       {criteriaText[lvl.key]}

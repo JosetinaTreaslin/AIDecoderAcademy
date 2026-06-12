@@ -611,14 +611,14 @@ export function CreationsRoom({
   // ── Message list ─────────────────────────────────────────────────────────
   const renderMessageList = (ref: React.RefObject<HTMLDivElement | null>) => (
     <div ref={ref} className="select-text" style={{
-      flex: 1, overflowY: "auto", padding: "12px 14px 8px",
-      display: "flex", flexDirection: "column", gap: 8,
+      flex: 1, overflowY: "auto", padding: "0.83vw 0.97vw 0.56vw",
+      display: "flex", flexDirection: "column", gap: "0.56vw",
       scrollbarWidth: "none", minHeight: 0,
     }}>
       {messages.length === 0 && (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10, opacity: 0.5, pointerEvents: "none" }}>
-          <span style={{ fontSize: 28 }}>✏️</span>
-          <p style={{ fontSize: 11, color: arenaAccent, fontWeight: 600, textAlign: "center", margin: 0, lineHeight: 1.6 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "0.69vw", opacity: 0.5, pointerEvents: "none" }}>
+          <span style={{ fontSize: "1.94vw" }}>✏️</span>
+          <p style={{ fontSize: "0.76vw", color: arenaAccent, fontWeight: 600, textAlign: "center", margin: 0, lineHeight: 1.6 }}>
             Click a shelf type or floor object,<br/>then write below
           </p>
         </div>
@@ -921,11 +921,11 @@ export function CreationsRoom({
             } catch {}
           }}
           style={{
-          display: "flex", alignItems: "center", gap: 6,
+          display: "flex", alignItems: "center", gap: "0.42vw",
           background: isDragOver ? `rgba(${activeMeta.glowRgb},0.12)` : "rgba(10,5,50,0.65)",
           border: `2px solid ${isDragOver ? activeMeta.glowColor : `rgba(${activeMeta.glowRgb},0.8)`}`,
-          borderRadius: 40,
-          padding: mobile ? "6px 8px 6px 10px" : "7px 8px 7px 12px",
+          borderRadius: "999px",
+          padding: "0.49vw 0.56vw 0.49vw 0.83vw",
           boxShadow: isDragOver
             ? `0 0 32px rgba(${activeMeta.glowRgb},0.7), inset 0 0 16px rgba(${activeMeta.glowRgb},0.1)`
             : `0 0 24px rgba(${activeMeta.glowRgb},0.45)`,
@@ -946,12 +946,12 @@ export function CreationsRoom({
           )}
           <button onClick={() => setPlusOpen(v => !v)} title="Add context or upload"
             style={{
-              width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
+              width: "2.08vw", height: "2.08vw", borderRadius: "50%", flexShrink: 0,
               background: plusOpen ? `${arenaAccent}40` : "rgba(255,255,255,0.08)",
               border: `1.5px solid ${plusOpen ? arenaAccent : "rgba(255,255,255,0.15)"}`,
               color: plusOpen ? arenaAccent : "rgba(255,255,255,0.5)",
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 18, lineHeight: 1, transition: "all 0.2s",
+              fontSize: "1.25vw", lineHeight: 1, transition: "all 0.2s",
             }}>
             {plusOpen ? "×" : "+"}
           </button>
@@ -969,7 +969,7 @@ export function CreationsRoom({
             rows={1}
             style={{
               flex: 1, resize: "none", border: "none", outline: "none",
-              background: "transparent", fontSize: mobile ? 14 : 13, fontWeight: 500,
+              background: "transparent", fontSize: "0.9vw", fontWeight: 500,
               color: "rgba(255,255,255,0.92)", fontFamily: "inherit",
               lineHeight: 1.5, overflowY: "hidden",
               caretColor: activeMeta.glowColor, userSelect: "text",
@@ -978,7 +978,7 @@ export function CreationsRoom({
 
           <button onClick={send} disabled={!canSend}
             style={{
-              width: mobile ? 38 : 36, height: mobile ? 38 : 36,
+              width: "2.5vw", height: "2.5vw",
               borderRadius: "50%", flexShrink: 0,
               background: canSend ? `rgba(${activeMeta.glowRgb},0.9)` : "rgba(255,255,255,0.1)",
               border: "none", cursor: canSend ? "pointer" : "not-allowed",
@@ -1061,7 +1061,7 @@ export function CreationsRoom({
               {/* Traffic light dot */}
               <span style={{
                 display: "block",
-                width: 10, height: 10,
+                width: "0.69vw", height: "0.69vw",
                 borderRadius: "50%",
                 background: isActive ? "#22c55e" : "#ef4444",
                 boxShadow: isActive
@@ -1237,18 +1237,18 @@ export function CreationsRoom({
         }}
       >
         {objectiveId && (
-          <div style={{ padding: "8px 12px 0", flexShrink: 0 }}>
+          <div style={{ padding: "0.56vw 0.83vw 0", flexShrink: 0 }}>
             <ObjectiveCard objectiveId={objectiveId} arenaAccent={arenaAccent} arenaAccentGlow={arenaAccentGlow} />
           </div>
         )}
         {renderMessageList(scrollRefDesktop)}
-        <div style={{ padding: "8px 12px 12px", flexShrink: 0 }}>
+        <div style={{ padding: "0.56vw 0.83vw 0.83vw", flexShrink: 0 }}>
           {/* Output-type dot row */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35vw", marginBottom: "0.42vw" }}>
             {OUTPUT_TYPES.map(t => (
               <button key={t.id} onClick={() => setSelected(t.id)} title={t.label}
                 style={{
-                  width: 8, height: 8, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer",
+                  width: "0.56vw", height: "0.56vw", borderRadius: "50%", border: "none", padding: 0, cursor: "pointer",
                   background: selected === t.id ? (OUTPUT_META[t.id]?.glowColor ?? "#fff") : "rgba(0,0,0,0.2)",
                   transition: "all 0.2s",
                   boxShadow: selected === t.id ? `0 0 6px ${OUTPUT_META[t.id]?.glowColor}` : "none",

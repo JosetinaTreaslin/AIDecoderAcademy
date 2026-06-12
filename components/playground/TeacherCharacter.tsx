@@ -279,8 +279,8 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
         aria-label="Talk to the validator teacher"
         className="fixed z-[55]"
         style={{
-          left:        "clamp(16px, 1.5vw, 32px)",  // ← horizontal position from left edge
-          bottom:      "clamp(0px, 0vh, 0px)",    // ← vertical position from bottom edge
+          left:        "1.5vw",
+          bottom:      "0",
           padding:     0,
           background:  "transparent",
           border:      "none",
@@ -297,8 +297,8 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
             alt=""
             draggable={false}
             style={{
-              width:     "clamp(173px, 14.4vw, 269px)",  // ← SIZE: 2× original + 20% (was clamp(144px, 12vw, 224px))
-              height:    "clamp(173px, 14.4vw, 269px)",  // ← SIZE: keep equal to width
+              width:     "14.4vw",
+              height:    "14.4vw",
               objectFit: "contain",
               filter:    "drop-shadow(0 0 18px rgba(124,58,237,0.55))",
             }}

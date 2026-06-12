@@ -102,66 +102,83 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onMouseEnter={showNav}
         onMouseLeave={scheduleHide}
       >
-        <div className="flex items-center justify-between px-5 py-2.5 w-full gap-4">
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          width: "100%",
+          paddingLeft: "1.4vmin", paddingRight: "1.4vmin",
+          paddingTop: "1.11vmin", paddingBottom: "1.11vmin",
+          gap: "1.1vmin",
+        }}>
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: arena.accent }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: "1.11vmin", flexShrink: 0, textDecoration: "none" }}>
+            <div style={{
+              width: "3.1vmin", height: "3.1vmin", borderRadius: "0.89vmin",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              background: arena.accent,
+            }}>
+              <svg style={{ width: "1.56vmin", height: "1.56vmin" }} viewBox="0 0 16 16" fill="none">
                 <path d="M8 2L14 6V10L8 14L2 10V6L8 2Z" fill="#08080F"/>
               </svg>
             </div>
-            <span className="font-display font-black text-base tracking-tight hidden sm:block" style={{ color: "#1a1a2e" }}>
+            <span className="hidden sm:block" style={{ fontFamily: "var(--font-syne,'Syne',sans-serif)", fontWeight: 900, fontSize: "1.78vmin", letterSpacing: "-0.02em", color: "#1a1a2e" }}>
               AI<span style={{ color: arena.accent }}>Decoder</span>
             </span>
           </Link>
 
-
-          <div className="flex-1" />
+          <div style={{ flex: 1 }} />
 
           {/* Right — XP + level + avatar */}
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div style={{ display: "flex", alignItems: "center", gap: "1.33vmin", flexShrink: 0 }}>
             {profile && (
-              <div className="hidden sm:flex items-center gap-2.5">
+              <div className="hidden sm:flex" style={{ alignItems: "center", gap: "1.11vmin" }}>
                 {/* Level badge */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border"
-                  style={{ background: arena.accentDim, borderColor: arena.accent + "40" }}>
-                  <span className="text-sm">{arena.emoji}</span>
-                  <span className="font-display font-black text-xs" style={{ color: arena.accent }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "0.67vmin",
+                  paddingLeft: "1.11vmin", paddingRight: "1.11vmin",
+                  paddingTop: "0.44vmin", paddingBottom: "0.44vmin",
+                  borderRadius: "1.33vmin",
+                  border: `1px solid ${arena.accent}40`,
+                  background: arena.accentDim,
+                }}>
+                  <span style={{ fontSize: "1.56vmin" }}>{arena.emoji}</span>
+                  <span style={{ fontFamily: "var(--font-syne,'Syne',sans-serif)", fontWeight: 900, fontSize: "1.33vmin", color: arena.accent }}>
                     Lv {level}
                   </span>
                 </div>
 
                 {/* XP bar */}
-                <div className="w-24 space-y-0.5">
-                  <div className="flex justify-between">
-                    <span className="text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.35)" }}>{xp} XP</span>
-                    {!isMaxed && <span className="text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.25)" }}>{nextThreshold}</span>}
+                <div style={{ width: "6.67vmin" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.22vmin" }}>
+                    <span style={{ fontSize: "1vmin", fontFamily: "monospace", color: "rgba(0,0,0,0.35)" }}>{xp} XP</span>
+                    {!isMaxed && <span style={{ fontSize: "1vmin", fontFamily: "monospace", color: "rgba(0,0,0,0.25)" }}>{nextThreshold}</span>}
                   </div>
-                  <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.10)" }}>
-                    <div className="h-full rounded-full transition-all duration-1000"
-                      style={{
-                        width:      `${progress}%`,
-                        background: arena.accent,
-                        boxShadow:  `0 0 6px ${arena.accentGlow}`,
-                      }}/>
+                  <div style={{ height: "0.44vmin", borderRadius: 999, overflow: "hidden", background: "rgba(0,0,0,0.10)" }}>
+                    <div style={{ width: `${progress}%`, height: "100%", borderRadius: 999, transition: "all 1s", background: arena.accent, boxShadow: `0 0 6px ${arena.accentGlow}` }}/>
                   </div>
                 </div>
 
                 {/* Streak */}
                 {(profile.streak_days ?? 0) > 0 && (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-orange-500/20"
-                    style={{ background: "rgba(255,107,43,0.1)" }}>
-                    <span className="text-sm">🔥</span>
-                    <span className="font-display font-black text-xs text-orange-400">
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: "0.44vmin",
+                    paddingLeft: "0.89vmin", paddingRight: "0.89vmin",
+                    paddingTop: "0.44vmin", paddingBottom: "0.44vmin",
+                    borderRadius: "0.89vmin",
+                    border: "1px solid rgba(249,115,22,0.2)",
+                    background: "rgba(255,107,43,0.1)",
+                  }}>
+                    <span style={{ fontSize: "1.56vmin" }}>🔥</span>
+                    <span style={{ fontFamily: "var(--font-syne,'Syne',sans-serif)", fontWeight: 900, fontSize: "1.33vmin", color: "#fb923c" }}>
                       {profile.streak_days}
                     </span>
                   </div>
                 )}
               </div>
             )}
-            <UserButton afterSignOutUrl="/auth/sign-in"/>
+            <div style={{ width: "2.22vw", height: "2.22vw", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <UserButton afterSignOutUrl="/auth/sign-in" appearance={{ elements: { avatarBox: { width: "2.22vw", height: "2.22vw" } } }}/>
+            </div>
           </div>
         </div>
       </header>
