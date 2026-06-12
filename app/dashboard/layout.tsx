@@ -111,17 +111,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}>
 
           {/* Logo */}
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: "1.11vmin", flexShrink: 0, textDecoration: "none" }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.69vw", flexShrink: 0, textDecoration: "none" }}>
             <div style={{
-              width: "3.1vmin", height: "3.1vmin", borderRadius: "0.89vmin",
+              width: "1.94vw", height: "1.94vw", borderRadius: "0.56vw",
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
               background: arena.accent,
             }}>
-              <svg style={{ width: "1.56vmin", height: "1.56vmin" }} viewBox="0 0 16 16" fill="none">
+              <svg style={{ width: "0.97vw", height: "0.97vw" }} viewBox="0 0 16 16" fill="none">
                 <path d="M8 2L14 6V10L8 14L2 10V6L8 2Z" fill="#08080F"/>
               </svg>
             </div>
-            <span className="hidden sm:block" style={{ fontFamily: "var(--font-syne,'Syne',sans-serif)", fontWeight: 900, fontSize: "1.78vmin", letterSpacing: "-0.02em", color: "#1a1a2e" }}>
+            <span className="hidden sm:block" style={{ fontFamily: "var(--font-syne,'Syne',sans-serif)", fontWeight: 900, fontSize: "1.11vw", letterSpacing: "-0.02em", color: "#1a1a2e" }}>
               AI<span style={{ color: arena.accent }}>Decoder</span>
             </span>
           </Link>
