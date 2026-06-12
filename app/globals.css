@@ -2,20 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hide Next.js DevTools button — targets the custom-element host (shadow DOM host
-   can be hidden by targeting the host itself even though its internals are shadow-scoped) */
-nextjs-portal,
-nextjs-portal * {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  overflow: hidden !important;
-  position: fixed !important;
-  top: -9999px !important;
-  left: -9999px !important;
-}
 
 :root {
   --background:     #08080F;

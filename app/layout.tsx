@@ -55,23 +55,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider>
       <html
-        suppressHydrationWarning
         lang="en"
         className={`${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} ${outfit.variable} ${nunito.variable} ${inter.variable}`}
       >
         <body className="font-body bg-[#08080F] text-white antialiased">
           {children}
-          {/* Remove Next.js DevTools portal from the DOM entirely */}
-          <script dangerouslySetInnerHTML={{ __html: `
-            (function(){
-              function remove(){
-                var el=document.querySelector('nextjs-portal');
-                if(el) el.remove();
-              }
-              remove();
-              new MutationObserver(remove).observe(document.body,{childList:true});
-            })();
-          `}} />
         </body>
       </html>
     </ClerkProvider>
