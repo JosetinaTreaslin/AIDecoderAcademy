@@ -2,6 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Clerk UserButton popup — vw scaling so it matches all other elements ── */
+.cl-userButtonPopoverCard {
+  width: 19.44vw !important;
+  min-width: 0 !important;
+  border-radius: 0.97vw !important;
+  padding: 0.42vw !important;
+}
+.cl-userButtonPopoverActionButton {
+  border-radius: 0.56vw !important;
+  padding: 0.56vw 0.83vw !important;
+  font-size: 0.83vw !important;
+  gap: 0.56vw !important;
+}
+.cl-userButtonPopoverActionButtonText {
+  font-size: 0.83vw !important;
+}
+.cl-userButtonPopoverActionButtonIconBox {
+  width: 0.97vw !important;
+  height: 0.97vw !important;
+}
+.cl-userPreviewMainIdentifier {
+  font-size: 0.97vw !important;
+}
+.cl-userPreviewSecondaryIdentifier {
+  font-size: 0.76vw !important;
+}
+.cl-userButtonPopoverFooter {
+  font-size: 0.69vw !important;
+  padding: 0.42vw 0.83vw !important;
+  border-radius: 0 0 0.97vw 0.97vw !important;
+}
+.cl-userButtonPopoverFooter * {
+  font-size: 0.69vw !important;
+}
+.cl-userPreview {
+  padding: 0.56vw 0.83vw !important;
+  gap: 0.69vw !important;
+}
+.cl-avatarBox,
+.cl-userPreviewAvatarBox {
+  width: 2.78vw !important;
+  height: 2.78vw !important;
+}
 
 :root {
   --background:     #08080F;

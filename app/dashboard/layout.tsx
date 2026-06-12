@@ -177,17 +177,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )}
             <div style={{ width: "2.22vw", height: "2.22vw", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <UserButton afterSignOutUrl="/auth/sign-in" appearance={{ elements: {
-                avatarBox:                        { width: "2.22vw", height: "2.22vw" },
-                userButtonPopoverCard:            { width: "19.44vw", borderRadius: "0.97vw", padding: "0.56vw" },
-                userButtonPopoverActionButton:    { borderRadius: "0.56vw", padding: "0.56vw 0.83vw", fontSize: "0.83vw" },
-                userButtonPopoverActionButtonText:{ fontSize: "0.83vw" },
-                userButtonPopoverActionButtonIcon:{ width: "0.97vw", height: "0.97vw" },
-                userPreviewMainIdentifier:        { fontSize: "0.97vw", fontWeight: 700 },
-                userPreviewSecondaryIdentifier:   { fontSize: "0.76vw" },
-                userButtonPopoverFooter:          { fontSize: "0.69vw", padding: "0.56vw 0.83vw" },
-                avatar:                           { width: "2.78vw", height: "2.78vw", borderRadius: "50%" },
-              }}}/>
+              <UserButton afterSignOutUrl="/auth/sign-in" appearance={{ elements: { avatarBox: { width: "2.22vw", height: "2.22vw" } } }}/>
             </div>
           </div>
         </div>
