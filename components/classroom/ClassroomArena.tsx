@@ -470,8 +470,8 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         style={{
           position: "absolute",
           bottom: "2%",
-          left:   "9%",
-          width:  "18%",
+          left:   "18%",
+          width:  "6.5%",
           zIndex: 18,
           display: "flex",
           alignItems: "flex-end",
@@ -527,8 +527,8 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         style={{
           position: "absolute",
           bottom: "2%",
-          left:   "9%",
-          width:  "18%",
+          left:   "18%",
+          width:  "6.5%",
           zIndex: 18,
           display: "flex",
           alignItems: "flex-end",
