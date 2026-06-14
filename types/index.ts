@@ -179,6 +179,8 @@ export interface CorrectionIssue {
   severity:         CorrectionSeverity;
   approx_line_pct?: number;   // 0–100: vertical position of error from top of image
   approx_x_pct?:   number;   // 0–100: horizontal position of the wrong fragment from left
+  page_number?:     number;   // 1-indexed page where the error appears (multi-page notes)
+  precise_bbox?:    { left: number; top: number; width: number; height: number }; // 0–1 fractions, set by vision LLM for Kannada
 }
 
 export interface CorrectionResult {

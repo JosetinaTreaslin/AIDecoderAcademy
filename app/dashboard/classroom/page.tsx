@@ -13,7 +13,8 @@ import { ScoreReport }      from "@/components/classroom/ScoreReport";
 import { WrittenTest, type WrittenResult } from "@/components/classroom/WrittenTest";
 import { WrittenScoreReport } from "@/components/classroom/WrittenScoreReport";
 import { ProctoringGuard }  from "@/components/classroom/ProctoringGuard";
-import { MathChapterMapPage } from "@/components/classroom/MathChapterMapPage";
+import { MathChapterMapPage }    from "@/components/classroom/MathChapterMapPage";
+import { KannadaChapterMapPage } from "@/components/classroom/KannadaChapterMapPage";
 import { TeacherCharacter } from "@/components/classroom/TeacherCharacter";
 import { NotesUpload }      from "@/components/classroom/NotesUpload";
 import { CorrectionReport } from "@/components/classroom/CorrectionReport";
@@ -31,7 +32,7 @@ const LEFT_SUBJECTS = [
 ] as const;
 
 const RIGHT_SUBJECTS = [
-  { id: "hindi",    src: "/classroom/hindi.png",    name: "Hindi",                 hasData: false },
+  { id: "kannada",  src: "/classroom/hindi.png",    name: "Kannada",               hasData: true  },
   { id: "social",   src: "/classroom/social.png",   name: "Social Science",        hasData: false },
   { id: "computer", src: "/classroom/computer.png", name: "Computer Applications", hasData: false },
   { id: "biology",  src: "/classroom/biology.png",  name: "Biology",               hasData: false },
@@ -320,7 +321,7 @@ function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-type View = "landing" | "chapters" | "math-chapters" | "objective" | "arena" | "pick" | "select-type" | "loading"
+type View = "landing" | "chapters" | "math-chapters" | "kannada-chapters" | "objective" | "arena" | "pick" | "select-type" | "loading"
           | "mcq-test" | "written-test" | "mcq-result" | "written-result"
           | "correct-notes" | "notes-result";
 
@@ -411,7 +412,9 @@ export default function ClassroomPage() {
       <>
         <ClassroomLanding profile={profile} onEnter={(subjectId) => {
           setActiveSubject(subjectId);
-          setView(subjectId === "mathematics" ? "math-chapters" : "chapters");
+          if (subjectId === "mathematics") setView("math-chapters");
+          else if (subjectId === "kannada") setView("kannada-chapters");
+          else setView("chapters");
         }} />
         {teacher}
       </>
@@ -423,6 +426,19 @@ export default function ClassroomPage() {
     return (
       <>
         <ChapterMapPage
+          onChapterSelect={(ch) => { setChapter(ch); setView("objective"); }}
+          onBack={() => setView("landing")}
+        />
+        {teacher}
+      </>
+    );
+  }
+
+  // ── Kannada chapter map — full viewport ──────────────────────────────────
+  if (view === "kannada-chapters") {
+    return (
+      <>
+        <KannadaChapterMapPage
           onChapterSelect={(ch) => { setChapter(ch); setView("objective"); }}
           onBack={() => setView("landing")}
         />
@@ -446,7 +462,9 @@ export default function ClassroomPage() {
 
   // ── Objective page — full viewport ────────────────────────────────────────
   if (view === "objective" && selectedChapter) {
-    const chapterMapView = activeSubject === "mathematics" ? "math-chapters" : "chapters";
+    const chapterMapView = activeSubject === "mathematics" ? "math-chapters"
+                         : activeSubject === "kannada"     ? "kannada-chapters"
+                         : "chapters";
     return (
       <>
         <ObjectivePage

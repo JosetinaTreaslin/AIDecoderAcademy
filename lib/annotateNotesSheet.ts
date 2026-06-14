@@ -44,8 +44,9 @@ interface LocatedIssue {
 }
 
 // ── Normalise text for comparison ─────────────────────────────────────────────
-// Converts Unicode subscript digits (₀-₉) to ASCII first, then strips non-alphanumeric.
-// This ensures "H₂SO" (from LLM) matches "H2SO" (from Textract OCR).
+// Converts Unicode subscript digits (₀-₉) to ASCII first, then strips punctuation/spaces
+// while PRESERVING non-Latin script characters (Kannada U+0C00-U+0C7F, Devanagari, etc.)
+// so that Kannada word matching works through Textract OCR.
 const SUBSCRIPT_MAP: Record<string, string> = {
   "₀":"0","₁":"1","₂":"2","₃":"3","₄":"4",
   "₅":"5","₆":"6","₇":"7","₈":"8","₉":"9",
@@ -54,7 +55,10 @@ function norm(s: string): string {
   return s
     .replace(/[₀₁₂₃₄₅₆₇₈₉]/g, c => SUBSCRIPT_MAP[c] ?? c)
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
+    // Keep: a-z, 0-9, Kannada script (U+0C80-U+0CFF), Devanagari (U+0900-U+097F)
+    // Strip: punctuation, spaces, zero-width chars, etc.
+    // eslint-disable-next-line no-misleading-character-class
+    .replace(/[^a-z0-9ಀ-೿ऀ-ॿ]/g, "");
 }
 
 // ── Score how well a Textract LINE matches an issue's context ─────────────────
@@ -185,7 +189,7 @@ function findFragmentInLine(
 // Returns both located issues AND raw blocks (so caller avoids a second API call)
 async function textractLocate(
   imgBuffer: Buffer,
-  issues: Array<{ id: number; type: CorrectionIssueType; student_wrote: string; description: string; approx_line_pct?: number; approx_x_pct?: number }>,
+  issues: Array<{ id: number; type: CorrectionIssueType; student_wrote: string; description: string; approx_line_pct?: number; approx_x_pct?: number; precise_bbox?: { left: number; top: number; width: number; height: number } }>,
 ): Promise<{ located: LocatedIssue[]; lineBlocks: Block[] }> {
   const result = await getTextract().send(new DetectDocumentTextCommand({
     Document: { Bytes: imgBuffer },
@@ -200,6 +204,13 @@ async function textractLocate(
   const located: LocatedIssue[] = [];
 
   for (const issue of issues) {
+    // ── Precise bbox from vision LLM (Kannada) — skip Textract matching entirely ──
+    if (issue.precise_bbox) {
+      console.log(`[annotateNotes] Issue ${issue.id} "${issue.student_wrote}" — using vision bbox (no Textract match needed)`);
+      located.push({ id: issue.id, found: true, bbox: issue.precise_bbox });
+      continue;
+    }
+
     // ── If LLM provided position hints, narrow word search to that region ──
     const Y_TOL  = 0.06;  // ±6% of image height  (~1-2 lines tolerance)
     const X_TOL  = 0.20;  // ±20% of image width  (generous for x)
@@ -252,7 +263,52 @@ async function textractLocate(
     }
 
     if (!foundBBox) {
-      console.warn(`[annotateNotes] Issue ${issue.id} "${issue.student_wrote}" — not found in Textract output`);
+      if (yTarget != null && xTarget != null) {
+        // ── Nearest-word fallback ────────────────────────────────────────────────
+        // Text matching failed (common for Kannada handwriting that Textract can't OCR).
+        // Textract still detects ink regions as WORD blocks with accurate bounding boxes.
+        // Find the word block whose centre is closest to the LLM's coordinate hint —
+        // this picks the right occurrence even when the same word appears multiple times.
+        const nearest = wordBlocks
+          .map(w => {
+            const bb = w.Geometry?.BoundingBox;
+            if (!bb) return null;
+            const midX = bb.Left! + bb.Width!  / 2;
+            const midY = bb.Top!  + bb.Height! / 2;
+            // Weighted distance: y has tighter tolerance than x, so scale accordingly
+            const dy   = (midY - yTarget) / Y_TOL;
+            const dx   = (midX - xTarget) / X_TOL;
+            return { bb, dist: Math.sqrt(dx * dx + dy * dy) };
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null)
+          .sort((a, b) => a.dist - b.dist)[0];
+
+        if (nearest) {
+          foundBBox = {
+            left:   nearest.bb.Left!,
+            top:    nearest.bb.Top!,
+            width:  nearest.bb.Width!,
+            height: nearest.bb.Height!,
+          };
+          console.log(`[annotateNotes] Issue ${issue.id} "${issue.student_wrote}" — nearest-word fallback: left=${foundBBox.left.toFixed(2)} top=${foundBBox.top.toFixed(2)}`);
+        } else {
+          // No word blocks at all — last resort: pure coordinate estimate
+          const estH = 0.025;
+          const estW = Math.min(0.35, issue.student_wrote.length * 0.022 + 0.05);
+          foundBBox = {
+            left:   Math.max(0, xTarget - 0.02),
+            top:    Math.max(0, yTarget - estH / 2),
+            width:  estW,
+            height: estH,
+          };
+          console.log(`[annotateNotes] Issue ${issue.id} "${issue.student_wrote}" — coordinate fallback: left=${foundBBox.left.toFixed(2)} top=${foundBBox.top.toFixed(2)}`);
+        }
+
+        located.push({ id: issue.id, found: true, bbox: foundBBox });
+        continue;
+      }
+
+      console.warn(`[annotateNotes] Issue ${issue.id} "${issue.student_wrote}" — not found and no position hints, skipping`);
       located.push({ id: issue.id, found: false, bbox: { left:0, top:0, width:0, height:0 } });
       continue;
     }
@@ -376,8 +432,10 @@ export async function annotateNotesSheets(
       description:      iss.description,
       approx_line_pct:  iss.approx_line_pct,
       approx_x_pct:     iss.approx_x_pct,
+      page_number:      iss.page_number,    // 1-indexed; undefined = search all pages
+      precise_bbox:     iss.precise_bbox,   // set by vision LLM for Kannada; skips Textract
     }))
-    .filter((iss): iss is { id: number; type: CorrectionIssueType; student_wrote: string; description: string; approx_line_pct: number | undefined; approx_x_pct: number | undefined } =>
+    .filter((iss): iss is { id: number; type: CorrectionIssueType; student_wrote: string; description: string; approx_line_pct: number | undefined; approx_x_pct: number | undefined; page_number: number | undefined; precise_bbox: CorrectionIssue["precise_bbox"] } =>
       !!iss.student_wrote
     );
 
@@ -411,7 +469,14 @@ export async function annotateNotesSheets(
       }
 
       // ── Textract: single API call → word bounding boxes + line blocks ──────
-      const { located, lineBlocks } = await textractLocate(imgBuffer, annotatableIssues);
+      // Only pass issues that belong to this page (or have no page hint)
+      const pageIssues = annotatableIssues.filter(
+        iss => iss.page_number == null || iss.page_number === pageIdx + 1
+      );
+
+      const { located, lineBlocks } = await textractLocate(imgBuffer, pageIssues);
+
+      // Tick mark appears on every page regardless of errors
       const tickBbox = pickTickBbox(lineBlocks, located);
 
       const hasAnnotations = located.some(l => l.found) || tickBbox !== null;
