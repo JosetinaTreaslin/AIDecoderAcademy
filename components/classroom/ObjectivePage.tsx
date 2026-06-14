@@ -3,14 +3,19 @@
 import { motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { Chapter } from "@/types";
+import type { Chapter, Assignment } from "@/types";
+
+export type AssignmentBadgeStatus = "not_started" | "needs_resubmit" | "passed";
 
 interface Props {
-  chapter:          Chapter;
-  onSelectTest:     (type: "mcq" | "written") => void;
-  onBack:           () => void;
-  onEnterArena?:    () => void;
-  onCorrectNotes?:  () => void;
+  chapter:           Chapter;
+  onSelectTest:      (type: "mcq" | "written") => void;
+  onBack:            () => void;
+  onEnterArena?:     () => void;
+  onCorrectNotes?:   () => void;
+  assignment?:       Assignment | null;
+  assignmentStatus?: AssignmentBadgeStatus;
+  onOpenAssignment?: () => void;
 }
 
 // ── Lock medallion (same as arena / chapter map) ──────────────────────────────
@@ -94,7 +99,8 @@ const BOARD_CARDS = [
 ] as const;
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function ObjectivePage({ chapter, onSelectTest, onBack, onEnterArena, onCorrectNotes }: Props) {
+export function ObjectivePage({ chapter, onSelectTest, onBack, onEnterArena, onCorrectNotes,
+  assignment, assignmentStatus, onOpenAssignment }: Props) {
   const router = useRouter();
 
   return (
@@ -125,6 +131,26 @@ export function ObjectivePage({ chapter, onSelectTest, onBack, onEnterArena, onC
         <ChevronLeft className="w-4 h-4" />
         Back to Chapters
       </button>
+
+      {/* ── Assignment badge ─────────────────────────────────────────────────── */}
+      {assignment && (
+        <motion.button
+          onClick={() => onOpenAssignment?.()}
+          className="absolute flex items-center gap-1.5 text-sm font-semibold transition-all px-3 py-1.5 rounded-xl hover:opacity-80"
+          style={{ top: 16, right: 16, zIndex: 20,
+            background: "rgba(255,255,255,0.88)", backdropFilter: "blur(12px)",
+            color: "rgba(15,28,77,0.7)", border: "1px solid rgba(255,255,255,0.7)",
+            boxShadow: "0 2px 12px rgba(15,28,77,0.08)" }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}>
+          📌 Assignment
+          <span className="inline-block rounded-full"
+            style={{ width: 8, height: 8,
+              background: assignmentStatus === "passed" ? "#16a34a"
+                        : assignmentStatus === "needs_resubmit" ? "#dc2626"
+                        : "#dc2626" }} />
+        </motion.button>
+      )}
 
       {/* ── Interactive card zones ────────────────────────────────────────────── */}
       {/* Left MCQ column — left: 2.5%, width: 24.5% */}

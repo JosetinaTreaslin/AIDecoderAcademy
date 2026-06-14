@@ -352,6 +352,7 @@ function buildSvgOverlay(
   issueTypes:      Record<number, CorrectionIssueType>,
   correctVersions: Record<number, string>,
   tickBbox:        BBox | null,
+  correctedDate:   string | null,
 ): string {
   const elements: string[] = [];
 
@@ -410,6 +411,26 @@ function buildSvgOverlay(
         stroke-linecap="round" stroke-linejoin="round"/>`);
   }
 
+  // Teacher-style "Corrected" signature stamp — last page only
+  if (correctedDate) {
+    const sigW = Math.round(width  * 0.32);
+    const sigH = Math.round(height * 0.07);
+    const sigX = width  - sigW - Math.round(width  * 0.03);
+    const sigY = height - sigH - Math.round(height * 0.03);
+
+    elements.push(`
+      <g>
+        <rect x="${sigX}" y="${sigY}" width="${sigW}" height="${sigH}"
+          fill="none" stroke="${RED}" stroke-width="2" stroke-dasharray="6,4" rx="8"/>
+        <text x="${sigX + sigW / 2}" y="${sigY + sigH * 0.45}" text-anchor="middle"
+          font-family="sans-serif" font-size="${Math.round(sigH * 0.36)}" font-style="italic" font-weight="bold"
+          fill="${RED}">Corrected &#10003;</text>
+        <text x="${sigX + sigW / 2}" y="${sigY + sigH * 0.8}" text-anchor="middle"
+          font-family="sans-serif" font-size="${Math.round(sigH * 0.22)}"
+          fill="${RED}">AI Teacher &#183; ${correctedDate}</text>
+      </g>`);
+  }
+
   return `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
   ${elements.join("\n")}
 </svg>`;
@@ -446,10 +467,20 @@ export async function annotateNotesSheets(
     correctVersions[iss.id] = issues[iss.id]?.correct_version ?? "";
   }
 
+  // "Corrected" signature stamp on the last page, dated today
+  const correctedDate = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+
+  // Fixed bottom-left fallback so every page gets a tick even if Textract
+  // can't find a clean line to anchor it to (blank page, no text, etc.)
+  const FALLBACK_TICK_BBOX: BBox = { left: 0.05, top: 0.90, width: 0.15, height: 0.03 };
+
   const annotatedUrls: string[] = [];
 
   for (let pageIdx = 0; pageIdx < imageUrls.length; pageIdx++) {
     const url = imageUrls[pageIdx]!;
+    const isLastPage = pageIdx === imageUrls.length - 1;
     console.log(`[annotateNotes] page ${pageIdx + 1}/${imageUrls.length}`);
 
     try {
@@ -463,12 +494,8 @@ export async function annotateNotesSheets(
       const width  = meta.width  ?? 1080;
       const height = meta.height ?? 1440;
 
-      if (annotatableIssues.length === 0) {
-        annotatedUrls.push(url);
-        continue;
-      }
-
       // ── Textract: single API call → word bounding boxes + line blocks ──────
+      // Run on every page — needed both for issue locating and tick placement.
       // Only pass issues that belong to this page (or have no page hint)
       const pageIssues = annotatableIssues.filter(
         iss => iss.page_number == null || iss.page_number === pageIdx + 1
@@ -477,17 +504,10 @@ export async function annotateNotesSheets(
       const { located, lineBlocks } = await textractLocate(imgBuffer, pageIssues);
 
       // Tick mark appears on every page regardless of errors
-      const tickBbox = pickTickBbox(lineBlocks, located);
-
-      const hasAnnotations = located.some(l => l.found) || tickBbox !== null;
-      if (!hasAnnotations) {
-        console.log(`[annotateNotes] page ${pageIdx + 1}: nothing to annotate — using original`);
-        annotatedUrls.push(url);
-        continue;
-      }
+      const tickBbox = pickTickBbox(lineBlocks, located) ?? FALLBACK_TICK_BBOX;
 
       // ── Draw SVG + composite ────────────────────────────────────────────────
-      const svg = buildSvgOverlay(width, height, located, issueTypes, correctVersions, tickBbox);
+      const svg = buildSvgOverlay(width, height, located, issueTypes, correctVersions, tickBbox, isLastPage ? correctedDate : null);
       const annotatedBuffer = await sharp(imgBuffer)
         .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
         .jpeg({ quality: 93 })

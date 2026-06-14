@@ -192,6 +192,37 @@ export interface CorrectionResult {
   annotated_image_urls?: string[];      // teacher-annotated pages (underlines, circles, ticks)
 }
 
+// ── Teacher-Assigned Classwork ───────────────────────────────────────────────
+
+export type AssignmentStatus = "passed" | "needs_resubmit";
+
+export interface Assignment {
+  id:             string;
+  chapter_id:     string;
+  teacher_id:     string;
+  title:          string;
+  instructions?:  string;
+  due_date?:      string;
+  created_at:     string;
+  chapter_title?: string;   // joined for display
+  subject?:       string;   // joined for display
+}
+
+export interface AssignmentSubmission {
+  id:                    string;
+  assignment_id:         string;
+  profile_id:            string;
+  attempt_number:        number;
+  image_urls:            string[];
+  annotated_image_urls?: string[];
+  accuracy_score:        number;
+  teacher_summary:       string;
+  issues:                CorrectionIssue[];
+  positives:             string[];
+  status:                AssignmentStatus;
+  submitted_at:          string;
+}
+
 // ── Teacher Dashboard ─────────────────────────────────────────────────────────
 
 export interface TeacherProfile {
