@@ -42,37 +42,111 @@ function isModificationRequest(text: string): boolean {
   return MODIFICATION_RE.test(text);
 }
 
+// Words to ignore when scoring keyword overlap between the current user prompt
+// and past prompts. Mostly stop-words + modification verbs already covered by
+// MODIFICATION_RE, so they don't dominate the score.
+const SCORE_STOPWORDS = new Set([
+  "the","and","but","for","with","from","into","about","that","this","these","those",
+  "have","has","had","was","were","been","being","are","you","your","yours",
+  "me","my","mine","our","ours","we","us","it","its","they","them","their",
+  "make","made","create","creates","creating","change","modify","update","adjust",
+  "redo","edit","alter","improve","transform","add","remove","keep","instead",
+  "rewrite","regenerate","tweak","refine","revise","continue","extend","expand",
+  "shorten","simplify","translate","recreate","remake","redesign","another",
+  "version","same","different","like","just","also","really","please","now","new",
+  "very","more","less","than","again","one","two","time","want","need","try",
+  "build","draw","show","give","picture","image","slide","slides","audio","story",
+  "darker","lighter","brighter","bigger","smaller","longer","shorter",
+]);
+
+function scoreTokens(text: string): Set<string> {
+  return new Set(
+    text.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter(w => w.length >= 3 && !SCORE_STOPWORDS.has(w))
+  );
+}
+
+function pickBestPriorOutput(
+  messages: Array<{ role: string; content: string; outputType?: string; isLoading?: boolean }>,
+  outputType: string,
+  userText: string,
+): { content: string; titleHint: string } | null {
+  // Collect every past assistant output of this type alongside the user prompt
+  // that generated it (assistant follows user in normal flow).
+  const candidates: { content: string; userPrompt: string }[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    if (m.role !== "assistant" || m.outputType !== outputType || m.isLoading || !m.content) continue;
+    let userPrompt = "";
+    for (let j = i - 1; j >= 0; j--) {
+      if (messages[j].role === "user") { userPrompt = messages[j].content; break; }
+    }
+    candidates.push({ content: m.content, userPrompt });
+  }
+  if (candidates.length === 0) return null;
+
+  // Single candidate → no ambiguity, take it.
+  if (candidates.length === 1) {
+    const c = candidates[0];
+    return { content: c.content, titleHint: c.userPrompt.slice(0, 60) || "previous output" };
+  }
+
+  // Multiple candidates → score by token-overlap between current userText and
+  // each past user prompt. Higher overlap = better intent match.
+  // Score by keyword overlap. Walk newest → oldest so that on a tie, the most
+  // recent match wins (e.g. "change the castle to night" when both an older
+  // dragon-over-castle and a newer castle-in-snow exist → take the newer one).
+  const userTokens = scoreTokens(userText);
+  let best = candidates[candidates.length - 1];
+  let bestScore = 0;
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    const c = candidates[i];
+    const promptTokens = scoreTokens(c.userPrompt);
+    let overlap = 0;
+    for (const t of userTokens) if (promptTokens.has(t)) overlap += 1;
+    if (overlap > bestScore) { bestScore = overlap; best = c; }
+  }
+  return {
+    content: best.content,
+    titleHint: bestScore > 0
+      ? best.userPrompt.slice(0, 60)
+      : "previous output",
+  };
+}
+
 function buildPreviousOutputContext(
   messages: Array<{ role: string; content: string; outputType?: string; isLoading?: boolean }>,
   outputType: string,
   userText: string,
 ): string {
   if (!isModificationRequest(userText)) return "";
-  const last = [...messages]
-    .reverse()
-    .find(m => m.role === "assistant" && m.outputType === outputType && !m.isLoading && m.content);
-  if (!last) return "";
+  const picked = pickBestPriorOutput(messages, outputType, userText);
+  if (!picked) return "";
+  const title = picked.titleHint.replace(/"/g, "'").trim() || "previous output";
+
   if (outputType === "image") {
-    if (/^https?:\/\//i.test(last.content.trim()))
-      return `[Image titled "previous output": ${last.content.trim()}]\n\n`;
+    if (/^https?:\/\//i.test(picked.content.trim()))
+      return `[Image titled "${title}": ${picked.content.trim()}]\n\n`;
   }
   if (outputType === "audio") {
     try {
-      const p = JSON.parse(last.content);
+      const p = JSON.parse(picked.content);
       const narrator  = p?.script?.narrator_text ?? "";
       const dialogues = (p?.script?.dialogues ?? [])
         .map((d: { character: string; text: string }) => `${d.character}: ${d.text}`)
         .join(" | ");
-      return `[Audio titled "previous output": Narrator: ${narrator}. Dialogues: ${dialogues || "none"}]\n\n`;
+      return `[Audio titled "${title}": Narrator: ${narrator}. Dialogues: ${dialogues || "none"}]\n\n`;
     } catch { return ""; }
   }
   if (outputType === "slides") {
     try {
-      const p = JSON.parse(last.content);
+      const p = JSON.parse(picked.content);
       const sections = (p?.sections ?? [])
         .map((s: { title: string; concepts: string[] }) => `${s.title}: ${s.concepts?.join(", ")}`)
         .join(" | ");
-      return `[Slides titled "previous output": ${sections}]\n\n`;
+      return `[Slides titled "${title}": ${sections}]\n\n`;
     } catch { return ""; }
   }
   return "";
@@ -211,12 +285,29 @@ function PlaygroundInner() {
     const userText      = isCtxMarker ? text.slice(nnIdx + 2) : text;
     const displayText   = isCtxMarker ? userText : undefined;
 
-    // If an image creation was injected, extract its URL for thumbnail display in the bubble.
+    // Extract thumbnail meta from the first context marker so the bubble can render
+    // it visually. The remaining markers (2nd, 3rd…) stay in displayText and are
+    // parsed by IMAGE_RE / DOC_RE inside MessageBubble.
+    // Capture both title and URL from the first context marker so the bubble
+    // can show the actual label ("CHATGPT") instead of the generic "image".
     const imgUrlMatch   = isCtxMarker
-      ? contextPart.match(/^\[Image titled "[^"]+": (https?:\/\/\S+)\]$/)
+      ? contextPart.match(/^\[Image titled "([^"]+)": (https?:\/\/\S+)\]$/)
       : null;
-    const injectedImgUrl = imgUrlMatch ? imgUrlMatch[1] : null;
-    const imgBubbleMeta  = injectedImgUrl ? [`img:${injectedImgUrl}`] : [];
+    const docMatch      = isCtxMarker
+      ? contextPart.match(/^\[Document titled "([^"]+)": (https?:\/\/\S+)\]$/)
+      : null;
+    const audioMatch    = isCtxMarker
+      ? contextPart.match(/^\[Audio titled "([^"]+)": ([^\]]+)\]$/)
+      : null;
+    const videoMatch    = isCtxMarker
+      ? contextPart.match(/^\[Video titled "([^"]+)": ([^\]]+)\]$/)
+      : null;
+    const bubbleMeta: string[] = [];
+    if (imgUrlMatch)  bubbleMeta.push(`img:${imgUrlMatch[1]}:${imgUrlMatch[2]}`);
+    if (docMatch)     bubbleMeta.push(`doc:${docMatch[1]}:${docMatch[2]}`);
+    // Only include URL in meta when it's a real server URL (not a placeholder)
+    if (audioMatch)   bubbleMeta.push(audioMatch[2].startsWith("http") ? `audio:${audioMatch[1]}:${audioMatch[2]}` : `audio:${audioMatch[1]}`);
+    if (videoMatch)   bubbleMeta.push(videoMatch[2].startsWith("http") ? `video:${videoMatch[1]}:${videoMatch[2]}` : `video:${videoMatch[1]}`);
 
     // Skip auto-inject when user explicitly dragged a creation into the prompt —
     // that would prepend a second [Image...] marker and extractImageUrl in the API
@@ -230,21 +321,19 @@ function PlaygroundInner() {
     const cleanDisplay = displayText ?? (hasContext ? userText : undefined);
 
     if (outType === "image") {
-      await sendImage(enrichedText, cleanDisplay, imgBubbleMeta);
+      await sendImage(enrichedText, cleanDisplay, bubbleMeta);
       awardXP("generate_image").then(handleXpResult);
     } else if (outType === "audio") {
-      // Pass imgBubbleMeta so injected image thumbnail still shows in the bubble
-      await sendAudio(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, imgBubbleMeta);
+      await sendAudio(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, bubbleMeta);
       awardXP("generate_audio").then(handleXpResult);
     } else if (outType === "slides") {
-      await sendSlides(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, imgBubbleMeta);
+      await sendSlides(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, bubbleMeta);
       awardXP("generate_slides").then(handleXpResult);
     } else if (outType === "video") {
-      await sendVideo(enrichedText, cleanDisplay, imgBubbleMeta, 20);
+      await sendVideo(enrichedText, cleanDisplay, bubbleMeta);
       awardXP("generate_video").then(handleXpResult);
     } else {
-      // Pass displayPrompt (6th arg) so the bubble shows the clean text, not the context marker
-      await sendMessage(enrichedText, outType, [], undefined, imgBubbleMeta.length ? imgBubbleMeta : undefined, cleanDisplay);
+      await sendMessage(enrichedText, outType, [], undefined, bubbleMeta.length ? bubbleMeta : undefined, cleanDisplay);
       awardXP("generate_text").then(handleXpResult);
     }
   };
