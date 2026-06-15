@@ -397,21 +397,20 @@ export default function SignUpPage() {
               </div>
 
               {/* Terms */}
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <div className="relative mt-0.5 flex-shrink-0">
-                  <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="sr-only"/>
-                  <div className="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all"
-                    style={{
-                      background: agreed ? ACCENT : "rgba(0,0,0,0.04)",
-                      borderColor: agreed ? ACCENT : "rgba(0,0,0,0.18)",
-                      boxShadow: agreed ? `0 0 10px ${ACCENT_GLOW}` : "none",
-                    }}>
-                    {agreed && (
-                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                        <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </div>
+              <div className="flex items-start gap-3">
+                <div
+                  className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer"
+                  onClick={() => setAgreed(a => !a)}
+                  style={{
+                    background: agreed ? ACCENT : "rgba(0,0,0,0.04)",
+                    borderColor: agreed ? ACCENT : "rgba(0,0,0,0.18)",
+                    boxShadow: agreed ? `0 0 10px ${ACCENT_GLOW}` : "none",
+                  }}>
+                  {agreed && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
                 </div>
                 <span className="text-xs leading-relaxed" style={{ color: "rgba(26,26,46,0.5)" }}>
                   I agree to the{" "}
@@ -419,7 +418,7 @@ export default function SignUpPage() {
                   <span className="font-semibold" style={{ color: ACCENT }}>Student Safety Guidelines</span>.
                   Ready to start my AI decoding journey!
                 </span>
-              </label>
+              </div>
 
               {error && (
                 <p className="text-xs px-3 py-2.5 rounded-xl"
