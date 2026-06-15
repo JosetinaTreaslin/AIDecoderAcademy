@@ -10,12 +10,19 @@ const LBLUE = "#2563eb";
 const BORDER = "#e5e7eb";
 
 const PRESETS = [
-  "/Sign-in/image1.png",
-  "/Sign-in/image2.png",
-  "/Sign-in/image3.png",
-  "/Sign-in/image4.png",
-  "/Sign-in/image5.png",
+  "/Sign-in/i (1).png",
+  "/Sign-in/i (2).png",
+  "/Sign-in/i (3).png",
+  "/Sign-in/i (4).png",
+  "/Sign-in/i (5).png",
+  "/Sign-in/i (6).png",
+  "/Sign-in/i (7).png",
+  "/Sign-in/i (8).png",
+  "/Sign-in/i (9).png",
+  "/Sign-in/i (10).png",
 ];
+
+const MALE_COUNT = 5;
 
 function BgFixed() {
   return (
@@ -33,11 +40,21 @@ export default function ProfileSetupPage() {
   const router = useRouter();
   const { user } = useUser();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [gender, setGender] = useState<"male" | "female">("male");
   const [selected, setSelected] = useState(0);
   const [avatarSrc, setAvatarSrc] = useState(PRESETS[0]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const visiblePresets = gender === "male" ? PRESETS.slice(0, MALE_COUNT) : PRESETS.slice(MALE_COUNT);
+
+  function handleGender(g: "male" | "female") {
+    setGender(g);
+    const startIdx = g === "male" ? 0 : MALE_COUNT;
+    setSelected(startIdx);
+    setAvatarSrc(PRESETS[startIdx]);
+    setUploadedFile(null);
+  }
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
@@ -60,8 +77,9 @@ export default function ProfileSetupPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const src = URL.createObjectURL(file);
     setUploadedFile(file);
-    setAvatarSrc(URL.createObjectURL(file));
+    setAvatarSrc(src);
     setSelected(-1);
   };
 
@@ -116,7 +134,7 @@ export default function ProfileSetupPage() {
         .ps-card-scroll::-webkit-scrollbar { display: none; }
       `}</style>
 
-      <div style={{ position: "absolute", zIndex: 1, left: "41%", right: "25%", top: "16%", bottom: "20%" }}>
+      <div style={{ position: "absolute", zIndex: 1, left: "41%", right: "25%", top: "10%", bottom: "14%" }}>
         <div
           className="ps-card-scroll"
           style={{
@@ -130,18 +148,7 @@ export default function ProfileSetupPage() {
 
           {/* Card header */}
           <div style={{ padding: "1.87vw 2.13vw 1.47vw", borderBottom: `1px solid ${BORDER}` }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.2vw" }}>
-              <span style={{
-                fontSize: "0.65vw", fontWeight: 700, letterSpacing: "0.1em",
-                textTransform: "uppercase", background: "#eff6ff", color: LBLUE,
-                border: "1px solid #bfdbfe", padding: "0.27vw 0.8vw", borderRadius: 999,
-              }}>STEP 1 OF 2</span>
-
-              <div style={{ display: "flex", gap: "0.4vw", alignItems: "center" }}>
-                <div style={{ width: "1.4vw", height: "0.35vw", borderRadius: 999, background: BLUE }} />
-                <div style={{ width: "0.7vw", height: "0.35vw", borderRadius: 999, background: "#cbd5e1" }} />
-              </div>
-
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: "1.2vw" }}>
               <div style={{
                 display: "flex", alignItems: "center", gap: "0.4vw",
                 background: "#fff", borderRadius: "0.8vw",
@@ -170,11 +177,11 @@ export default function ProfileSetupPage() {
           </div>
 
           {/* Card body */}
-          <div style={{ padding: "1vw 2.13vw 1.2vw", display: "flex", flexDirection: "column", gap: "0.7vw" }}>
+          <div style={{ padding: "1.5vw 2.13vw 1.2vw", display: "flex", flexDirection: "column", gap: "0.7vw" }}>
 
-            {/* Avatar circle */}
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <div style={{ position: "relative", width: "9vw", height: "9vw" }}>
+            {/* Avatar circle + colour palette */}
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "1.2vw" }}>
+              <div style={{ position: "relative", width: "12vw", height: "12vw" }}>
                 <div style={{
                   position: "absolute", inset: "-0.5vw", borderRadius: "50%",
                   boxShadow: `0 0 0 0.18vw rgba(99,102,241,0.35), 0 0 1.5vw rgba(59,130,246,0.35)`,
@@ -220,25 +227,52 @@ export default function ProfileSetupPage() {
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFileChange} />
               </div>
+
+            </div>
+
+            {/* Gender toggle */}
+            <div style={{ display: "flex", gap: "0.5vw", justifyContent: "center", marginTop: "0.4vw" }}>
+              {(["male", "female"] as const).map((g) => (
+                <button
+                  key={g}
+                  onClick={() => handleGender(g)}
+                  style={{
+                    padding: "0.3vw 1.1vw",
+                    borderRadius: "2vw",
+                    border: `0.12vw solid ${gender === g ? BLUE : BORDER}`,
+                    background: gender === g ? BLUE : "rgba(255,255,255,0.7)",
+                    color: gender === g ? "#fff" : "#374151",
+                    fontSize: "0.82vw",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.18s",
+                  }}
+                >
+                  {g === "male" ? "Male" : "Female"}
+                </button>
+              ))}
             </div>
 
             {/* Preset thumbnails */}
-            <div style={{ display: "flex", gap: "0.6vw", justifyContent: "center" }}>
-              {PRESETS.map((src, i) => (
-                <button
-                  key={i}
-                  onClick={() => handlePreset(i)}
-                  style={{
-                    width: "3.4vw", height: "3.4vw", borderRadius: "0.6vw",
-                    overflow: "hidden", padding: 0, border: "none",
-                    cursor: "pointer",
-                    outline: selected === i ? `0.18vw solid ${BLUE}` : "0.18vw solid transparent",
-                    outlineOffset: "0.1vw",
-                    boxShadow: selected === i ? `0 0 0 0.1vw rgba(59,130,246,0.4)` : "none",
-                  }}>
-                  <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                </button>
-              ))}
+            <div style={{ display: "flex", gap: "0.6vw", justifyContent: "center", marginTop: "0.5vw" }}>
+              {visiblePresets.map((src, i) => {
+                const absIdx = gender === "male" ? i : i + MALE_COUNT;
+                return (
+                  <button
+                    key={absIdx}
+                    onClick={() => handlePreset(absIdx)}
+                    style={{
+                      width: "3.4vw", height: "3.4vw", borderRadius: "0.6vw",
+                      overflow: "hidden", padding: 0, border: "none",
+                      cursor: "pointer",
+                      outline: selected === absIdx ? `0.18vw solid ${BLUE}` : "0.18vw solid transparent",
+                      outlineOffset: "0.1vw",
+                      boxShadow: selected === absIdx ? `0 0 0 0.1vw rgba(59,130,246,0.4)` : "none",
+                    }}>
+                    <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tip */}
