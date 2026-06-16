@@ -55,9 +55,15 @@ const TILES = [
 ] as const;
 
 const TILE_PROMPTS: Record<string, (t: string) => string> = {
-  notes:      (t) => `Generate comprehensive study notes for "${t}" — CBSE Class 10 Science. Use clear headings, bullet points, key definitions, important equations, and a quick-revision summary. For equations, use plain text format only — no LaTeX. Write fractions as a/b or a ÷ b, use characters like θ, π, °, ±. Examples: sin(90° - θ) = cos(θ), csc(θ) = 1/sin(θ).`,
-  flashcards: (t) => `Generate 10 flashcards for "${t}" — CBSE Class 10 Science. Format each as:\n**Q:** [question]\n**A:** [answer]\n\nCover the most important definitions, reactions, and concepts for board exams. For any equations in answers, use plain text — no LaTeX.`,
+  notes: (t) => `Generate comprehensive study notes for "${t}" — CBSE Class 10 Science. Use clear headings, bullet points, key definitions, important equations, and a quick-revision summary. For equations, use plain text format only — no LaTeX. Write fractions as a/b or a ÷ b, use characters like θ, π, °, ±. Examples: sin(90° - θ) = cos(θ), csc(θ) = 1/sin(θ).`,
 };
+
+interface FlashcardResult {
+  topic:   string;
+  subject?: string;
+  cards:   FlashCard[];
+  saved:   boolean;
+}
 
 const ACCENT     = "#2563eb";
 const ACCENT_GLO = "rgba(37,99,235,0.35)";
@@ -73,13 +79,12 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [isStreaming,  setIsStreaming]  = useState(false);
   const [mode,           setMode]           = useState<"notes" | "videos">("notes");
   const [playingVideo,   setPlayingVideo]   = useState<VideoItem | null>(null);
-  const [flashcardCards, setFlashcardCards] = useState<FlashCard[] | null>(null);
-  const [flashcardRaw,   setFlashcardRaw]   = useState("");
-  const bottomRef           = useRef<HTMLDivElement>(null);
-  const taRef               = useRef<HTMLTextAreaElement>(null);
-  const pendingFlashcardRef = useRef(false);
-  const wasStreamingRef     = useRef(false);
-  const messagesRef         = useRef<Message[]>([]);
+  const [flashcardResults, setFlashcardResults] = useState<Record<string, FlashcardResult>>({});
+  const [flashcardModalData, setFlashcardModalData] = useState<{ topic: string; subject?: string; cards: FlashCard[] } | null>(null);
+  const [flashcardMode, setFlashcardMode] = useState(false);
+  const [panelFilter,   setPanelFilter]   = useState<"notes" | "flashcards">("notes");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const taRef     = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -97,14 +102,18 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           (c: any) => Array.isArray(c.tags) && c.tags.includes("classroom") && c.tags.includes(chapter.chapter_title)
         ).slice(0, 10);
         setSavedItems(
-          filtered.map((c: any) => ({
-            id:        c.id,
-            title:     c.title,
-            preview:   (c.content as string).replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60),
-            content:   c.content,
-            tags:      Array.isArray(c.tags) ? c.tags : [],
-            createdAt: new Date(c.created_at).getTime(),
-          }))
+          filtered.map((c: any) => {
+            const tags = Array.isArray(c.tags) ? c.tags as string[] : [];
+            const isFC = tags.includes("flashcards");
+            let preview = (c.content as string).replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60);
+            if (isFC) {
+              try {
+                const j = JSON.parse(c.content);
+                preview = `${Array.isArray(j.cards) ? j.cards.length : "?"} cards`;
+              } catch { preview = "flashcards"; }
+            }
+            return { id: c.id, title: c.title, preview, content: c.content, tags, createdAt: new Date(c.created_at).getTime() };
+          })
         );
       })
       .catch(() => {});
@@ -165,37 +174,72 @@ export function ClassroomArena({ chapter, onBack }: Props) {
     }
   }, [profile, isStreaming, messages, chapter.chapter_title]);
 
-  // Keep messagesRef in sync for streaming completion detection
-  useEffect(() => { messagesRef.current = messages; }, [messages]);
-
   // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
 
-  // When flashcard stream finishes, auto-open the deck overlay
-  useEffect(() => {
-    if (wasStreamingRef.current && !isStreaming && pendingFlashcardRef.current) {
-      pendingFlashcardRef.current = false;
-      const lastAssistant = [...messagesRef.current].reverse().find(m => m.role === "assistant");
-      if (lastAssistant?.content) {
-        const parsed = parseFlashcards(lastAssistant.content);
-        if (parsed.length > 0) {
-          setFlashcardCards(parsed);
-          setFlashcardRaw(lastAssistant.content);
-        }
+  // Validates a student-typed topic against this chapter, then generates a
+  // flashcard deck (Q/A + illustration per card) for it via the dedicated route
+  const handleFlashcardTopic = useCallback(async (topic: string) => {
+    if (!profile || isStreaming) return;
+
+    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: topic, outputType: "text", createdAt: new Date() };
+    const asstId = crypto.randomUUID();
+    const loadingMsg: Message = {
+      id: asstId, role: "assistant",
+      content: `Checking "${topic}" against this chapter and generating flashcards…`,
+      outputType: "text", isLoading: true, createdAt: new Date(),
+    };
+    setMessages(prev => [...prev, userMsg, loadingMsg]);
+    setIsStreaming(true);
+
+    try {
+      const res = await fetch("/api/classroom/flashcards/generate", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ topic, chapterTitle: chapter.chapter_title, subject: chapter.subject }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      const data = await res.json() as { valid: boolean; reason?: string; topic?: string; cards?: FlashCard[] };
+
+      if (!data.valid) {
+        setMessages(prev => prev.map(m =>
+          m.id === asstId
+            ? { ...m, content: data.reason || `That doesn't seem to be part of "${chapter.chapter_title}" — try a topic from this chapter.`, isLoading: false }
+            : m
+        ));
+        return; // stay in flashcard mode so the student can try another topic
       }
+
+      const resolvedTopic = data.topic ?? topic;
+      const cards = data.cards ?? [];
+      setMessages(prev => prev.map(m =>
+        m.id === asstId
+          ? { ...m, content: `✅ Generated ${cards.length} flashcard${cards.length !== 1 ? "s" : ""} for ${resolvedTopic}.`, isLoading: false }
+          : m
+      ));
+      setFlashcardResults(prev => ({ ...prev, [asstId]: { topic: resolvedTopic, subject: chapter.subject, cards, saved: false } }));
+      setFlashcardMode(false);
+    } catch (e) {
+      console.error("[flashcards/generate]", e);
+      setMessages(prev => prev.map(m =>
+        m.id === asstId ? { ...m, content: "Sorry, couldn't generate flashcards. Please try again.", isLoading: false } : m
+      ));
+    } finally {
+      setIsStreaming(false);
     }
-    wasStreamingRef.current = isStreaming;
-  }, [isStreaming]);
+  }, [profile, isStreaming, chapter.chapter_title, chapter.subject]);
 
   const send = useCallback(async (text: string) => {
     const t = text.trim();
     if (!t || !profile || isStreaming) return;
     setInput("");
     if (taRef.current) taRef.current.style.height = "auto";
-    await sendMessage(t);
-  }, [profile, isStreaming, sendMessage]);
+    if (flashcardMode) await handleFlashcardTopic(t);
+    else await sendMessage(t);
+  }, [profile, isStreaming, sendMessage, flashcardMode, handleFlashcardTopic]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
@@ -203,13 +247,27 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
   const handleTileClick = useCallback((key: string) => {
     if (!profile || isStreaming) return;
-    const buildPrompt = TILE_PROMPTS[key];
-    if (!buildPrompt) return;
-    if (key === "flashcards") pendingFlashcardRef.current = true;
     setActiveHint(key);
     setTimeout(() => setActiveHint(null), 900);
+
+    if (key === "flashcards") {
+      setMode("notes");
+      const turningOn = !flashcardMode;
+      setFlashcardMode(turningOn);
+      if (turningOn) {
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(), role: "assistant",
+          content: `✏️ Flashcard mode is on — type a topic from "${chapter.chapter_title}" below and I'll build a flashcard deck for it.`,
+          outputType: "text", createdAt: new Date(),
+        }]);
+      }
+      return;
+    }
+
+    const buildPrompt = TILE_PROMPTS[key];
+    if (!buildPrompt) return;
     sendMessage(buildPrompt(chapter.chapter_title));
-  }, [profile, isStreaming, sendMessage, chapter.chapter_title]);
+  }, [profile, isStreaming, sendMessage, chapter.chapter_title, flashcardMode]);
 
   // Called by MessageBubble's save button → adds thumbnail + persists to creations
   const handleSave = useCallback((content: string, outputType: OutputType) => {
@@ -240,11 +298,18 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       .catch(() => {});
   }, [chapter.chapter_title]);
 
-  const handleFlashcardSave = useCallback((content: string) => {
-    const count = flashcardCards?.length ?? 10;
-    const title = `Flashcards: ${chapter.chapter_title}`;
-    const preview = `${count} flashcard${count !== 1 ? "s" : ""}`;
-    const tempId = crypto.randomUUID();
+  // Called by a flashcard result card's "Save Flashcards" button
+  const handleFlashcardSave = useCallback((messageId: string) => {
+    const result = flashcardResults[messageId];
+    if (!result || result.saved) return;
+
+    const { topic, cards } = result;
+    const title   = `Flashcards: ${topic}`;
+    const preview = `${cards.length} flashcard${cards.length !== 1 ? "s" : ""}`;
+    const content = JSON.stringify({ topic, cards });
+    const tempId  = crypto.randomUUID();
+
+    setFlashcardResults(prev => ({ ...prev, [messageId]: { ...prev[messageId], saved: true } }));
     setSavedItems(prev => [
       { id: tempId, title, preview, content, tags: ["classroom", chapter.chapter_title, "flashcards"], createdAt: Date.now() },
       ...prev,
@@ -264,7 +329,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         }
       })
       .catch(() => {});
-  }, [chapter.chapter_title, flashcardCards]);
+  }, [chapter.chapter_title, flashcardResults]);
 
   const canSend = input.trim().length > 0 && !isStreaming && !!profile;
 
@@ -315,25 +380,37 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         </div>
       </div>
 
-      {/* ── Toolbar hotspot: Notes (invisible clickable zone) ────────────────── */}
+      {/* ── Toolbar hotspot: Notes ───────────────────────────────────────────── */}
       <div
-        onClick={() => setMode("notes")}
+        onClick={() => { setMode("notes"); setPanelFilter("notes"); setFlashcardMode(false); setMessages([]); }}
         className="absolute"
-        style={{ left:"0", top:"10%", width:"10%", height:"8.5%", zIndex:20, cursor:"pointer" }}
+        style={{ left:"0", top:"10%", width:"12.5%", height:"7.5%", zIndex:20, cursor:"pointer" }}
+        title="Notes hotspot"
       />
 
-      {/* ── Toolbar hotspot: Flashcards (invisible clickable zone) ───────────── */}
+      {/* ── Toolbar hotspot: Flashcards ──────────────────────────────────────── */}
       <div
-        onClick={() => { setMode("notes"); handleTileClick("flashcards"); }}
+        onClick={() => {
+          setMode("notes"); setPanelFilter("flashcards");
+          setMessages([]);
+          setFlashcardMode(true);
+          setMessages([{
+            id: crypto.randomUUID(), role: "assistant",
+            content: `✏️ Flashcard mode is on — type a topic from "${chapter.chapter_title}" below and I'll build a flashcard deck for it.`,
+            outputType: "text", createdAt: new Date(),
+          }]);
+        }}
         className="absolute"
-        style={{ left:"0", top:"21%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer" }}
+        style={{ left:"0", top:"19%", width:"13%", height:"7%", zIndex:20, cursor:"pointer" }}
+        title="Flashcards hotspot"
       />
 
-      {/* ── Toolbar hotspot: Explainer Videos (invisible clickable zone) ─────── */}
+      {/* ── Toolbar hotspot: Explainer Videos ────────────────────────────────── */}
       <div
         onClick={() => setMode("videos")}
         className="absolute"
         style={{ left:0, top:"45%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer" }}
+        title="Videos hotspot"
       />
 
       {/* ── My Creations / Videos panel — overlaid on left wall panel ─────────── */}
@@ -348,10 +425,62 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             <motion.div key="notes-panel"
               initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
               transition={{ duration:0.18 }}>
-              <AnimatePresence>
-                {savedItems.map((item) => {
-                  const isFC = item.tags.includes("flashcards");
-                  return (
+              {/* ── Flashcard grid: 2 columns ── */}
+              {panelFilter === "flashcards" ? (
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, paddingRight:4, paddingBottom:8 }}>
+                  {savedItems.filter(item => item.tags.includes("flashcards")).slice(0, 10).map(item => {
+                    let firstImageUrl: string | undefined;
+                    let cardCount = 0;
+                    try {
+                      const j = JSON.parse(item.content);
+                      firstImageUrl = j.cards?.[0]?.imageUrl;
+                      cardCount = Array.isArray(j.cards) ? j.cards.length : 0;
+                    } catch {}
+                    const topic = item.title.replace(/^Flashcards:\s*/, "");
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity:0, scale:0.92 }}
+                        animate={{ opacity:1, scale:1 }}
+                        transition={{ duration:0.2 }}
+                        onClick={() => {
+                          let t = topic; let cards: FlashCard[] = [];
+                          try { const j = JSON.parse(item.content); if (Array.isArray(j.cards)) { cards = j.cards; t = j.topic ?? t; } }
+                          catch { cards = parseFlashcards(item.content); }
+                          if (cards.length > 0) setFlashcardModalData({ topic: t, subject: chapter.subject, cards });
+                        }}
+                        whileHover={{ scale:1.04, boxShadow:"0 6px 18px rgba(245,166,35,0.3)" }}
+                        className="cursor-pointer rounded-xl overflow-hidden"
+                        style={{ background:"rgba(255,255,255,0.92)", border:"2px solid rgba(245,166,35,0.4)", boxShadow:"0 2px 10px rgba(15,28,77,0.08)" }}
+                      >
+                        {/* Image or placeholder */}
+                        <div style={{ width:"100%", aspectRatio:"6/2", overflow:"hidden", background:"#FFF8EC" }}>
+                          {firstImageUrl
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={firstImageUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                            : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>🗂️</div>
+                          }
+                        </div>
+                        {/* Label */}
+                        <div style={{ padding:"4px 5px 5px" }}>
+                          <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:9, color:"#0f1c4d",
+                            display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.3 }}>
+                            {topic}
+                          </p>
+                          {cardCount > 0 && (
+                            <p style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:8, color:"rgba(245,166,35,0.9)", marginTop:2, fontWeight:700 }}>
+                              {cardCount} cards
+                            </p>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* ── Notes list: full-width vertical ── */
+                <AnimatePresence>
+                  {savedItems.filter(item => !item.tags.includes("flashcards")).map(item => (
                     <div key={item.id} draggable
                       onDragStart={(e: React.DragEvent<HTMLDivElement>) => {
                         e.dataTransfer.setData("application/classroom-item", item.id);
@@ -359,42 +488,26 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                       }}>
                       <motion.div
                         initial={{ opacity:0, y:-8, scale:0.95 }}
-                        animate={{ opacity:1, y:0,  scale:1 }}
+                        animate={{ opacity:1, y:0, scale:1 }}
                         transition={{ duration:0.25 }}
-                        onClick={() => {
-                          if (isFC) {
-                            const parsed = parseFlashcards(item.content);
-                            if (parsed.length > 0) { setFlashcardCards(parsed); setFlashcardRaw(item.content); }
-                          } else {
-                            setViewingItem(item);
-                          }
-                        }}
+                        onClick={() => setViewingItem(item)}
                         className="rounded-xl p-3 mb-2 cursor-grab"
-                        whileHover={{ scale:1.02, boxShadow: isFC ? "0 4px 16px rgba(124,58,237,0.25)" : "0 4px 16px rgba(37,99,235,0.2)" }}
-                        style={{ background:"rgba(255,255,255,0.88)",
-                          border: `1px solid ${isFC ? "rgba(124,58,237,0.25)" : "rgba(37,99,235,0.2)"}`,
-                          boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
+                        whileHover={{ scale:1.02, boxShadow:"0 4px 16px rgba(37,99,235,0.2)" }}
+                        style={{ background:"rgba(255,255,255,0.88)", border:"1px solid rgba(37,99,235,0.2)", boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
                         <div className="w-full h-1 rounded-full mb-2"
-                          style={{ background: isFC ? "#7C3AED" : "linear-gradient(90deg,#2563eb,#7c3aed)" }} />
-                        {isFC && (
-                          <p className="text-[9px] font-mono uppercase tracking-widest mb-1"
-                            style={{ color:"rgba(124,58,237,0.7)" }}>
-                            ⚡ {item.preview}
-                          </p>
-                        )}
+                          style={{ background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
                         <p className="text-xs font-bold leading-snug"
-                          style={{ color:"#0f1c4d", display:"-webkit-box",
-                            WebkitLineClamp: isFC ? 2 : 3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+                          style={{ color:"#0f1c4d", display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
                           {item.title}
                         </p>
                       </motion.div>
                     </div>
-                  );
-                })}
-              </AnimatePresence>
-              {savedItems.length === 0 && (
+                  ))}
+                </AnimatePresence>
+              )}
+              {savedItems.filter(item => panelFilter === "flashcards" ? item.tags.includes("flashcards") : !item.tags.includes("flashcards")).length === 0 && (
                 <p className="text-[10px] text-center pt-3 opacity-30" style={{ color:"#0f1c4d" }}>
-                  Saved items<br/>appear here
+                  {panelFilter === "flashcards" ? "Saved flashcard\ndecks appear here" : "Saved notes\nappear here"}
                 </p>
               )}
             </motion.div>
@@ -592,18 +705,24 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             </div>
           )}
 
-          {messages.map(msg => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              avatarEmoji={profile.avatar_emoji}
-              isStreaming={isStreaming && msg === messages[messages.length - 1]}
-              arenaAccent={ACCENT}
-              arenaAccentGlow={ACCENT_GLO}
-              arenaId={1}
-              onSave={handleSave}
-            />
-          ))}
+          {messages.map(msg => {
+            const fcResult = flashcardResults[msg.id];
+            return (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                avatarEmoji={profile.avatar_emoji}
+                isStreaming={isStreaming && msg === messages[messages.length - 1]}
+                arenaAccent={ACCENT}
+                arenaAccentGlow={ACCENT_GLO}
+                arenaId={1}
+                onSave={fcResult ? () => handleFlashcardSave(msg.id) : handleSave}
+                onOpen={fcResult && !msg.isLoading
+                  ? () => setFlashcardModalData({ topic: fcResult.topic, subject: fcResult.subject, cards: fcResult.cards })
+                  : undefined}
+              />
+            );
+          })}
 
           {/* Streaming dots */}
           {isStreaming && (
@@ -621,12 +740,31 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
         {/* ── Input bar — dark pill, Creator's Room style ────────────────────── */}
         <div style={{ flexShrink:0, padding:"0 4px 8px" }}>
+          {flashcardMode && (
+            <div className="flex items-center justify-between" style={{ padding:"0 4px 6px" }}>
+              <span
+                className="text-xs font-bold px-2.5 py-1 rounded-full"
+                style={{ background:"rgba(245,166,35,0.16)", border:"1px solid rgba(245,166,35,0.4)", color:"#F5A623", fontFamily:"'DM Sans',sans-serif" }}
+              >
+                🗂️ Flashcard mode — type a topic from this chapter
+              </span>
+              <button
+                onClick={() => setFlashcardMode(false)}
+                className="text-xs font-semibold px-2.5 py-1 rounded-full transition-colors hover:bg-white/10"
+                style={{ color:"rgba(255,255,255,0.5)", fontFamily:"'DM Sans',sans-serif" }}
+              >
+                Exit
+              </button>
+            </div>
+          )}
           <div style={{ display:"flex", alignItems:"center", gap:8,
             background:"linear-gradient(180deg, rgba(18,28,72,0.92) 0%, rgba(10,16,52,0.95) 100%)",
             backdropFilter:"blur(24px)",
             borderRadius:16, padding:"10px 12px",
-            border:"1px solid rgba(100,140,255,0.25)",
-            boxShadow:"0 0 0 1px rgba(100,140,255,0.08), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
+            border: flashcardMode ? "1px solid rgba(245,166,35,0.45)" : "1px solid rgba(100,140,255,0.25)",
+            boxShadow: flashcardMode
+              ? "0 0 0 1px rgba(245,166,35,0.12), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"
+              : "0 0 0 1px rgba(100,140,255,0.08), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
 
             <textarea
               ref={taRef}
@@ -638,14 +776,14 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                 t.style.height = Math.min(t.scrollHeight, 80) + "px";
               }}
               onKeyDown={handleKey}
-              placeholder="Ask anything about this chapter…"
+              placeholder={flashcardMode ? `Type a topic from "${chapter.chapter_title}" for flashcards…` : "Ask anything about this chapter…"}
               rows={1}
               disabled={!profile}
               style={{ flex:1, resize:"none", border:"none", outline:"none",
                 background:"transparent", fontSize:15, fontWeight:500,
                 color:"rgba(255,255,255,0.92)", fontFamily:"inherit",
                 lineHeight:1.5, overflowY:"hidden",
-                caretColor:ACCENT, userSelect:"text" }}
+                caretColor: flashcardMode ? "#F5A623" : ACCENT, userSelect:"text" }}
             />
 
             <button onClick={() => send(input)} disabled={!canSend}
@@ -723,13 +861,12 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
       {/* ── Flashcard deck overlay ──────────────────────────────────────────── */}
       <AnimatePresence>
-        {flashcardCards && (
+        {flashcardModalData && (
           <FlashcardDeck
-            cards={flashcardCards}
-            rawContent={flashcardRaw}
-            chapterTitle={chapter.chapter_title}
-            onClose={() => setFlashcardCards(null)}
-            onSave={handleFlashcardSave}
+            topic={flashcardModalData.topic}
+            subject={flashcardModalData.subject}
+            cards={flashcardModalData.cards}
+            onClose={() => setFlashcardModalData(null)}
           />
         )}
       </AnimatePresence>

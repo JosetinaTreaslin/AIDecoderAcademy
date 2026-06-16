@@ -23,6 +23,8 @@ interface Props {
   avatarEmoji:  string;
   isStreaming?: boolean;
   onSave?:      (content: string, type: OutputType) => void;
+  onOpen?:      () => void;
+  extra?:       React.ReactNode;
   // Arena theme
   arenaAccent?:     string;  // e.g. "#7C3AED"
   arenaAccentGlow?: string;  // e.g. "rgba(124,58,237,0.3)"
@@ -102,8 +104,9 @@ function LoadingBubble({ outputType, arenaId }: { outputType?: string; arenaId?:
   );
 }
 
-function ActionFooter({ onSave, content, outputType, accent, accentGlow }: {
+function ActionFooter({ onSave, onOpen, content, outputType, accent, accentGlow }: {
   onSave:      (content: string, type: OutputType) => void;
+  onOpen?:     () => void;
   content:     string;
   outputType:  OutputType;
   accent:      string;
@@ -165,8 +168,30 @@ function ActionFooter({ onSave, content, outputType, accent, accentGlow }: {
 
   return (
     <div className="flex items-center justify-end gap-1.5 mt-2">
-      {/* Copy — text & json only */}
-      {canCopy && (
+      {/* Open (replaces Copy when onOpen is provided) */}
+      {onOpen ? (
+        <button
+          onClick={onOpen}
+          title="Open"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-display font-extrabold border transition-all duration-200 active:scale-95"
+          style={{ background: "rgba(245,166,35,0.15)", borderColor: "rgba(245,166,35,0.5)", color: "#F5A623" }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background   = "rgba(245,166,35,0.28)";
+            (e.currentTarget as HTMLElement).style.borderColor  = "rgba(245,166,35,0.8)";
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background   = "rgba(245,166,35,0.15)";
+            (e.currentTarget as HTMLElement).style.borderColor  = "rgba(245,166,35,0.5)";
+          }}
+        >
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+            <rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M4 6h4M6 4l2 2-2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Open
+        </button>
+      ) : canCopy && (
+        /* Copy — text & json only */
         <button
           onClick={handleCopy}
           title="Copy to clipboard"
@@ -334,7 +359,7 @@ function JsonBlock({ raw, accent }: { raw: string; accent: string }) {
 }
 
 export function MessageBubble({
-  message, avatarEmoji, isStreaming, onSave,
+  message, avatarEmoji, isStreaming, onSave, onOpen, extra,
   arenaAccent     = "#7C3AED",
   arenaAccentGlow = "rgba(124,58,237,0.35)",
   arenaId         = 1,
@@ -555,10 +580,13 @@ export function MessageBubble({
           )}
         </div>
 
-        {/* Action footer — copy / download / save */}
+        {extra && <div className="mt-2">{extra}</div>}
+
+        {/* Action footer — open/copy / download / save */}
         {showActions && (
           <ActionFooter
             onSave={onSave!}
+            onOpen={onOpen}
             content={message.content}
             outputType={message.outputType ?? "text"}
             accent={arenaAccent}
