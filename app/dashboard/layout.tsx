@@ -194,12 +194,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      {/* ── Main content — shifts down when nav appears to avoid overlap ── */}
+      {/* ── Main content — nav overlaps on hideNav pages, content offset on others ── */}
       <main className="relative z-10 w-full overflow-y-auto"
         style={{
-          paddingTop: isHideNav ? (navVisible ? "5.33vmin" : 0) : "5.33vmin",
+          paddingTop: isHideNav ? 0 : "5.33vmin",
           minHeight: "100dvh",
-          transition: "padding-top 0.25s cubic-bezier(0.16,1,0.3,1)",
         }}>
         {children}
       </main>
