@@ -461,7 +461,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                             : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>🗂️</div>
                           }
                         </div>
-                        {/* Label */}
+                        
                         <div style={{ padding:"4px 5px 5px" }}>
                           <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:9, color:"#0f1c4d",
                             display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.3 }}>
