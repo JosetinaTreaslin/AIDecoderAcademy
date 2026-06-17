@@ -17,8 +17,16 @@ const ALLOWED_MIME_EXACT    = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  // MP4/MOV/M4A files — recorders (phones, QuickTime) save voice as video/mp4 even
+  // when the content is audio-only. Allowed here so OBJ 5 & 8 audio uploads work.
+  "video/mp4",
+  "video/quicktime",
+  "video/x-m4v",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/aac",
 ];
-const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB
 
 export async function POST(req: Request) {
   try {
@@ -40,7 +48,7 @@ export async function POST(req: Request) {
 
     // Validate size
     if (file.size > MAX_FILE_BYTES) {
-      return NextResponse.json({ error: "File too large (max 10 MB)" }, { status: 413 });
+      return NextResponse.json({ error: "File too large (max 15 MB)" }, { status: 413 });
     }
 
     const supabase = createAdminClient();

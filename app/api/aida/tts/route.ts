@@ -58,8 +58,11 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return new Response("Unauthorized", { status: 401 });
 
-    const { text, role } = (await req.json()) as { text: string; role?: "aida" | "teacher" | "classroom" };
-    if (!text?.trim()) return new Response("Bad request", { status: 400 });
+    let body: { text?: string; role?: string } = {};
+    try { body = await req.json(); } catch { /* bad JSON — fall through to empty-check */ }
+    const text = typeof body?.text === "string" ? body.text.trim() : "";
+    const role = body?.role as "aida" | "teacher" | "classroom" | undefined;
+    if (!text) return new Response("Bad request", { status: 400 });
 
     if (!process.env.ELEVENLABS_API_KEY) {
       console.error("[AIDA TTS] ELEVENLABS_API_KEY is not set in environment");
@@ -80,45 +83,52 @@ export async function POST(req: Request) {
     let cancelled = false;
     const readable = new ReadableStream({
       async start(controller) {
-        for (const chunk of chunks) {
-          if (cancelled || req.signal.aborted) break;
-          try {
-            const res = await fetch(
-              `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
-              {
-                method:  "POST",
-                signal:  req.signal,
-                headers: {
-                  "xi-api-key":   process.env.ELEVENLABS_API_KEY ?? "",
-                  "Content-Type": "application/json",
-                  "Accept":       "audio/mpeg",
-                },
-                body: JSON.stringify({
-                  text:           chunk,
-                  model_id:       ELEVENLABS_MODEL,
-                  voice_settings: voiceSettings,
-                  speed:          0.78,
-                }),
-              }
-            );
-
-            if (!res.ok) {
-              const errBody = await res.text().catch(() => "");
-              console.error(`[AIDA TTS] ElevenLabs ${res.status}:`, errBody.slice(0, 200));
-              continue;
-            }
-
+        try {
+          for (const chunk of chunks) {
             if (cancelled || req.signal.aborted) break;
-            const b64 = Buffer.from(await res.arrayBuffer()).toString("base64");
-            controller.enqueue(encoder.encode(`data: ${b64}\n\n`));
-          } catch (err: unknown) {
-            if ((err as { name?: string }).name === "AbortError") break;
-            console.error("[AIDA TTS] chunk fetch failed:", err);
+            try {
+              const res = await fetch(
+                `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
+                {
+                  method:  "POST",
+                  signal:  req.signal,
+                  headers: {
+                    "xi-api-key":   process.env.ELEVENLABS_API_KEY ?? "",
+                    "Content-Type": "application/json",
+                    "Accept":       "audio/mpeg",
+                  },
+                  body: JSON.stringify({
+                    text:           chunk,
+                    model_id:       ELEVENLABS_MODEL,
+                    voice_settings: voiceSettings,
+                    speed:          0.78,
+                  }),
+                }
+              );
+
+              if (!res.ok) {
+                const errBody = await res.text().catch(() => "");
+                console.error(`[AIDA TTS] ElevenLabs ${res.status}:`, errBody.slice(0, 200));
+                continue;
+              }
+
+              if (cancelled || req.signal.aborted) break;
+              const b64 = Buffer.from(await res.arrayBuffer()).toString("base64");
+              controller.enqueue(encoder.encode(`data: ${b64}\n\n`));
+            } catch (err: unknown) {
+              if ((err as { name?: string }).name === "AbortError") break;
+              console.error("[AIDA TTS] chunk fetch failed:", err);
+            }
           }
-        }
-        if (!cancelled) {
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          controller.close();
+          if (!cancelled) {
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          }
+        } catch (err: unknown) {
+          if ((err as { name?: string }).name !== "AbortError") {
+            console.error("[AIDA TTS] stream start failed:", err);
+          }
+          try { controller.close(); } catch { /* already closed */ }
         }
       },
       cancel() { cancelled = true; },
