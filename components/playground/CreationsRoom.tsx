@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Image as ImageIcon, FileText, X as XIcon } from "lucide-react";
 import { MessageBubble } from "@/components/playground/MessageBubble";
 import { ObjectiveCard } from "@/components/playground/ObjectiveCard";
@@ -315,6 +316,9 @@ export function CreationsRoom({
   const [input,            setInput]            = useState("");
   const [creations,        setCreations]        = useState<Creation[]>([]);
   const [injected,         setInjected]         = useState<Creation[]>([]);
+  const [previewImgUrl,    setPreviewImgUrl]    = useState<string | null>(null);
+  const [previewCopied,    setPreviewCopied]    = useState(false);
+  const [previewFromChat,  setPreviewFromChat]  = useState(false);
   const [plusOpen,         setPlusOpen]         = useState(false);
   const [isDragOver,       setIsDragOver]       = useState(false);
   const [binDragOver,      setBinDragOver]      = useState(false);
@@ -350,8 +354,23 @@ export function CreationsRoom({
         try { ta.setSelectionRange(len, len); } catch { /* some browsers throw on detached nodes */ }
       });
     }
+
+    const onPreviewImage = (e: Event) => {
+      const detail = (e as CustomEvent<{ url: string; fromChat: boolean }>).detail;
+      if (detail?.url) {
+        setPreviewImgUrl(detail.url);
+        setPreviewCopied(false);
+        setPreviewFromChat(!!detail.fromChat);
+      }
+    };
+
     window.addEventListener("worksheet-send-to-whiteboard", onSendFromWorksheet as EventListener);
-    return () => window.removeEventListener("worksheet-send-to-whiteboard", onSendFromWorksheet as EventListener);
+    window.addEventListener("preview-image", onPreviewImage);
+
+    return () => {
+      window.removeEventListener("worksheet-send-to-whiteboard", onSendFromWorksheet as EventListener);
+      window.removeEventListener("preview-image", onPreviewImage);
+    };
   }, []);
 
   const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 15 MB — matches server limit
@@ -1150,15 +1169,22 @@ export function CreationsRoom({
                       <button
                         key={c.id}
                         draggable
-                        onClick={() => injectCreation(c)}
+                        onClick={() => {
+                          if (c.output_type === "image") {
+                            const src = c.file_url ?? (typeof c.content === "string" ? c.content.trim() : undefined);
+                            if (src) { setPreviewImgUrl(src); return; }
+                          }
+                          injectCreation(c);
+                        }}
                         onDragStart={e => {
                           e.dataTransfer.setData("application/creation", JSON.stringify(c));
                           e.dataTransfer.effectAllowed = "copy";
                         }}
-                        title={`Use "${c.title}" — click or drag to prompt`}
+                        title={c.output_type === "image" ? `Preview "${c.title}" — drag to use in prompt` : `Use "${c.title}" — click or drag to prompt`}
                         style={{
                           flex: 1, height: "75%",
-                          background: "none", border: "none", padding: 0, cursor: "grab",
+                          background: "none", border: "none", padding: 0,
+                          cursor: c.output_type === "image" ? "pointer" : "grab",
                           display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
                           transition: "transform 0.2s ease",
                         }}
@@ -1343,6 +1369,170 @@ export function CreationsRoom({
           {pasteWarning}
         </div>
       )}
+
+      {/* ── Image preview modal with Copy/Download/Save ──────────────────────── */}
+      {previewImgUrl && createPortal(
+        <div
+          onClick={() => { setPreviewImgUrl(null); setPreviewCopied(false); setPreviewFromChat(false); }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.82)", backdropFilter: "blur(6px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+          {/* Image container — click inside stops propagation */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position: "relative", maxWidth: "52vw", maxHeight: "60vh" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewImgUrl}
+              alt="Preview"
+              draggable={false}
+              style={{
+                display: "block",
+                maxWidth: "52vw", maxHeight: "60vh",
+                borderRadius: 16,
+                boxShadow: "0 8px 48px rgba(0,0,0,0.6)",
+                objectFit: "contain",
+              }}
+            />
+
+            {/* Close button */}
+            <button
+              onClick={() => { setPreviewImgUrl(null); setPreviewCopied(false); setPreviewFromChat(false); }}
+              style={{
+                position: "absolute", top: -14, right: -14,
+                width: 32, height: 32, borderRadius: "50%",
+                background: "rgba(20,10,40,0.92)",
+                border: "1.5px solid rgba(255,255,255,0.25)",
+                color: "#fff", fontSize: 18, fontWeight: 700,
+                cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.5)",
+              }}>
+              ×
+            </button>
+
+            {/* Copy + Download + Save buttons */}
+            <div style={{
+              display: "flex", gap: 10, justifyContent: "center",
+              marginTop: 14,
+            }}>
+              {/* Copy button — blue glow on hover */}
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch(previewImgUrl);
+                    const blob = await res.blob();
+                    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+                    setPreviewCopied(true);
+                    setTimeout(() => setPreviewCopied(false), 2000);
+                  } catch {
+                    navigator.clipboard.writeText(previewImgUrl);
+                    setPreviewCopied(true);
+                    setTimeout(() => setPreviewCopied(false), 2000);
+                  }
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.background = "rgba(0,140,255,0.22)";
+                  el.style.border = "1px solid rgba(0,140,255,0.7)";
+                  el.style.color = "#60B8FF";
+                  el.style.boxShadow = "0 0 14px rgba(0,140,255,0.45)";
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.background = previewCopied ? "rgba(0,212,255,0.18)" : "rgba(255,255,255,0.08)";
+                  el.style.border = `1px solid ${previewCopied ? "rgba(0,212,255,0.6)" : "rgba(255,255,255,0.18)"}`;
+                  el.style.color = previewCopied ? "#00D4FF" : "rgba(255,255,255,0.85)";
+                  el.style.boxShadow = "none";
+                }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "8px 18px", borderRadius: 10, cursor: "pointer",
+                  background: previewCopied ? "rgba(0,212,255,0.18)" : "rgba(255,255,255,0.08)",
+                  border: `1px solid ${previewCopied ? "rgba(0,212,255,0.6)" : "rgba(255,255,255,0.18)"}`,
+                  color: previewCopied ? "#00D4FF" : "rgba(255,255,255,0.85)",
+                  fontSize: 13, fontWeight: 600, transition: "all 0.2s",
+                }}>
+                {previewCopied ? "✓ Copied!" : "⎘ Copy"}
+              </button>
+
+              {/* Download button — green glow on hover */}
+              <button
+                onClick={async () => {
+                  const res = await fetch(previewImgUrl);
+                  const blob = await res.blob();
+                  const ext = blob.type.includes("png") ? "png" : "jpg";
+                  const a = document.createElement("a");
+                  a.href = URL.createObjectURL(blob);
+                  a.download = `creation.${ext}`;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.background = "rgba(0,200,100,0.22)";
+                  el.style.border = "1px solid rgba(0,200,100,0.7)";
+                  el.style.color = "#4DFFA0";
+                  el.style.boxShadow = "0 0 14px rgba(0,200,100,0.45)";
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.background = "rgba(255,255,255,0.08)";
+                  el.style.border = "1px solid rgba(255,255,255,0.18)";
+                  el.style.color = "rgba(255,255,255,0.85)";
+                  el.style.boxShadow = "none";
+                }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "8px 18px", borderRadius: 10, cursor: "pointer",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  color: "rgba(255,255,255,0.85)",
+                  fontSize: 13, fontWeight: 600, transition: "all 0.2s",
+                }}>
+                ↓ Download
+              </button>
+
+              {/* Save button — only for chatbox images, arena-accent color */}
+              {previewFromChat && handleSave && (
+                <button
+                  onClick={() => {
+                    handleSave(previewImgUrl, "image");
+                    setPreviewImgUrl(null);
+                    setPreviewCopied(false);
+                    setPreviewFromChat(false);
+                  }}
+                  onMouseEnter={e => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.background = `${arenaAccent}40`;
+                    el.style.borderColor = arenaAccent;
+                    el.style.boxShadow = `0 0 14px ${arenaAccent}60`;
+                  }}
+                  onMouseLeave={e => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.background = `${arenaAccent}22`;
+                    el.style.borderColor = `${arenaAccent}80`;
+                    el.style.boxShadow = "none";
+                  }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "8px 18px", borderRadius: 10, cursor: "pointer",
+                    background: `${arenaAccent}22`,
+                    border: `1px solid ${arenaAccent}80`,
+                    color: arenaAccent,
+                    fontSize: 13, fontWeight: 700, transition: "all 0.2s",
+                  }}>
+                  ✦ Save
+                </button>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
     </div>
   );
 }
