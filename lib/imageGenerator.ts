@@ -136,9 +136,14 @@ const FAL_CONFIGS: Record<string, { endpoint: string; fallback?: string; payload
       num_images:   1,
     },
   },
+  // Qwen nano-banana — fast, lightweight image generation via fal.ai
+  "nano-banana": {
+    endpoint: "fal-ai/nano-banana",
+    payload: {},
+  },
 };
 
-export type ImageModel = "fal-flux2pro" | "fal-juggernaut" | "imagen4" | "gpt-image-1";
+export type ImageModel = "fal-flux2pro" | "fal-juggernaut" | "imagen4" | "gpt-image-1" | "nano-banana";
 
 async function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));

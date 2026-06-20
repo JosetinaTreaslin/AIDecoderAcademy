@@ -261,11 +261,11 @@ const OUTPUT_TYPES: { id: OutputType; label: string }[] = [
 // ── Context formatter ────────────────────────────────────────────────────────
 function buildCreationContext(c: Creation): string {
   if (c.output_type === "image") {
-    // Prefer the server URL (file_url); fall back to local data-URL while still uploading
-    return `[Image titled "${c.title}": ${c.file_url ?? c.content.trim()}]\n\n`;
+    // Only include server URL — never embed base64 data URLs in chat context
+    const url = c.file_url ?? (c.content.startsWith("http") ? c.content.trim() : null);
+    return url ? `[Image titled "${c.title}": ${url}]\n\n` : `[Image titled "${c.title}": uploading]\n\n`;
   }
   if (c.output_type === "audio") {
-    // Uploaded audio file — pass the URL directly
     if (c.file_url && !c.content.startsWith("{")) {
       return `[Audio titled "${c.title}": ${c.file_url}]\n\n`;
     }
@@ -276,7 +276,12 @@ function buildCreationContext(c: Creation): string {
         .map((d: { character: string; text: string }) => `${d.character}: ${d.text}`)
         .join(" | ");
       return `[Audio titled "${c.title}": Narrator: ${narrator}. Dialogues: ${dialogues || "none"}]\n\n`;
-    } catch { return ""; }
+    } catch { return `[Audio titled "${c.title}": uploading]\n\n`; }
+  }
+  if (c.output_type === "video") {
+    return c.file_url
+      ? `[Video titled "${c.title}": ${c.file_url}]\n\n`
+      : `[Video titled "${c.title}": uploading]\n\n`;
   }
   if (c.output_type === "slides") {
     try {
@@ -287,8 +292,6 @@ function buildCreationContext(c: Creation): string {
       return `[Slides titled "${c.title}": ${sections}]\n\n`;
     } catch { return ""; }
   }
-  // "text" output_type — could be a saved text creation OR an uploaded document (PDF/DOC)
-  // If a server URL exists, it's an uploaded document → send the URL so the API can fetch it
   if (c.output_type === "text" && c.file_url) {
     return `[Document titled "${c.title}": ${c.file_url}]\n\n`;
   }
@@ -381,7 +384,7 @@ export function CreationsRoom({
     return () => window.removeEventListener("worksheet-send-to-whiteboard", onSendFromWorksheet as EventListener);
   }, []);
 
-  const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB — matches server limit
+  const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 15 MB — matches server limit
 
   // Upload a File object to Supabase temp storage via /api/upload-temp.
   // Returns the public URL on success, or null if the upload fails (in which
@@ -392,7 +395,15 @@ export function CreationsRoom({
       const form = new FormData();
       form.append("file", file);
       const res  = await fetch("/api/upload-temp", { method: "POST", body: form });
-      if (!res.ok) { console.warn("[upload-temp] failed:", await res.text()); return null; }
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        console.warn("[upload-temp] failed:", errText);
+        // Remove the chip and tell the user — a chip with no server URL would silently
+        // break SAGE validation (audio/image URL would be missing from the message).
+        setInjected(prev => prev.filter(item => item.id !== itemId));
+        showPasteWarning(`⚠️ Upload failed for "${file.name}" — please try again.`);
+        return null;
+      }
       const { url } = await res.json() as { url: string };
       // Swap local data-URL → server URL on the injected chip
       setInjected(prev => prev.map(item =>
@@ -401,6 +412,8 @@ export function CreationsRoom({
       return url;
     } catch (err) {
       console.error("[upload-temp]", err);
+      setInjected(prev => prev.filter(item => item.id !== itemId));
+      showPasteWarning(`⚠️ Upload failed for "${file.name}" — please try again.`);
       return null;
     } finally {
       setUploadingIds(prev => { const s = new Set(prev); s.delete(itemId); return s; });
@@ -496,7 +509,8 @@ export function CreationsRoom({
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   };
 
-  const canSend = (input.trim().length > 0 || injected.length > 0) && !isStreaming;
+  const isUploading = uploadingIds.size > 0;
+  const canSend = (input.trim().length > 0 || injected.length > 0) && !isStreaming && !isUploading;
 
   const injectCreation = (c: Creation) => {
     setInjected(prev => {
@@ -523,16 +537,15 @@ export function CreationsRoom({
     setDeletingId(null);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, forcedOutputType?: OutputType) => {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
     files.forEach(file => {
       if (file.size > MAX_UPLOAD_BYTES) {
-        showPasteWarning(`⚠️ "${file.name}" is too large — max 5 MB.`);
+        showPasteWarning(`⚠️ "${file.name}" is too large — max 15 MB.`);
         return;
       }
-      const outType: OutputType = getOutputTypeForFile(file) ?? "text";
-      const isJson = outType === "json";
+      const outType: OutputType = forcedOutputType ?? getOutputTypeForFile(file) ?? "text";
       const itemId = `local-upload-${file.name}-${Date.now()}`;
       const reader = new FileReader();
       reader.onload = ev => {
@@ -610,7 +623,7 @@ export function CreationsRoom({
     }
 
     if (file.size > MAX_UPLOAD_BYTES) {
-      showPasteWarning(`⚠️ File is too large — max 5 MB.`);
+      showPasteWarning(`⚠️ File is too large — max 15 MB.`);
       return;
     }
 
@@ -678,6 +691,52 @@ export function CreationsRoom({
   // ── Input row ─────────────────────────────────────────────────────────────
   const renderInputRow = (mobile = false) => (
     <div style={{ flexShrink: 0 }}>
+      {injected.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6, padding: "0 4px" }}>
+          {injected.map((item, i) => {
+            const isUploading = uploadingIds.has(item.id);
+            return (
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: item.output_type === "image" && (item.file_url ?? item.content) && !isUploading ? "2px 8px 2px 3px" : "3px 8px 3px 7px",
+                borderRadius: 20,
+                background: isUploading
+                  ? "rgba(255,255,255,0.07)"
+                  : `rgba(${OUTPUT_META[item.output_type]?.glowRgb ?? "200,160,255"},0.2)`,
+                border: `1px solid ${isUploading ? "rgba(255,255,255,0.2)" : `rgba(${OUTPUT_META[item.output_type]?.glowRgb ?? "200,160,255"},0.5)`}`,
+                fontSize: 10, fontWeight: 600,
+                color: isUploading ? "rgba(255,255,255,0.4)" : (OUTPUT_META[item.output_type]?.glowColor ?? "#c8a0ff"),
+                maxWidth: 200,
+                transition: "all 0.3s ease",
+              }}>
+                {/* Image — show thumbnail; others show emoji */}
+                {item.output_type === "image" && (item.file_url ?? (/^https?:/.test(item.content) ? item.content : null)) && !isUploading ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.file_url ?? item.content.trim()}
+                    alt={item.title}
+                    style={{ width: 28, height: 22, objectFit: "cover", borderRadius: 4, flexShrink: 0, display: "block" }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 9, opacity: 0.7 }}>
+                    {isUploading ? "⏳" : item.output_type === "image" ? "🖼️" : item.output_type === "audio" ? "🎵" : item.output_type === "slides" ? "📊" : "📄"}
+                  </span>
+                )}
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {isUploading ? `Uploading ${item.title}…` : item.title}
+                </span>
+              </div>
+              <button onClick={() => setInjected(prev => prev.filter((_, j) => j !== i))}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", fontSize: 14, lineHeight: 1, padding: "0 1px" }}>
+                ×
+              </button>
+            </div>
+            );
+          })}
+        </div>
+      )}
+
       <div style={{ position: "relative" }}>
         {plusOpen && (
           <div style={{
@@ -745,51 +804,95 @@ export function CreationsRoom({
             {/* Screenshots — multiple */}
             <input ref={fileRef} type="file" multiple
               accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
-              style={{ display: "none" }} onChange={handleFileUpload}/>
+              style={{ display: "none" }} onChange={e => handleFileUpload(e, "image")}/>
             <button onClick={() => fileRef.current?.click()}
               style={{
-                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                width: "100%", padding: "11px 12px", borderRadius: 10, cursor: "pointer",
                 border:     "1px solid rgba(0,212,255,0.28)",
-                background:
-                  "linear-gradient(180deg, " +
-                    "rgba(58,98,158,0.32) 0%, " +
-                    "rgba(20,38,72,0.55) 50%, " +
-                    "rgba(14,28,56,0.55) 100%" +
-                  ")",
+                background: "linear-gradient(180deg, rgba(58,98,158,0.32) 0%, rgba(20,38,72,0.55) 50%, rgba(14,28,56,0.55) 100%)",
                 color:      "rgba(232,244,255,0.92)",
-                fontSize:   13, fontWeight: 600, transition: "all 0.2s",
-                display:    "flex", flexDirection: "row", alignItems: "center", gap: 14,
+                fontSize:   12, fontWeight: 600, transition: "all 0.2s",
+                display:    "flex", flexDirection: "row", alignItems: "center", gap: 10,
                 textAlign:  "left",
                 boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,212,255,0)",
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.background =
-                  "linear-gradient(180deg, rgba(58,98,158,0.55) 0%, rgba(20,38,72,0.7) 50%, rgba(14,28,56,0.7) 100%)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.85)";
-                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,212,255,0.45)";
+                (e.currentTarget as HTMLElement).style.background   = "linear-gradient(180deg, rgba(58,98,158,0.55) 0%, rgba(20,38,72,0.7) 50%, rgba(14,28,56,0.7) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor  = "rgba(0,212,255,0.85)";
+                (e.currentTarget as HTMLElement).style.boxShadow    = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,212,255,0.45)";
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.background =
-                  "linear-gradient(180deg, rgba(58,98,158,0.32) 0%, rgba(20,38,72,0.55) 50%, rgba(14,28,56,0.55) 100%)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.28)";
-                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,212,255,0)";
+                (e.currentTarget as HTMLElement).style.background   = "linear-gradient(180deg, rgba(58,98,158,0.32) 0%, rgba(20,38,72,0.55) 50%, rgba(14,28,56,0.55) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor  = "rgba(0,212,255,0.28)";
+                (e.currentTarget as HTMLElement).style.boxShadow    = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,212,255,0)";
               }}
             >
               <span style={{
-                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 background: "linear-gradient(180deg, #7DD3FC 0%, #00D4FF 50%, #0284C7 100%)",
                 border: "1px solid rgba(255,255,255,0.25)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 14px rgba(0,212,255,0.55)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 10px rgba(0,212,255,0.55)",
               }}>
-                <ImageIcon size={20} style={{ color: "#031024" }} />
+                <ImageIcon size={16} style={{ color: "#031024" }} />
               </span>
-              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 13, color: "white", letterSpacing: "-0.01em" }}>
+              <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 12, color: "white", letterSpacing: "-0.01em" }}>
                   Upload screenshots
                 </span>
-                <span style={{ fontSize: 10, color: "rgba(125,211,252,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
+                <span style={{ fontSize: 9, color: "rgba(125,211,252,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
                   PNG · JPG · WEBP — multiple
+                </span>
+              </span>
+            </button>
+
+            {/* Audio file */}
+            <input type="file"
+              accept="audio/*,.mp3,.mp4,.m4a,.wav,.ogg,.aac,.flac"
+              style={{ display: "none" }}
+              id="audio-upload-input"
+              onChange={e => handleFileUpload(e, "audio")}/>
+            <button onClick={() => (document.getElementById("audio-upload-input") as HTMLInputElement)?.click()}
+              style={{
+                width: "100%", padding: "11px 12px", borderRadius: 10, cursor: "pointer",
+                border:     "1px solid rgba(0,170,255,0.28)",
+                background: "linear-gradient(180deg, rgba(0,60,100,0.32) 0%, rgba(0,30,60,0.55) 50%, rgba(0,20,45,0.55) 100%)",
+                color:      "rgba(180,230,255,0.92)",
+                fontSize:   12, fontWeight: 600, transition: "all 0.2s",
+                display:    "flex", flexDirection: "row", alignItems: "center", gap: 10,
+                textAlign:  "left",
+                boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,170,255,0)",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background   = "linear-gradient(180deg, rgba(0,60,100,0.55) 0%, rgba(0,30,60,0.7) 50%, rgba(0,20,45,0.7) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor  = "rgba(0,170,255,0.85)";
+                (e.currentTarget as HTMLElement).style.boxShadow    = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,170,255,0.45)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background   = "linear-gradient(180deg, rgba(0,60,100,0.32) 0%, rgba(0,30,60,0.55) 50%, rgba(0,20,45,0.55) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor  = "rgba(0,170,255,0.28)";
+                (e.currentTarget as HTMLElement).style.boxShadow    = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,170,255,0)";
+              }}
+            >
+              <span style={{
+                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "linear-gradient(180deg, #7DD3FC 0%, #00AAFF 50%, #0070CC 100%)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 10px rgba(0,170,255,0.55)",
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18V5l12-2v13" stroke="#00162e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="6" cy="18" r="3" stroke="#00162e" strokeWidth="1.8"/>
+                  <circle cx="18" cy="16" r="3" stroke="#00162e" strokeWidth="1.8"/>
+                </svg>
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 12, color: "white", letterSpacing: "-0.01em" }}>
+                  Upload audio
+                </span>
+                <span style={{ fontSize: 9, color: "rgba(125,211,252,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
+                  MP4 · MP3 · M4A · WAV · OGG
                 </span>
               </span>
             </button>
@@ -799,53 +902,46 @@ export function CreationsRoom({
               accept="video/mp4,video/mov,video/webm,video/avi,video/x-matroska,.mp4,.mov,.webm,.avi,.mkv,.m4v"
               style={{ display: "none" }}
               id="video-upload-input"
-              onChange={handleFileUpload}/>
+              onChange={e => handleFileUpload(e, "video")}/>
             <button onClick={() => (document.getElementById("video-upload-input") as HTMLInputElement)?.click()}
               style={{
-                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                width: "100%", padding: "11px 12px", borderRadius: 10, cursor: "pointer",
                 border:     "1px solid rgba(255,120,0,0.28)",
-                background:
-                  "linear-gradient(180deg, " +
-                    "rgba(120,60,20,0.32) 0%, " +
-                    "rgba(60,28,10,0.55) 50%, " +
-                    "rgba(40,18,8,0.55) 100%" +
-                  ")",
+                background: "linear-gradient(180deg, rgba(120,60,20,0.32) 0%, rgba(60,28,10,0.55) 50%, rgba(40,18,8,0.55) 100%)",
                 color:      "rgba(255,220,180,0.92)",
-                fontSize:   13, fontWeight: 600, transition: "all 0.2s",
-                display:    "flex", flexDirection: "row", alignItems: "center", gap: 14,
+                fontSize:   12, fontWeight: 600, transition: "all 0.2s",
+                display:    "flex", flexDirection: "row", alignItems: "center", gap: 10,
                 textAlign:  "left",
                 boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(255,120,0,0)",
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.background =
-                  "linear-gradient(180deg, rgba(120,60,20,0.55) 0%, rgba(60,28,10,0.7) 50%, rgba(40,18,8,0.7) 100%)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,120,0,0.85)";
-                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(255,120,0,0.45)";
+                (e.currentTarget as HTMLElement).style.background   = "linear-gradient(180deg, rgba(120,60,20,0.55) 0%, rgba(60,28,10,0.7) 50%, rgba(40,18,8,0.7) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor  = "rgba(255,120,0,0.85)";
+                (e.currentTarget as HTMLElement).style.boxShadow    = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(255,120,0,0.45)";
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.background =
-                  "linear-gradient(180deg, rgba(120,60,20,0.32) 0%, rgba(60,28,10,0.55) 50%, rgba(40,18,8,0.55) 100%)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,120,0,0.28)";
-                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(255,120,0,0)";
+                (e.currentTarget as HTMLElement).style.background   = "linear-gradient(180deg, rgba(120,60,20,0.32) 0%, rgba(60,28,10,0.55) 50%, rgba(40,18,8,0.55) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor  = "rgba(255,120,0,0.28)";
+                (e.currentTarget as HTMLElement).style.boxShadow    = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(255,120,0,0)";
               }}
             >
               <span style={{
-                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 background: "linear-gradient(180deg, #FCA47D 0%, #FF7800 50%, #C24E00 100%)",
                 border: "1px solid rgba(255,255,255,0.25)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 14px rgba(255,120,0,0.55)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 10px rgba(255,120,0,0.55)",
               }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <rect x="2" y="5" width="14" height="14" rx="2" stroke="#1a0800" strokeWidth="1.8"/>
                   <path d="M16 9l6-3v12l-6-3V9z" fill="#1a0800"/>
                 </svg>
               </span>
-              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 13, color: "white", letterSpacing: "-0.01em" }}>
+              <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 12, color: "white", letterSpacing: "-0.01em" }}>
                   Upload video
                 </span>
-                <span style={{ fontSize: 10, color: "rgba(252,164,125,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
+                <span style={{ fontSize: 9, color: "rgba(252,164,125,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
                   MP4 · MOV · WEBM · AVI · MKV
                 </span>
               </span>
@@ -859,47 +955,40 @@ export function CreationsRoom({
               onChange={handleFileUpload}/>
             <button onClick={() => (document.getElementById("doc-upload-input") as HTMLInputElement)?.click()}
               style={{
-                width: "100%", padding: "18px 14px", borderRadius: 12, cursor: "pointer",
+                width: "100%", padding: "11px 12px", borderRadius: 10, cursor: "pointer",
                 border:     "1px solid rgba(0,212,255,0.28)",
-                background:
-                  "linear-gradient(180deg, " +
-                    "rgba(58,98,158,0.32) 0%, " +
-                    "rgba(20,38,72,0.55) 50%, " +
-                    "rgba(14,28,56,0.55) 100%" +
-                  ")",
+                background: "linear-gradient(180deg, rgba(58,98,158,0.32) 0%, rgba(20,38,72,0.55) 50%, rgba(14,28,56,0.55) 100%)",
                 color:      "rgba(232,244,255,0.92)",
-                fontSize:   13, fontWeight: 600, transition: "all 0.2s",
-                display:    "flex", flexDirection: "row", alignItems: "center", gap: 14,
+                fontSize:   12, fontWeight: 600, transition: "all 0.2s",
+                display:    "flex", flexDirection: "row", alignItems: "center", gap: 10,
                 textAlign:  "left",
                 boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,212,255,0)",
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.background =
-                  "linear-gradient(180deg, rgba(58,98,158,0.55) 0%, rgba(20,38,72,0.7) 50%, rgba(14,28,56,0.7) 100%)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.85)";
-                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,212,255,0.45)";
+                (e.currentTarget as HTMLElement).style.background   = "linear-gradient(180deg, rgba(58,98,158,0.55) 0%, rgba(20,38,72,0.7) 50%, rgba(14,28,56,0.7) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor  = "rgba(0,212,255,0.85)";
+                (e.currentTarget as HTMLElement).style.boxShadow    = "inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,212,255,0.45)";
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.background =
-                  "linear-gradient(180deg, rgba(58,98,158,0.32) 0%, rgba(20,38,72,0.55) 50%, rgba(14,28,56,0.55) 100%)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,212,255,0.28)";
-                (e.currentTarget as HTMLElement).style.boxShadow   = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,212,255,0)";
+                (e.currentTarget as HTMLElement).style.background   = "linear-gradient(180deg, rgba(58,98,158,0.32) 0%, rgba(20,38,72,0.55) 50%, rgba(14,28,56,0.55) 100%)";
+                (e.currentTarget as HTMLElement).style.borderColor  = "rgba(0,212,255,0.28)";
+                (e.currentTarget as HTMLElement).style.boxShadow    = "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 0 rgba(0,212,255,0)";
               }}
             >
               <span style={{
-                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 background: "linear-gradient(180deg, #7DD3FC 0%, #00D4FF 50%, #0284C7 100%)",
                 border: "1px solid rgba(255,255,255,0.25)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 14px rgba(0,212,255,0.55)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 0 10px rgba(0,212,255,0.55)",
               }}>
-                <FileText size={20} style={{ color: "#031024" }} />
+                <FileText size={16} style={{ color: "#031024" }} />
               </span>
-              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 13, color: "white", letterSpacing: "-0.01em" }}>
+              <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ fontFamily: "var(--font-syne), system-ui, sans-serif", fontWeight: 800, fontSize: 12, color: "white", letterSpacing: "-0.01em" }}>
                   Upload worksheet
                 </span>
-                <span style={{ fontSize: 10, color: "rgba(125,211,252,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
+                <span style={{ fontSize: 9, color: "rgba(125,211,252,0.7)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.06em" }}>
                   PDF · DOC · DOCX
                 </span>
               </span>

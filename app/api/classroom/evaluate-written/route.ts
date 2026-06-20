@@ -77,7 +77,11 @@ async function evaluateOneQuestion(
   imageParts: OpenAI.Chat.ChatCompletionContentPart[],
   subject: string
 ): Promise<WrittenFeedbackItem> {
-  const prompt = `You are a CBSE Class 10 ${subject} examiner evaluating a student's handwritten answer sheet.
+  const kannadaNote = subject === "Kannada"
+    ? `\nIMPORTANT: This is a Kannada language exam. The student has written their answers in Kannada script (ಕನ್ನಡ ಲಿಪಿ). Read the Kannada handwriting carefully. Transcribe the Kannada text faithfully in the "read" field. Evaluate based on meaning and content, not just exact word match.\n`
+    : "";
+
+  const prompt = `You are a CBSE Class 10 ${subject} examiner evaluating a student's handwritten answer sheet.${kannadaNote}
 
 You are evaluating QUESTION ${qNumber} only. The answer sheet may span multiple images — read ALL of them.
 

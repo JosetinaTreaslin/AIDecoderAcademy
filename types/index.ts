@@ -179,6 +179,8 @@ export interface CorrectionIssue {
   severity:         CorrectionSeverity;
   approx_line_pct?: number;   // 0–100: vertical position of error from top of image
   approx_x_pct?:   number;   // 0–100: horizontal position of the wrong fragment from left
+  page_number?:     number;   // 1-indexed page where the error appears (multi-page notes)
+  precise_bbox?:    { left: number; top: number; width: number; height: number }; // 0–1 fractions, set by vision LLM for Kannada
 }
 
 export interface CorrectionResult {
@@ -188,6 +190,37 @@ export interface CorrectionResult {
   positives:             string[];
   image_urls:            string[];      // original uploaded pages (for display)
   annotated_image_urls?: string[];      // teacher-annotated pages (underlines, circles, ticks)
+}
+
+// ── Teacher-Assigned Classwork ───────────────────────────────────────────────
+
+export type AssignmentStatus = "passed" | "needs_resubmit";
+
+export interface Assignment {
+  id:             string;
+  chapter_id:     string;
+  teacher_id:     string;
+  title:          string;
+  instructions?:  string;
+  due_date?:      string;
+  created_at:     string;
+  chapter_title?: string;   // joined for display
+  subject?:       string;   // joined for display
+}
+
+export interface AssignmentSubmission {
+  id:                    string;
+  assignment_id:         string;
+  profile_id:            string;
+  attempt_number:        number;
+  image_urls:            string[];
+  annotated_image_urls?: string[];
+  accuracy_score:        number;
+  teacher_summary:       string;
+  issues:                CorrectionIssue[];
+  positives:             string[];
+  status:                AssignmentStatus;
+  submitted_at:          string;
 }
 
 // ── Teacher Dashboard ─────────────────────────────────────────────────────────

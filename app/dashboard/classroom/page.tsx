@@ -13,11 +13,13 @@ import { ScoreReport }      from "@/components/classroom/ScoreReport";
 import { WrittenTest, type WrittenResult } from "@/components/classroom/WrittenTest";
 import { WrittenScoreReport } from "@/components/classroom/WrittenScoreReport";
 import { ProctoringGuard }  from "@/components/classroom/ProctoringGuard";
-import { MathChapterMapPage } from "@/components/classroom/MathChapterMapPage";
+import { MathChapterMapPage }    from "@/components/classroom/MathChapterMapPage";
+import { KannadaChapterMapPage } from "@/components/classroom/KannadaChapterMapPage";
 import { TeacherCharacter } from "@/components/classroom/TeacherCharacter";
 import { NotesUpload }      from "@/components/classroom/NotesUpload";
 import { CorrectionReport } from "@/components/classroom/CorrectionReport";
-import type { Chapter, MCQQuestion, WrittenQuestion, WrittenFeedbackItem, Profile, CorrectionResult } from "@/types";
+import { AssignmentPanel }  from "@/components/classroom/AssignmentPanel";
+import type { Chapter, MCQQuestion, WrittenQuestion, WrittenFeedbackItem, Profile, CorrectionResult, Assignment, AssignmentSubmission } from "@/types";
 
 const NAVY = "#0f1c4d";
 const GOLD = "#C8A84B";
@@ -31,7 +33,7 @@ const LEFT_SUBJECTS = [
 ] as const;
 
 const RIGHT_SUBJECTS = [
-  { id: "hindi",    src: "/classroom/hindi.png",    name: "Hindi",                 hasData: false },
+  { id: "kannada",  src: "/classroom/hindi.png",    name: "Kannada",               hasData: true  },
   { id: "social",   src: "/classroom/social.png",   name: "Social Science",        hasData: false },
   { id: "computer", src: "/classroom/computer.png", name: "Computer Applications", hasData: false },
   { id: "biology",  src: "/classroom/biology.png",  name: "Biology",               hasData: false },
@@ -320,9 +322,9 @@ function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-type View = "landing" | "chapters" | "math-chapters" | "objective" | "arena" | "pick" | "select-type" | "loading"
+type View = "landing" | "chapters" | "math-chapters" | "kannada-chapters" | "objective" | "arena" | "pick" | "select-type" | "loading"
           | "mcq-test" | "written-test" | "mcq-result" | "written-result"
-          | "correct-notes" | "notes-result";
+          | "correct-notes" | "notes-result" | "assignment";
 
 interface PaperData {
   paperId: string; questionIds: string[];
@@ -341,6 +343,8 @@ export default function ClassroomPage() {
   const [mcqResult,      setMcqResult]     = useState<MCQResult|null>(null);
   const [writtenResult,    setWrittenResult]    = useState<WrittenResult|null>(null);
   const [correctionResult, setCorrectionResult] = useState<CorrectionResult|null>(null);
+  const [assignments,           setAssignments]           = useState<Assignment[]>([]);
+  const [assignmentSubmissions, setAssignmentSubmissions] = useState<Record<string, AssignmentSubmission[]>>({});
   const [loadError,        setLoadError]        = useState<string|null>(null);
   const [loadingMsg,     setLoadingMsg]    = useState("");
   const [activeSubject,  setActiveSubject] = useState<string>("chemistry");
@@ -352,6 +356,21 @@ export default function ClassroomPage() {
   }, []);
 
   const handleChapterSelect = (ch: Chapter) => { setChapter(ch); setLoadError(null); setView("select-type"); };
+
+  const goToObjective = (ch: Chapter) => {
+    setChapter(ch);
+    setView("objective");
+    setAssignments([]);
+    setAssignmentSubmissions({});
+    fetch(`/api/classroom/assignments?chapter_id=${ch.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        setAssignments(data.assignments ?? []);
+        setAssignmentSubmissions(data.submissions ?? {});
+      })
+      .catch(() => {});
+  };
 
   const loadPaper = async (chapter: Chapter, type: "mcq"|"written") => {
     setView("loading");
@@ -411,7 +430,9 @@ export default function ClassroomPage() {
       <>
         <ClassroomLanding profile={profile} onEnter={(subjectId) => {
           setActiveSubject(subjectId);
-          setView(subjectId === "mathematics" ? "math-chapters" : "chapters");
+          if (subjectId === "mathematics") setView("math-chapters");
+          else if (subjectId === "kannada") setView("kannada-chapters");
+          else setView("chapters");
         }} />
         {teacher}
       </>
@@ -423,7 +444,20 @@ export default function ClassroomPage() {
     return (
       <>
         <ChapterMapPage
-          onChapterSelect={(ch) => { setChapter(ch); setView("objective"); }}
+          onChapterSelect={goToObjective}
+          onBack={() => setView("landing")}
+        />
+        {teacher}
+      </>
+    );
+  }
+
+  // ── Kannada chapter map — full viewport ──────────────────────────────────
+  if (view === "kannada-chapters") {
+    return (
+      <>
+        <KannadaChapterMapPage
+          onChapterSelect={goToObjective}
           onBack={() => setView("landing")}
         />
         {teacher}
@@ -436,7 +470,7 @@ export default function ClassroomPage() {
     return (
       <>
         <MathChapterMapPage
-          onChapterSelect={(ch) => { setChapter(ch); setView("objective"); }}
+          onChapterSelect={goToObjective}
           onBack={() => setView("landing")}
         />
         {teacher}
@@ -446,7 +480,16 @@ export default function ClassroomPage() {
 
   // ── Objective page — full viewport ────────────────────────────────────────
   if (view === "objective" && selectedChapter) {
-    const chapterMapView = activeSubject === "mathematics" ? "math-chapters" : "chapters";
+    const chapterMapView = activeSubject === "mathematics" ? "math-chapters"
+                         : activeSubject === "kannada"     ? "kannada-chapters"
+                         : "chapters";
+
+    const currentAssignment = assignments[0] ?? null;
+    const currentSubmissions = currentAssignment ? (assignmentSubmissions[currentAssignment.id] ?? []) : [];
+    const assignmentStatus = currentSubmissions.some(s => s.status === "passed") ? "passed"
+                            : currentSubmissions.length > 0 ? "needs_resubmit"
+                            : "not_started";
+
     return (
       <>
         <ObjectivePage
@@ -455,6 +498,9 @@ export default function ClassroomPage() {
           onBack={() => setView(chapterMapView)}
           onEnterArena={() => setView("arena")}
           onCorrectNotes={() => setView("correct-notes")}
+          assignment={currentAssignment}
+          assignmentStatus={assignmentStatus}
+          onOpenAssignment={() => setView("assignment")}
         />
         {teacher}
       </>
@@ -520,6 +566,37 @@ export default function ClassroomPage() {
               result={correctionResult}
               chapter={selectedChapter.chapter_title}
               onBack={() => setView("objective")}
+            />
+            <div className="h-0.5 w-full flex-shrink-0 rounded-b-3xl"
+              style={{ background:`linear-gradient(90deg, transparent, rgba(6,182,212,0.3), transparent)` }} />
+          </div>
+        </div>
+        {teacher}
+      </div>
+    );
+  }
+
+  // ── Assignment — glass panel (submission history / upload / report) ────────
+  if (view === "assignment" && selectedChapter && assignments[0]) {
+    const currentAssignment = assignments[0];
+    return (
+      <div className="flex flex-col"
+        style={{ height:"100dvh", backgroundImage:"url('/classroom/background.png')",
+          backgroundSize:"cover", backgroundPosition:"center", position:"relative" }}>
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background:"linear-gradient(160deg,rgba(230,238,255,0.2),rgba(210,225,255,0.1))", zIndex:0 }} />
+        <div className="flex-1 overflow-hidden flex relative z-10 py-4 px-4">
+          <div className="flex-1 flex flex-col overflow-hidden max-w-xl mx-auto w-full rounded-3xl relative"
+            style={{ background:"rgba(255,255,255,0.82)", border:"1px solid rgba(255,255,255,0.88)",
+              backdropFilter:"blur(32px)", boxShadow:"0 8px 48px rgba(15,28,77,0.12), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
+            <div className="h-0.5 w-full flex-shrink-0 rounded-t-3xl"
+              style={{ background:`linear-gradient(90deg, transparent 0%, rgba(6,182,212,0.6) 30%, rgba(8,145,178,0.5) 70%, transparent 100%)` }} />
+            <AssignmentPanel
+              chapter={selectedChapter}
+              assignment={currentAssignment}
+              submissions={assignmentSubmissions[currentAssignment.id] ?? []}
+              onBack={() => setView("objective")}
+              onSubmissionsChange={(subs) => setAssignmentSubmissions(prev => ({ ...prev, [currentAssignment.id]: subs }))}
             />
             <div className="h-0.5 w-full flex-shrink-0 rounded-b-3xl"
               style={{ background:`linear-gradient(90deg, transparent, rgba(6,182,212,0.3), transparent)` }} />

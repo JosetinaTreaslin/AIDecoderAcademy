@@ -9,8 +9,9 @@ import type { TeacherProfile } from "@/types";
 const INTER = "var(--font-inter), system-ui, sans-serif";
 
 const NAV_LINKS = [
-  { href: "/teacher",       label: "Class"  },
-  { href: "/teacher/tests", label: "Tests"  },
+  { href: "/teacher",             label: "Class"       },
+  { href: "/teacher/tests",       label: "Tests"       },
+  { href: "/teacher/assignments", label: "Assignments" },
 ];
 
 // ── Onboarding ────────────────────────────────────────────────────────────────

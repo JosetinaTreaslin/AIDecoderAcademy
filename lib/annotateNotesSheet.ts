@@ -44,8 +44,9 @@ interface LocatedIssue {
 }
 
 // ── Normalise text for comparison ─────────────────────────────────────────────
-// Converts Unicode subscript digits (₀-₉) to ASCII first, then strips non-alphanumeric.
-// This ensures "H₂SO" (from LLM) matches "H2SO" (from Textract OCR).
+// Converts Unicode subscript digits (₀-₉) to ASCII first, then strips punctuation/spaces
+// while PRESERVING non-Latin script characters (Kannada U+0C00-U+0C7F, Devanagari, etc.)
+// so that Kannada word matching works through Textract OCR.
 const SUBSCRIPT_MAP: Record<string, string> = {
   "₀":"0","₁":"1","₂":"2","₃":"3","₄":"4",
   "₅":"5","₆":"6","₇":"7","₈":"8","₉":"9",
@@ -54,7 +55,10 @@ function norm(s: string): string {
   return s
     .replace(/[₀₁₂₃₄₅₆₇₈₉]/g, c => SUBSCRIPT_MAP[c] ?? c)
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
+    // Keep: a-z, 0-9, Kannada script (U+0C80-U+0CFF), Devanagari (U+0900-U+097F)
+    // Strip: punctuation, spaces, zero-width chars, etc.
+    // eslint-disable-next-line no-misleading-character-class
+    .replace(/[^a-z0-9ಀ-೿ऀ-ॿ]/g, "");
 }
 
 // ── Score how well a Textract LINE matches an issue's context ─────────────────
@@ -185,7 +189,7 @@ function findFragmentInLine(
 // Returns both located issues AND raw blocks (so caller avoids a second API call)
 async function textractLocate(
   imgBuffer: Buffer,
-  issues: Array<{ id: number; type: CorrectionIssueType; student_wrote: string; description: string; approx_line_pct?: number; approx_x_pct?: number }>,
+  issues: Array<{ id: number; type: CorrectionIssueType; student_wrote: string; description: string; approx_line_pct?: number; approx_x_pct?: number; precise_bbox?: { left: number; top: number; width: number; height: number } }>,
 ): Promise<{ located: LocatedIssue[]; lineBlocks: Block[] }> {
   const result = await getTextract().send(new DetectDocumentTextCommand({
     Document: { Bytes: imgBuffer },
@@ -200,6 +204,13 @@ async function textractLocate(
   const located: LocatedIssue[] = [];
 
   for (const issue of issues) {
+    // ── Precise bbox from vision LLM (Kannada) — skip Textract matching entirely ──
+    if (issue.precise_bbox) {
+      console.log(`[annotateNotes] Issue ${issue.id} "${issue.student_wrote}" — using vision bbox (no Textract match needed)`);
+      located.push({ id: issue.id, found: true, bbox: issue.precise_bbox });
+      continue;
+    }
+
     // ── If LLM provided position hints, narrow word search to that region ──
     const Y_TOL  = 0.06;  // ±6% of image height  (~1-2 lines tolerance)
     const X_TOL  = 0.20;  // ±20% of image width  (generous for x)
@@ -252,7 +263,52 @@ async function textractLocate(
     }
 
     if (!foundBBox) {
-      console.warn(`[annotateNotes] Issue ${issue.id} "${issue.student_wrote}" — not found in Textract output`);
+      if (yTarget != null && xTarget != null) {
+        // ── Nearest-word fallback ────────────────────────────────────────────────
+        // Text matching failed (common for Kannada handwriting that Textract can't OCR).
+        // Textract still detects ink regions as WORD blocks with accurate bounding boxes.
+        // Find the word block whose centre is closest to the LLM's coordinate hint —
+        // this picks the right occurrence even when the same word appears multiple times.
+        const nearest = wordBlocks
+          .map(w => {
+            const bb = w.Geometry?.BoundingBox;
+            if (!bb) return null;
+            const midX = bb.Left! + bb.Width!  / 2;
+            const midY = bb.Top!  + bb.Height! / 2;
+            // Weighted distance: y has tighter tolerance than x, so scale accordingly
+            const dy   = (midY - yTarget) / Y_TOL;
+            const dx   = (midX - xTarget) / X_TOL;
+            return { bb, dist: Math.sqrt(dx * dx + dy * dy) };
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null)
+          .sort((a, b) => a.dist - b.dist)[0];
+
+        if (nearest) {
+          foundBBox = {
+            left:   nearest.bb.Left!,
+            top:    nearest.bb.Top!,
+            width:  nearest.bb.Width!,
+            height: nearest.bb.Height!,
+          };
+          console.log(`[annotateNotes] Issue ${issue.id} "${issue.student_wrote}" — nearest-word fallback: left=${foundBBox.left.toFixed(2)} top=${foundBBox.top.toFixed(2)}`);
+        } else {
+          // No word blocks at all — last resort: pure coordinate estimate
+          const estH = 0.025;
+          const estW = Math.min(0.35, issue.student_wrote.length * 0.022 + 0.05);
+          foundBBox = {
+            left:   Math.max(0, xTarget - 0.02),
+            top:    Math.max(0, yTarget - estH / 2),
+            width:  estW,
+            height: estH,
+          };
+          console.log(`[annotateNotes] Issue ${issue.id} "${issue.student_wrote}" — coordinate fallback: left=${foundBBox.left.toFixed(2)} top=${foundBBox.top.toFixed(2)}`);
+        }
+
+        located.push({ id: issue.id, found: true, bbox: foundBBox });
+        continue;
+      }
+
+      console.warn(`[annotateNotes] Issue ${issue.id} "${issue.student_wrote}" — not found and no position hints, skipping`);
       located.push({ id: issue.id, found: false, bbox: { left:0, top:0, width:0, height:0 } });
       continue;
     }
@@ -296,6 +352,7 @@ function buildSvgOverlay(
   issueTypes:      Record<number, CorrectionIssueType>,
   correctVersions: Record<number, string>,
   tickBbox:        BBox | null,
+  correctedDate:   string | null,
 ): string {
   const elements: string[] = [];
 
@@ -354,6 +411,26 @@ function buildSvgOverlay(
         stroke-linecap="round" stroke-linejoin="round"/>`);
   }
 
+  // Teacher-style "Corrected" signature stamp — last page only
+  if (correctedDate) {
+    const sigW = Math.round(width  * 0.32);
+    const sigH = Math.round(height * 0.07);
+    const sigX = width  - sigW - Math.round(width  * 0.03);
+    const sigY = height - sigH - Math.round(height * 0.03);
+
+    elements.push(`
+      <g>
+        <rect x="${sigX}" y="${sigY}" width="${sigW}" height="${sigH}"
+          fill="none" stroke="${RED}" stroke-width="2" stroke-dasharray="6,4" rx="8"/>
+        <text x="${sigX + sigW / 2}" y="${sigY + sigH * 0.45}" text-anchor="middle"
+          font-family="sans-serif" font-size="${Math.round(sigH * 0.36)}" font-style="italic" font-weight="bold"
+          fill="${RED}">Corrected &#10003;</text>
+        <text x="${sigX + sigW / 2}" y="${sigY + sigH * 0.8}" text-anchor="middle"
+          font-family="sans-serif" font-size="${Math.round(sigH * 0.22)}"
+          fill="${RED}">AI Teacher &#183; ${correctedDate}</text>
+      </g>`);
+  }
+
   return `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
   ${elements.join("\n")}
 </svg>`;
@@ -376,8 +453,10 @@ export async function annotateNotesSheets(
       description:      iss.description,
       approx_line_pct:  iss.approx_line_pct,
       approx_x_pct:     iss.approx_x_pct,
+      page_number:      iss.page_number,    // 1-indexed; undefined = search all pages
+      precise_bbox:     iss.precise_bbox,   // set by vision LLM for Kannada; skips Textract
     }))
-    .filter((iss): iss is { id: number; type: CorrectionIssueType; student_wrote: string; description: string; approx_line_pct: number | undefined; approx_x_pct: number | undefined } =>
+    .filter((iss): iss is { id: number; type: CorrectionIssueType; student_wrote: string; description: string; approx_line_pct: number | undefined; approx_x_pct: number | undefined; page_number: number | undefined; precise_bbox: CorrectionIssue["precise_bbox"] } =>
       !!iss.student_wrote
     );
 
@@ -388,10 +467,20 @@ export async function annotateNotesSheets(
     correctVersions[iss.id] = issues[iss.id]?.correct_version ?? "";
   }
 
+  // "Corrected" signature stamp on the last page, dated today
+  const correctedDate = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+
+  // Fixed bottom-left fallback so every page gets a tick even if Textract
+  // can't find a clean line to anchor it to (blank page, no text, etc.)
+  const FALLBACK_TICK_BBOX: BBox = { left: 0.05, top: 0.90, width: 0.15, height: 0.03 };
+
   const annotatedUrls: string[] = [];
 
   for (let pageIdx = 0; pageIdx < imageUrls.length; pageIdx++) {
     const url = imageUrls[pageIdx]!;
+    const isLastPage = pageIdx === imageUrls.length - 1;
     console.log(`[annotateNotes] page ${pageIdx + 1}/${imageUrls.length}`);
 
     try {
@@ -405,24 +494,20 @@ export async function annotateNotesSheets(
       const width  = meta.width  ?? 1080;
       const height = meta.height ?? 1440;
 
-      if (annotatableIssues.length === 0) {
-        annotatedUrls.push(url);
-        continue;
-      }
-
       // ── Textract: single API call → word bounding boxes + line blocks ──────
-      const { located, lineBlocks } = await textractLocate(imgBuffer, annotatableIssues);
-      const tickBbox = pickTickBbox(lineBlocks, located);
+      // Run on every page — needed both for issue locating and tick placement.
+      // Only pass issues that belong to this page (or have no page hint)
+      const pageIssues = annotatableIssues.filter(
+        iss => iss.page_number == null || iss.page_number === pageIdx + 1
+      );
 
-      const hasAnnotations = located.some(l => l.found) || tickBbox !== null;
-      if (!hasAnnotations) {
-        console.log(`[annotateNotes] page ${pageIdx + 1}: nothing to annotate — using original`);
-        annotatedUrls.push(url);
-        continue;
-      }
+      const { located, lineBlocks } = await textractLocate(imgBuffer, pageIssues);
+
+      // Tick mark appears on every page regardless of errors
+      const tickBbox = pickTickBbox(lineBlocks, located) ?? FALLBACK_TICK_BBOX;
 
       // ── Draw SVG + composite ────────────────────────────────────────────────
-      const svg = buildSvgOverlay(width, height, located, issueTypes, correctVersions, tickBbox);
+      const svg = buildSvgOverlay(width, height, located, issueTypes, correctVersions, tickBbox, isLastPage ? correctedDate : null);
       const annotatedBuffer = await sharp(imgBuffer)
         .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
         .jpeg({ quality: 93 })

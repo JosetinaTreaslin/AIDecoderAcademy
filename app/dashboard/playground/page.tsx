@@ -307,21 +307,19 @@ function PlaygroundInner() {
     const cleanDisplay = hasContextMarkers ? userText : (hasContext ? userText : undefined);
 
     if (outType === "image") {
-      await sendImage(enrichedText, cleanDisplay, imgBubbleMeta);
+      await sendImage(enrichedText, cleanDisplay, bubbleMeta);
       awardXP("generate_image").then(handleXpResult);
     } else if (outType === "audio") {
-      // Pass imgBubbleMeta so injected image thumbnail still shows in the bubble
-      await sendAudio(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, imgBubbleMeta);
+      await sendAudio(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, bubbleMeta);
       awardXP("generate_audio").then(handleXpResult);
     } else if (outType === "slides") {
-      await sendSlides(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, imgBubbleMeta);
+      await sendSlides(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, bubbleMeta);
       awardXP("generate_slides").then(handleXpResult);
     } else if (outType === "video") {
       // Video generation temporarily disabled — shows a funny "no video for you" image.
       await sendVideo(enrichedText, cleanDisplay, imgBubbleMeta);
     } else {
-      // Pass displayPrompt (6th arg) so the bubble shows the clean text, not the context marker
-      await sendMessage(enrichedText, outType, [], undefined, imgBubbleMeta.length ? imgBubbleMeta : undefined, cleanDisplay);
+      await sendMessage(enrichedText, outType, [], undefined, bubbleMeta.length ? bubbleMeta : undefined, cleanDisplay);
       awardXP("generate_text").then(handleXpResult);
     }
   };

@@ -4,11 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Save, Send, Trash2, Upload, Image as ImageIcon, Film, Download, Sparkles, Copy, RefreshCw, MessageSquare, Check } from "lucide-react";
 import { useWorksheetWriter } from "@/lib/chatChannels";
-import {
-  getWorksheetSchema,
-  type WorksheetField,
-  type WorksheetSchema,
-} from "@/lib/worksheetSchemas";
+import { getWorksheetSchema } from "@/lib/worksheetSchemas";
 import { uploadFile } from "@/lib/objectiveUpload";
 
 // ── Persistent worksheet popup ─────────────────────────────────────────────
@@ -108,21 +104,6 @@ function wordCount(s: string): number {
   return s.trim().split(/\s+/).filter(Boolean).length;
 }
 
-function isFieldFilled(f: WorksheetField, v: string | boolean | undefined): boolean {
-  if (f.kind === "yesno") return typeof v === "boolean";
-  const text = typeof v === "string" ? v : "";
-  if (!text.trim()) return false;
-  if (f.minWords && wordCount(text) < f.minWords) return false;
-  return true;
-}
-
-function allRequiredFilled(schema: WorksheetSchema, data: Record<string, string | boolean>): boolean {
-  // Reflection is post-create; not gating on submit.
-  return schema.sections
-    .filter(s => s.id !== "reflection")
-    .every(s => s.fields.every(f => isFieldFilled(f, data[f.id])));
-}
-
 // All in-popup uploads removed — comic images (OBJ 10) and avatar videos
 // (OBJ 6) both come from the whiteboard chat now. The validator scans chat
 // messages for the right kind of media and uses the most recent match.
@@ -152,6 +133,8 @@ export function WorksheetPopup({
   const [promptLoading,   setPromptLoading]   = useState(false);
   const [promptError,     setPromptError]     = useState<string | null>(null);
   const [promptCopied,    setPromptCopied]    = useState(false);
+  const [parseStatus, setParseStatus] = useState<"idle" | "done" | "error">("idle");
+  const [parseError,  setParseError]  = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const writer = useWorksheetWriter();
 
@@ -193,6 +176,26 @@ export function WorksheetPopup({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schema, lmsId, profileId]);
 
+  // Docx auto-parse notify — fired by ObjectiveSubmissionPanel when a .docx
+  // dropped in the whiteboard chat has been parsed and merged into the draft.
+  // The storage event only fires across tabs, so this custom event is needed
+  // for same-tab updates from the parse-worksheet API callback.
+  useEffect(() => {
+    if (!schema) return;
+    function onParsed(e: Event) {
+      const detail = (e as CustomEvent<{ lmsId?: string; profileId?: string }>).detail;
+      if (detail?.lmsId && detail.lmsId !== lmsId) return;
+      const fresh = loadDraft(lmsId, profileId);
+      setData(fresh.data);
+      setMediaUrls(fresh.mediaUrls ?? []);
+      setNotes(fresh.notes ?? "");
+      writer.setDraft(lmsId, fresh.data);
+    }
+    window.addEventListener("aida:worksheet-parsed", onParsed);
+    return () => window.removeEventListener("aida:worksheet-parsed", onParsed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schema, lmsId, profileId]);
+
   // Esc closes
   useEffect(() => {
     if (!open) return;
@@ -200,6 +203,35 @@ export function WorksheetPopup({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  // DOCX auto-fill: listen for `aida:worksheet-parsed` dispatched by
+  // ObjectiveSubmissionPanel after a successful parse-worksheet call.
+  // Pre-fill form fields without overwriting anything the student already typed.
+  useEffect(() => {
+    function onParsed(e: Event) {
+      const evt = e as CustomEvent<{ lmsId: string; data: Record<string, string | boolean> }>;
+      if (!evt.detail || evt.detail.lmsId !== lmsId) return;
+      const parsed = evt.detail.data;
+      if (!parsed || typeof parsed !== "object") return;
+      setData(prev => {
+        const merged = { ...prev };
+        let changed = false;
+        for (const [k, v] of Object.entries(parsed)) {
+          // Only pre-fill fields that are currently blank
+          const existing = prev[k];
+          const isEmpty = existing === undefined || existing === null || existing === "";
+          if (isEmpty) { merged[k] = v; changed = true; }
+        }
+        if (changed) persist({ data: merged });
+        return changed ? merged : prev;
+      });
+      setParseStatus("done");
+      setParseError(null);
+    }
+    window.addEventListener("aida:worksheet-parsed", onParsed);
+    return () => window.removeEventListener("aida:worksheet-parsed", onParsed);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lmsId]);
 
   // Single source of truth for "save the draft now" — used by every change
   // handler so the kid never loses anything they typed/uploaded.
@@ -440,12 +472,6 @@ export function WorksheetPopup({
     );
   }
 
-  // Submit allowed when the required inline fields are filled. (The kid can
-  // also drop a filled .docx/.pdf into chat — that path is picked up by the
-  // validator directly, no popup involvement.)
-  const inlineFilled = allRequiredFilled(schema, data);
-  const canSubmit    = inlineFilled && mediaUploading === 0;
-
   return (
     <AnimatePresence>
       {open && (
@@ -481,6 +507,37 @@ export function WorksheetPopup({
               </header>
 
               <p className="px-5 pt-4 text-sm text-white/70">{schema.intro}</p>
+
+              {/* ── DOCX auto-fill status banner ─────────────────────── */}
+              {parseStatus !== "idle" && (
+                <div
+                  className="mx-5 mt-3 px-3 py-2 rounded-lg text-[12px] flex items-center gap-2"
+                  style={{
+                    background: parseStatus === "done"
+                      ? "rgba(123,255,196,0.08)"
+                      : "rgba(255,107,107,0.08)",
+                    border: parseStatus === "done"
+                      ? "1px solid rgba(123,255,196,0.25)"
+                      : "1px solid rgba(255,107,107,0.25)",
+                    color: parseStatus === "done"
+                      ? "rgba(123,255,196,0.9)"
+                      : "rgba(255,107,107,0.9)",
+                  }}
+                >
+                  <span>{parseStatus === "done" ? "✓" : "⚠"}</span>
+                  <span>
+                    {parseStatus === "done"
+                      ? "Worksheet auto-filled from your uploaded document — review before saving."
+                      : parseError ?? "Couldn't auto-fill from the document. Fill it in manually."}
+                  </span>
+                  <button
+                    className="ml-auto text-[11px] opacity-60 hover:opacity-100 transition"
+                    onClick={() => { setParseStatus("idle"); setParseError(null); }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
               {/* ── Body ─────────────────────────────────────────────── */}
               <div className="px-5 py-4 space-y-7">
@@ -762,17 +819,16 @@ export function WorksheetPopup({
                   </button>
                   <button
                     type="button"
-                    disabled={!canSubmit}
                     onClick={() => onSubmit({
                       lmsId,
                       data,
                       mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
                       notes:     notes.trim().length > 0 ? notes : undefined,
                     })}
-                    className="px-4 py-2 rounded-lg text-xs font-display font-bold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-lg text-xs font-display font-bold transition flex items-center gap-1.5"
                     style={{
-                      background: canSubmit ? arenaAccent : "rgba(255,255,255,0.05)",
-                      color:      canSubmit ? "#08080F" : "rgba(255,255,255,0.5)",
+                      background: arenaAccent,
+                      color:      "#08080F",
                     }}
                   >
                     <Send size={14} /> Save & ready for validation

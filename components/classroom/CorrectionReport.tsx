@@ -110,6 +110,7 @@ interface Props {
   result:   CorrectionResult;
   chapter:  string;
   onBack:   () => void;
+  banner?:  React.ReactNode;
 }
 
 const NAVY = "#0f1c4d";
@@ -208,7 +209,7 @@ function IssueCard({ issue }: { issue: CorrectionIssue }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function CorrectionReport({ result, chapter, onBack }: Props) {
+export function CorrectionReport({ result, chapter, onBack, banner }: Props) {
   const [page,      setPage]      = useState(0);
   const [tab,       setTab]       = useState<"issues" | "pages">("issues");
   const [modalOpen, setModalOpen] = useState(false);
@@ -251,6 +252,11 @@ export function CorrectionReport({ result, chapter, onBack }: Props) {
           <p className="text-sm font-bold truncate" style={{ color: NAVY }}>{chapter}</p>
         </div>
       </div>
+
+      {/* ── Pass/fail banner (optional, for assignment submissions) ──────────── */}
+      {banner && (
+        <div className="flex-shrink-0">{banner}</div>
+      )}
 
       {/* ── Score hero ─────────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 px-5 py-4 flex items-center gap-4"
