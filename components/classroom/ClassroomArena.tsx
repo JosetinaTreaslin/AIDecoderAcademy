@@ -433,8 +433,10 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       await runOverview(t);
       return;
     }
-    await sendMessage(t);
-  }, [profile, isStreaming, sendMessage, audioOverviewMode, runOverview]);
+    if (flashcardMode) await handleFlashcardTopic(t);
+    else if (blogMode) await handleBlogTopic(t);
+    else await sendMessage(t);
+  }, [profile, isStreaming, sendMessage, audioOverviewMode, runOverview, flashcardMode, handleFlashcardTopic, blogMode, handleBlogTopic]);
 
   const runPodcast = useCallback(async (topic: string) => {
     setPodcastProgress({ stage: "persona" });
@@ -463,10 +465,6 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       setPodcastProgress({ stage: "error", message: (e as Error).message });
     }
   }, [chapter.chapter_title, saveAudioCreation]);
-    if (flashcardMode) await handleFlashcardTopic(t);
-    else if (blogMode) await handleBlogTopic(t);
-    else await sendMessage(t);
-  }, [profile, isStreaming, sendMessage, flashcardMode, handleFlashcardTopic, blogMode, handleBlogTopic]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }

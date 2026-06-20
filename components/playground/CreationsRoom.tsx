@@ -295,7 +295,7 @@ function buildCreationContext(c: Creation): string {
   if (c.output_type === "text" && c.file_url) {
     return `[Document titled "${c.title}": ${c.file_url}]\n\n`;
   }
-  if (c.output_type === "video" && c.file_url) {
+  if ((c.output_type as string) === "video" && c.file_url) {
     return `[Video titled "${c.title}": ${c.file_url}]\n\n`;
   }
   if (c.output_type === "json") {
@@ -559,9 +559,9 @@ export function CreationsRoom({
         };
         injectCreation(fake);
         // JSON is plain text — no server upload needed
-        if (!isJson) uploadFileToServer(file, itemId);
+        if (outType !== "json") uploadFileToServer(file, itemId);
       };
-      if (isJson) {
+      if (outType === "json") {
         reader.readAsText(file);
       } else {
         reader.readAsDataURL(file);

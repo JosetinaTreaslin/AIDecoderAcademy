@@ -307,19 +307,19 @@ function PlaygroundInner() {
     const cleanDisplay = hasContextMarkers ? userText : (hasContext ? userText : undefined);
 
     if (outType === "image") {
-      await sendImage(enrichedText, cleanDisplay, bubbleMeta);
+      await sendImage(enrichedText, cleanDisplay, imgBubbleMeta);
       awardXP("generate_image").then(handleXpResult);
     } else if (outType === "audio") {
-      await sendAudio(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, bubbleMeta);
+      await sendAudio(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, imgBubbleMeta);
       awardXP("generate_audio").then(handleXpResult);
     } else if (outType === "slides") {
-      await sendSlides(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, bubbleMeta);
+      await sendSlides(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, imgBubbleMeta);
       awardXP("generate_slides").then(handleXpResult);
     } else if (outType === "video") {
       // Video generation temporarily disabled — shows a funny "no video for you" image.
       await sendVideo(enrichedText, cleanDisplay, imgBubbleMeta);
     } else {
-      await sendMessage(enrichedText, outType, [], undefined, bubbleMeta.length ? bubbleMeta : undefined, cleanDisplay);
+      await sendMessage(enrichedText, outType, [], undefined, imgBubbleMeta.length ? imgBubbleMeta : undefined, cleanDisplay);
       awardXP("generate_text").then(handleXpResult);
     }
   };
