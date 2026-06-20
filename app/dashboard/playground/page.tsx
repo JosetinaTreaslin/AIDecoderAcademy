@@ -277,48 +277,34 @@ function PlaygroundInner() {
     if (!text.trim() || isStreaming) return;
     setOutputType(outType);
 
-    // If the text starts with a creation context marker ([Type titled "...": ...]\n\n),
-    // split it out so the user bubble shows only their clean message.
-    const nnIdx         = text.indexOf("\n\n");
-    const contextPart   = nnIdx > -1 ? text.slice(0, nnIdx) : "";
-    const isCtxMarker   = contextPart.startsWith("[") && contextPart.endsWith("]");
-    const userText      = isCtxMarker ? text.slice(nnIdx + 2) : text;
-    const displayText   = isCtxMarker ? userText : undefined;
+    // Strip ALL leading context markers ([Type titled "...": ...]\n\n) from the text.
+    // Multiple file uploads produce multiple markers; we must collect all image URLs
+    // for bubble thumbnails and expose only the user's actual message for display.
+    let remaining = text;
+    const imgBubbleMeta: string[] = [];
+    let hasContextMarkers = false;
 
-    // Extract thumbnail meta from the first context marker so the bubble can render
-    // it visually. The remaining markers (2nd, 3rd…) stay in displayText and are
-    // parsed by IMAGE_RE / DOC_RE inside MessageBubble.
-    // Capture both title and URL from the first context marker so the bubble
-    // can show the actual label ("CHATGPT") instead of the generic "image".
-    const imgUrlMatch   = isCtxMarker
-      ? contextPart.match(/^\[Image titled "([^"]+)": (https?:\/\/\S+)\]$/)
-      : null;
-    const docMatch      = isCtxMarker
-      ? contextPart.match(/^\[Document titled "([^"]+)": (https?:\/\/\S+)\]$/)
-      : null;
-    const audioMatch    = isCtxMarker
-      ? contextPart.match(/^\[Audio titled "([^"]+)": ([^\]]+)\]$/)
-      : null;
-    const videoMatch    = isCtxMarker
-      ? contextPart.match(/^\[Video titled "([^"]+)": ([^\]]+)\]$/)
-      : null;
-    const bubbleMeta: string[] = [];
-    if (imgUrlMatch)  bubbleMeta.push(`img:${imgUrlMatch[1]}:${imgUrlMatch[2]}`);
-    if (docMatch)     bubbleMeta.push(`doc:${docMatch[1]}:${docMatch[2]}`);
-    // Only include URL in meta when it's a real server URL (not a placeholder)
-    if (audioMatch)   bubbleMeta.push(audioMatch[2].startsWith("http") ? `audio:${audioMatch[1]}:${audioMatch[2]}` : `audio:${audioMatch[1]}`);
-    if (videoMatch)   bubbleMeta.push(videoMatch[2].startsWith("http") ? `video:${videoMatch[1]}:${videoMatch[2]}` : `video:${videoMatch[1]}`);
+    while (true) {
+      const nnIdx = remaining.indexOf("\n\n");
+      if (nnIdx === -1) break;
+      const segment = remaining.slice(0, nnIdx);
+      if (!segment.startsWith("[") || !segment.endsWith("]")) break;
+      hasContextMarkers = true;
+      // Capture image URL (https or data:) for thumbnail display in the bubble
+      const imgMatch = segment.match(/^\[Image titled "[^"]+": (\S+)\]$/);
+      if (imgMatch) imgBubbleMeta.push(`img:${imgMatch[1]}`);
+      remaining = remaining.slice(nnIdx + 2);
+    }
 
-    // Skip auto-inject when user explicitly dragged a creation into the prompt —
-    // that would prepend a second [Image...] marker and extractImageUrl in the API
-    // would pick the wrong one (always takes the first match).
-    const context = isCtxMarker ? "" : buildPreviousOutputContext(messages, outType, userText);
+    const userText = remaining;
+
+    // Skip auto-inject when user explicitly dragged/uploaded a creation into the prompt.
+    const context = hasContextMarkers ? "" : buildPreviousOutputContext(messages, outType, userText);
     const enrichedText = context ? context + text : text;
     const hasContext = !!context;
 
     // Clean display text — the user's actual message without any injected context markers.
-    // Falls back to userText when there's auto-injected previous-output context.
-    const cleanDisplay = displayText ?? (hasContext ? userText : undefined);
+    const cleanDisplay = hasContextMarkers ? userText : (hasContext ? userText : undefined);
 
     if (outType === "image") {
       await sendImage(enrichedText, cleanDisplay, bubbleMeta);
@@ -330,8 +316,8 @@ function PlaygroundInner() {
       await sendSlides(enrichedText, profile?.age_group ?? "11-13", cleanDisplay, bubbleMeta);
       awardXP("generate_slides").then(handleXpResult);
     } else if (outType === "video") {
-      await sendVideo(enrichedText, cleanDisplay, bubbleMeta);
-      awardXP("generate_video").then(handleXpResult);
+      // Video generation temporarily disabled — shows a funny "no video for you" image.
+      await sendVideo(enrichedText, cleanDisplay, imgBubbleMeta);
     } else {
       await sendMessage(enrichedText, outType, [], undefined, bubbleMeta.length ? bubbleMeta : undefined, cleanDisplay);
       awardXP("generate_text").then(handleXpResult);

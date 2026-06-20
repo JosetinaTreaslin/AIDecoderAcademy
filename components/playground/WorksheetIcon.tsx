@@ -61,7 +61,7 @@ export function WorksheetIcon({ onClick, arenaAccent, arenaAccentGlow, hasDraft 
     <motion.button
       type="button"
       onClick={onClick}
-      className="fixed z-[100] flex items-end justify-center"
+      className="fixed z-[100] flex items-end justify-center worksheet-icon"
       style={{
         // ↓ horizontal: right of viewport, plus AIDA's width, plus tight gap = sits left of AIDA
         //   Keep the FIRST percentage in this calc identical to AIDA's `right`
@@ -74,8 +74,8 @@ export function WorksheetIcon({ onClick, arenaAccent, arenaAccentGlow, hasDraft 
         background: "transparent",
         border:     "none",
         padding:    0,
-        cursor:     "pointer",
-        filter:     `drop-shadow(0 0 18px ${arenaAccentGlow})`,
+        cursor: "pointer",
+        filter: `drop-shadow(0 0 18px ${arenaAccentGlow})`,
       }}
       whileHover={{ y: -3, scale: 1.04 }}
       whileTap={{ scale: 0.96 }}

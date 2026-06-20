@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback } from "react";
 import { Trophy, RotateCcw, TrendingUp, CheckCircle2, AlertCircle, MinusCircle, Home, ChevronLeft, ChevronRight, FileImage, Download, Maximize2, X } from "lucide-react";
@@ -10,6 +10,7 @@ interface Props {
   chapterTitle: string;
   onRetry:      () => void;
   onHome:       () => void;
+  onBack:       () => void;
 }
 
 const NAVY     = "#0f1c4d";
@@ -235,7 +236,7 @@ function AnnotatedModal({
   );
 }
 
-export function WrittenScoreReport({ result, chapterTitle, onRetry, onHome }: Props) {
+export function WrittenScoreReport({ result, chapterTitle, onRetry, onHome, onBack }: Props) {
   const { score, max_score, feedback, questions, annotated_image_urls } = result;
   const [annotatedPage, setAnnotatedPage] = useState(0);
   const [modalOpen,     setModalOpen]     = useState(false);
@@ -525,6 +526,16 @@ export function WrittenScoreReport({ result, chapterTitle, onRetry, onHome }: Pr
 
       {/* ── Actions ── */}
       <div className="flex-shrink-0 px-6 py-4 flex gap-3" style={{ borderTop: `1px solid ${NAVY_08}` }}>
+        <button onClick={onBack}
+          className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all"
+          style={{ flex:"0 0 auto", paddingLeft:16, paddingRight:16,
+            background: "rgba(15,28,77,0.05)", border: "1px solid rgba(15,28,77,0.15)", color: NAVY_60,
+            fontFamily:"'DM Sans',sans-serif" }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(15,28,77,0.10)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(15,28,77,0.05)"; }}
+        >
+          <ChevronLeft className="w-4 h-4" /> Back
+        </button>
         <button onClick={onHome}
           className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all"
           style={{ flex:"0 0 auto", paddingLeft:20, paddingRight:20,
