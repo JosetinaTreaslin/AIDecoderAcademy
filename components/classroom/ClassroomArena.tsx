@@ -709,7 +709,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         }}
         className="absolute group"
         style={{ left:"1%", top:"10%", width:"12%", height:"7.5%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES && { border:"2px solid #22c55e", background:"rgba(34,197,94,0.15)", borderRadius:6 }) }}
+          ...(DEBUG_ZONES ? { border:"2px solid #22c55e", background:"rgba(34,197,94,0.15)", borderRadius:6 } : {}) }}
         title="Notes hotspot"
       >
         {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#22c55e", fontFamily:"monospace", pointerEvents:"none" }}>NOTES</span>}
@@ -730,7 +730,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         }}
         className="absolute group"
         style={{ left:"1%", top:"19%", width:"12%", height:"7%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES && { border:"2px solid #f59e0b", background:"rgba(245,158,11,0.15)", borderRadius:6 }) }}
+          ...(DEBUG_ZONES ? { border:"2px solid #f59e0b", background:"rgba(245,158,11,0.15)", borderRadius:6 } : {}) }}
         title="Flashcards hotspot"
       >
         {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#f59e0b", fontFamily:"monospace", pointerEvents:"none" }}>FLASHCARDS</span>}
@@ -751,7 +751,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         }}
         className="absolute group"
         style={{ left:"1%", top:"28%", width:"12%", height:"8%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES && { border:"2px solid #a78bfa", background:"rgba(167,139,250,0.15)", borderRadius:6 }) }}
+          ...(DEBUG_ZONES ? { border:"2px solid #a78bfa", background:"rgba(167,139,250,0.15)", borderRadius:6 } : {}) }}
         title="Mind Map hotspot"
       >
         {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#a78bfa", fontFamily:"monospace", pointerEvents:"none" }}>MIND MAP</span>}
@@ -772,7 +772,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         }}
         className="absolute group"
         style={{ left:"1%", top:"37%", width:"12%", height:"8%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES && { border:"2px solid #f472b6", background:"rgba(244,114,182,0.15)", borderRadius:6 }) }}
+          ...(DEBUG_ZONES ? { border:"2px solid #f472b6", background:"rgba(244,114,182,0.15)", borderRadius:6 } : {}) }}
         title="Comic/Blog hotspot"
       >
         {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#f472b6", fontFamily:"monospace", pointerEvents:"none" }}>BLOG</span>}
@@ -787,7 +787,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         }}
         className="absolute group"
         style={{ left:"1%", top:"45%", width:"12%", height:"8.5%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES && { border:"2px solid #38bdf8", background:"rgba(56,189,248,0.15)", borderRadius:6 }) }}
+          ...(DEBUG_ZONES ? { border:"2px solid #38bdf8", background:"rgba(56,189,248,0.15)", borderRadius:6 } : {}) }}
         title="Videos hotspot"
       >
         {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#38bdf8", fontFamily:"monospace", pointerEvents:"none" }}>VIDEOS</span>}
@@ -816,7 +816,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         }}
         className="absolute"
         style={{ left:0, top:"66%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES && { border:"2px solid #fb923c", background:"rgba(251,146,60,0.15)", borderRadius:6 }) }}
+          ...(DEBUG_ZONES ? { border:"2px solid #fb923c", background:"rgba(251,146,60,0.15)", borderRadius:6 } : {}) }}
       >
         {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#fb923c", fontFamily:"monospace", pointerEvents:"none" }}>AUDIO OVW</span>}
       </div>
@@ -838,7 +838,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         onClick={() => { setAudioOverviewMode(false); runPodcast(input.trim() || chapter.chapter_title); setInput(""); }}
         className="absolute"
         style={{ left:0, top:"77%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES && { border:"2px solid #e879f9", background:"rgba(232,121,249,0.15)", borderRadius:6 }) }}
+          ...(DEBUG_ZONES ? { border:"2px solid #e879f9", background:"rgba(232,121,249,0.15)", borderRadius:6 } : {}) }}
       >
         {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#e879f9", fontFamily:"monospace", pointerEvents:"none" }}>PODCAST</span>}
       </div>
