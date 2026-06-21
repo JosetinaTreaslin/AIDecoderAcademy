@@ -141,9 +141,14 @@ const FAL_CONFIGS: Record<string, { endpoint: string; fallback?: string; payload
     endpoint: "fal-ai/nano-banana",
     payload: {},
   },
+  // Z-Image Turbo — ultra-fast (~0.8s), 1024x768 output
+  "z-image-turbo": {
+    endpoint: "fal-ai/z-image/turbo",
+    payload: {},
+  },
 };
 
-export type ImageModel = "fal-flux2pro" | "fal-juggernaut" | "imagen4" | "gpt-image-1" | "nano-banana";
+export type ImageModel = "fal-flux2pro" | "fal-juggernaut" | "imagen4" | "gpt-image-1" | "nano-banana" | "z-image-turbo";
 
 async function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));
