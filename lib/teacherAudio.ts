@@ -7,6 +7,10 @@
 export interface SpeakHandle {
   cancel:     () => void;
   progress01: () => number; // 0 → 1, based on audio currentTime across queued chunks
+  // Optional readiness signals (timed variant): lets the typewriter hold text
+  // until audio actually starts, and only fast-reveal if the audio failed.
+  failed?:    () => boolean;
+  started?:   () => boolean;
 }
 
 export async function speakAsTeacher(text: string): Promise<SpeakHandle> {
@@ -36,6 +40,8 @@ function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
   let words: { text: string; start: number; end: number }[] = [];
   let totalChars = 0;
   let done = false;
+  let failed = false;
+  let started = false; // audio element created and play() resolved/began
 
   const cancel = () => {
     cancelled = true;
@@ -71,12 +77,14 @@ function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
         body:    JSON.stringify({ text, role }),
         signal:  controller.signal,
       });
-      if (!res.ok || cancelled) { done = true; return; }
+      if (cancelled) { done = true; return; }
+      if (!res.ok) { failed = true; done = true; return; }
       const data = await res.json() as {
         audioBase64?: string;
         words?: { text: string; start: number; end: number }[];
       };
-      if (cancelled || !data.audioBase64) { done = true; return; }
+      if (cancelled) { done = true; return; }
+      if (!data.audioBase64) { failed = true; done = true; return; }
 
       words = data.words ?? [];
       totalChars = words.reduce((s, w) => s + w.text.length, 0);
@@ -88,15 +96,17 @@ function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
       url = URL.createObjectURL(blob);
       audio = new Audio(url);
       audio.onended = () => { done = true; };
-      audio.onerror = () => { done = true; };
-      await audio.play().catch(() => { done = true; });
+      audio.onerror = () => { failed = true; done = true; };
+      audio.onplaying = () => { started = true; };
+      await audio.play().then(() => { started = true; }).catch(() => { failed = true; done = true; });
     } catch (err) {
+      failed = true;
       done = true;
       if ((err as Error)?.name !== "AbortError") console.error("[teacherAudio timed]", err);
     }
   })();
 
-  return { cancel, progress01 };
+  return { cancel, progress01, failed: () => failed, started: () => started };
 }
 
 async function speak(text: string, role: "teacher" | "aida"): Promise<SpeakHandle> {

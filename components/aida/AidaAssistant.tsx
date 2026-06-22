@@ -1182,7 +1182,12 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
         if (!res.ok) {
           const detail = await res.text().catch(() => "");
           console.error("[AIDA] STT HTTP error:", res.status, detail);
-          flashVoiceError("Voice recognition failed — try again");
+          // Surface the real cause on-screen (Deepgram status + reason) so the
+          // failure is diagnosable without opening DevTools.
+          let reason = "";
+          try { const j = JSON.parse(detail); reason = j.detail || j.error || ""; }
+          catch { reason = detail.slice(0, 80); }
+          flashVoiceError(`STT ${res.status}${reason ? ": " + reason.slice(0, 80) : ""}`);
           setVS("idle");
           return;
         }
