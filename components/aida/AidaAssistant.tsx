@@ -1117,7 +1117,8 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
         });
         if (sttAbortRef.current === controller) sttAbortRef.current = null;
         if (!res.ok) {
-          console.error("[AIDA] STT HTTP error:", res.status);
+          const detail = await res.text().catch(() => "");
+          console.error("[AIDA] STT HTTP error:", res.status, detail);
           flashVoiceError("Voice recognition failed — try again");
           setVS("idle");
           return;
