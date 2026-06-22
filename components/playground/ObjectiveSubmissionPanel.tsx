@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { speakAsTeacher, type SpeakHandle } from "@/lib/teacherAudio";
+import { speakAsTeacherTimed, type SpeakHandle } from "@/lib/teacherAudio";
 import {
   type StagedRubric,
   type WorksheetUpload,
@@ -355,11 +355,11 @@ export function ObjectiveSubmissionPanel({
     const myGen = speechGenRef.current;
     setText(line);
     setRevealed(0);
-    speakRef.current = null;
-    speakAsTeacher(line).then(h => {
-      if (speechGenRef.current !== myGen) { h?.cancel(); return; }
-      speakRef.current = h;
-    }).catch(() => {});
+    // Timed variant returns the handle synchronously and reveals word-by-word
+    // (text never leads the audio).
+    const h = speakAsTeacherTimed(line);
+    if (speechGenRef.current !== myGen) { h.cancel(); return; }
+    speakRef.current = h;
   }
   /**
    * Speak a sequence of dialogue beats with a pause between each. Each beat
@@ -377,7 +377,7 @@ export function ObjectiveSubmissionPanel({
       setText(beat.text);
       setRevealed(0);
       try {
-        const handle = await speakAsTeacher(beat.text);
+        const handle = speakAsTeacherTimed(beat.text);
         if (speechGenRef.current !== myGen) { handle?.cancel(); return; }
         speakRef.current = handle;
         // Wait for this beat's audio to mostly finish before pausing
@@ -500,16 +500,25 @@ export function ObjectiveSubmissionPanel({
   useEffect(() => {
     if (!open || text.length === 0) return;
     let raf = 0;
-    let fallbackStart = 0;
+    let failStart = 0;
     const tick = (now: number) => {
       const handle = speakRef.current;
-      const audioProgress = handle?.progress01() ?? 0;
+      const failed = handle?.failed?.() ?? false;
+      // Word-boundary reveal, read straight off audio currentTime (same as the
+      // AIDA/SAGE karaoke). Text never appears ahead of the voice.
+      const sc = handle?.spokenChars?.() ?? -1;
+
       let target: number;
-      if (audioProgress > 0) {
-        target = Math.floor(text.length * audioProgress);
+      if (failed) {
+        // Audio genuinely failed — fast-reveal so text isn't stuck hidden
+        if (!failStart) failStart = now;
+        target = Math.min(text.length, Math.floor((now - failStart) / 15));
+      } else if (sc >= 0) {
+        target = Math.min(text.length, sc);
       } else {
-        if (fallbackStart === 0) fallbackStart = now;
-        target = Math.min(text.length, Math.floor((now - fallbackStart) / 33));
+        // No word timings yet — fall back to proportional audio progress
+        const p = handle?.progress01() ?? 0;
+        target = Math.floor(text.length * p);
       }
       setRevealed(prev => (target > prev ? target : prev));
       if (target < text.length) raf = requestAnimationFrame(tick);
