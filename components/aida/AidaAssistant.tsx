@@ -310,6 +310,18 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   const pendingTtsSentencesRef  = useRef(0);
   const fullResponseRef         = useRef("");  // complete AI response text (voice mode)
   const displayedTextRef        = useRef("");  // text currently shown in bubble (voice mode)
+  // Ordered sentence playback: tts-timed fetches resolve out of order, so we
+  // play strictly by sequence index. Each sentence gets a seq at call time;
+  // resolved audio lands in sentenceSlotsRef[seq]; we only ever play the slot
+  // at nextPlayIndexRef (skipping failed ones) so audio + text stay in order.
+  type SentenceSlot =
+    | { state: "ready"; audio: HTMLAudioElement; url: string;
+        words: { text: string; start: number; end: number }[];
+        precedingText: string; sentenceText: string }
+    | { state: "failed" };
+  const ttsSeqRef          = useRef(0);
+  const nextPlayIndexRef   = useRef(0);
+  const sentenceSlotsRef   = useRef<Map<number, SentenceSlot>>(new Map());
   const cancelledRef       = useRef(false);
   const mediaRecorderRef   = useRef<MediaRecorder | null>(null);
   const audioChunksRef     = useRef<Blob[]>([]);
@@ -595,6 +607,16 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     }
     ttsSentenceAbortRefs.current = [];
     pendingTtsSentencesRef.current = 0;
+    // Drop any queued/ready sentence audio so it can't play after a barge-in.
+    for (const slot of sentenceSlotsRef.current.values()) {
+      if (slot.state === "ready") {
+        try { slot.audio.pause(); } catch {}
+        try { URL.revokeObjectURL(slot.url); } catch {}
+      }
+    }
+    sentenceSlotsRef.current.clear();
+    ttsSeqRef.current = 0;
+    nextPlayIndexRef.current = 0;
     if (karaokeRafRef.current != null) {
       cancelAnimationFrame(karaokeRafRef.current);
       karaokeRafRef.current = null;
@@ -621,6 +643,9 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     pendingTtsSentencesRef.current = 0;
     fullResponseRef.current = "";
     displayedTextRef.current = "";
+    ttsSeqRef.current = 0;
+    nextPlayIndexRef.current = 0;
+    sentenceSlotsRef.current.clear();
 
     // Drop inline thought-bubble nudges from the conversation history — they
     // are AIDA's observations to the kid, not turns in the back-and-forth, so
@@ -764,7 +789,7 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
       if (sendIdRef.current !== myId) return;
 
       if (modeRef.current === "voice" && full.trim()) {
-        fullResponseRef.current = full; // stored so playNextSentence can reveal it at end
+        fullResponseRef.current = full; // shown as safety net once all audio finishes
         setVS("speaking");
         // Flush remaining text (anything after the last detected sentence boundary)
         const tailStart = spokenUpTo.current;
@@ -923,70 +948,77 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   async function speakSentence(sentence: string, precedingText?: string) {
     if (!sentence.trim()) return;
     const genId = ttsGenRef.current; // snapshot — barge-in increments this
+    const seq = ttsSeqRef.current++; // play order — preserved across out-of-order fetches
     const ab = new AbortController();
     ttsSentenceAbortRefs.current.push(ab);
     pendingTtsSentencesRef.current++;
 
-    function playNextSentence() {
+    const setBubble = (content: string) => {
+      displayedTextRef.current = content;
+      setMessages(prev => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { role: "assistant", content };
+        return copy;
+      });
+    };
+
+    const finishIfDone = () => {
+      if (
+        pendingTtsSentencesRef.current === 0 &&
+        !audioRef.current &&
+        sentenceSlotsRef.current.size === 0 &&
+        voiceStateRef.current === "speaking"
+      ) {
+        if (fullResponseRef.current) setBubble(fullResponseRef.current);
+        setVS("idle");
+        if (subModeRef.current === "live") liveSetAiSpeakingRef.current(false);
+      }
+    };
+
+    // Play strictly in sequence order. Skips failed slots, waits on pending
+    // ones — so a sentence whose audio fetch resolved early never jumps ahead.
+    function maybePlay() {
       if (ttsGenRef.current !== genId) return;
-      const item = audioQueueRef.current.shift();
-      if (!item) {
-        audioRef.current = null;
-        if (pendingTtsSentencesRef.current <= 0 && voiceStateRef.current === "speaking") {
-          // All audio done — show the complete response as a safety net
-          const finalText = fullResponseRef.current;
-          if (finalText) {
-            setMessages(prev => {
-              const copy = [...prev];
-              copy[copy.length - 1] = { role: "assistant", content: finalText };
-              return copy;
-            });
-          }
-          setVS("idle");
-          if (subModeRef.current === "live") liveSetAiSpeakingRef.current(false);
-        }
+      if (audioRef.current) return; // something already playing
+      const i = nextPlayIndexRef.current;
+      const slot = sentenceSlotsRef.current.get(i);
+      if (!slot) { finishIfDone(); return; } // not ready yet (or all done)
+      sentenceSlotsRef.current.delete(i);
+      if (slot.state === "failed") {
+        nextPlayIndexRef.current++;
+        maybePlay();
         return;
       }
-      const { audio, url } = item;
+      playSlot(slot);
+    }
+
+    function playSlot(slot: Extract<SentenceSlot, { state: "ready" }>) {
+      const { audio, url, words, sentenceText } = slot;
       audioRef.current = audio;
       if (subModeRef.current === "live") liveSetAiSpeakingRef.current(true);
-
-      const base = item.precedingText
-        ? item.precedingText.replace(/\s+$/, "") + " "
+      const base = slot.precedingText
+        ? slot.precedingText.replace(/\s+$/, "") + " "
         : "";
-      const words = item.words ?? [];
-      const sentenceText = item.sentenceText ?? "";
 
-      // Stop any prior karaoke loop before starting this sentence's.
       if (karaokeRafRef.current != null) {
         cancelAnimationFrame(karaokeRafRef.current);
         karaokeRafRef.current = null;
       }
 
-      const setBubble = (content: string) => {
-        displayedTextRef.current = content;
-        setMessages(prev => {
-          const copy = [...prev];
-          copy[copy.length - 1] = { role: "assistant", content };
-          return copy;
-        });
-      };
-
       // Karaoke: reveal words as they're spoken. Falls back to the whole
       // sentence if no word timings came back.
       if (words.length > 0) {
-        setBubble(base); // start from prior text; words fill in as spoken
+        setBubble(base); // prior text only; this sentence fills in as spoken
         const revealLoop = () => {
           if (ttsGenRef.current !== genId) return;
           const a = audioRef.current;
           if (!a) return;
           const t = a.currentTime;
           let active = -1;
-          for (let i = 0; i < words.length; i++) {
-            if (words[i].start <= t) active = i; else break;
+          for (let k = 0; k < words.length; k++) {
+            if (words[k].start <= t) active = k; else break;
           }
-          const spoken = words.slice(0, active + 1).map(w => w.text).join(" ");
-          setBubble(base + spoken);
+          setBubble(base + words.slice(0, active + 1).map(w => w.text).join(" "));
           karaokeRafRef.current = requestAnimationFrame(revealLoop);
         };
         karaokeRafRef.current = requestAnimationFrame(revealLoop);
@@ -1002,12 +1034,12 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
           cancelAnimationFrame(karaokeRafRef.current);
           karaokeRafRef.current = null;
         }
-        // Ensure the full sentence text is shown once audio ends (rAF may stop
-        // a word or two short of the very end).
+        // Ensure the full sentence shows once audio ends (rAF may stop a word short).
         setBubble(base + (sentenceText || words.map(w => w.text).join(" ")));
         URL.revokeObjectURL(url);
         audioRef.current = null;
-        playNextSentence();
+        nextPlayIndexRef.current++;
+        maybePlay();
       };
       audio.onended = advance;
       audio.onerror = advance;
@@ -1023,15 +1055,15 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
         body:    JSON.stringify({ text: sentence }),
         signal:  ab.signal,
       });
-      if (!res.ok) return;
       if (ttsGenRef.current !== genId) return;
+      if (!res.ok) { sentenceSlotsRef.current.set(seq, { state: "failed" }); maybePlay(); return; }
 
       const data = await res.json() as {
         audioBase64?: string;
         words?: { text: string; start: number; end: number }[];
       };
       if (ttsGenRef.current !== genId) return;
-      if (!data.audioBase64) return;
+      if (!data.audioBase64) { sentenceSlotsRef.current.set(seq, { state: "failed" }); maybePlay(); return; }
 
       const bin   = atob(data.audioBase64);
       const bytes = new Uint8Array(bin.length);
@@ -1040,37 +1072,22 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
       const url   = URL.createObjectURL(blob);
       const audio = new Audio(url);
 
-      audioQueueRef.current.push({
+      sentenceSlotsRef.current.set(seq, {
+        state:         "ready",
         audio,
         url,
         words:         data.words ?? [],
-        precedingText: precedingText,
+        precedingText: precedingText ?? "",
         sentenceText:  sentence,
       });
-
-      if (!audioRef.current) playNextSentence();
+      maybePlay();
     } catch (err) {
       if ((err as Error)?.name === "AbortError") return;
+      sentenceSlotsRef.current.set(seq, { state: "failed" });
+      maybePlay();
     } finally {
       pendingTtsSentencesRef.current = Math.max(0, pendingTtsSentencesRef.current - 1);
-      // If this was the last sentence and nothing is playing, show full text + go idle
-      if (
-        pendingTtsSentencesRef.current === 0 &&
-        !audioRef.current &&
-        audioQueueRef.current.length === 0 &&
-        voiceStateRef.current === "speaking"
-      ) {
-        const finalText = fullResponseRef.current;
-        if (finalText) {
-          setMessages(prev => {
-            const copy = [...prev];
-            copy[copy.length - 1] = { role: "assistant", content: finalText };
-            return copy;
-          });
-        }
-        setVS("idle");
-        if (subModeRef.current === "live") liveSetAiSpeakingRef.current(false);
-      }
+      finishIfDone();
     }
   }
 
