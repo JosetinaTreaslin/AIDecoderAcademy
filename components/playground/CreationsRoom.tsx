@@ -1568,7 +1568,7 @@ export function CreationsRoom({
           {/* Image container — click inside stops propagation */}
           <div
             onClick={e => e.stopPropagation()}
-            style={{ position: "relative", maxWidth: "88vw", maxHeight: "84vh" }}>
+            style={{ position: "relative", maxWidth: "65vw", maxHeight: "65vh" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={previewImgUrl}
@@ -1576,7 +1576,7 @@ export function CreationsRoom({
               draggable={false}
               style={{
                 display: "block",
-                maxWidth: "88vw", maxHeight: "84vh",
+                maxWidth: "65vw", maxHeight: "65vh",
                 borderRadius: 16,
                 boxShadow: "0 8px 48px rgba(0,0,0,0.6)",
                 objectFit: "contain",
