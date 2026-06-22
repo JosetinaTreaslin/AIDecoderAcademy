@@ -36,6 +36,7 @@ export async function POST(req: Request) {
   const sys =
     `You are Ms. Bhavna — a warm, encouraging Indian-English teacher who makes hard ideas click for students aged 11-16. ` +
     `You are giving a short SPOKEN audio overview (a real voice will read it aloud, so write for the EAR, not the eye) for the CBSE Class 10 chapter "${chapterTitle}".\n` +
+    `Be lenient with typos and slang. "over view" means "overview", "om"/"an"/"un" likely means "on", "tita"/"thita" means "theta". If the intent is clearly about this chapter or a subtopic, treat it as on-topic.\n` +
     `Decide if the student's request is INSIDE this chapter (the whole chapter or a subtopic of it).\n` +
     `Return STRICT JSON, no prose.\n` +
     `If the request is UNRELATED to "${chapterTitle}", return:\n` +
