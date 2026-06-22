@@ -38,7 +38,6 @@ function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
   let audio: HTMLAudioElement | null = null;
   let url: string | null = null;
   let words: { text: string; start: number; end: number }[] = [];
-  let totalChars = 0;
   let done = false;
   let failed = false;
   let started = false; // audio element created and play() resolved/began
@@ -52,20 +51,19 @@ function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
   };
 
   const progress01 = (): number => {
-    if (!audio) return 0;
-    if (words.length === 0) {
-      // No timings — fall back to plain audio time fraction.
-      const d = audio.duration && isFinite(audio.duration) ? audio.duration : 0;
-      return d > 0 ? Math.min(1, audio.currentTime / d) : 0;
-    }
+    // Hold at 0 until audio is actually playing — prevents text appearing
+    // before any sound (base64 MP3 buffering makes currentTime readable as 0
+    // before playback audibly begins).
+    if (!audio || !started) return 0;
     const t = audio.currentTime;
-    let active = -1;
-    for (let i = 0; i < words.length; i++) {
-      if (words[i].start <= t) active = i; else break;
-    }
-    let spoken = 0;
-    for (let i = 0; i <= active; i++) spoken += words[i].text.length;
-    const ratio = totalChars > 0 ? spoken / totalChars : 0;
+    // Drive purely off real playback time vs the last word's end time. This is
+    // robust even when a base64 MP3 reports duration === Infinity until fully
+    // buffered (which broke the char-ratio approach: freeze then jump).
+    const lastEnd = words.length > 0
+      ? words[words.length - 1].end
+      : (audio.duration && isFinite(audio.duration) ? audio.duration : 0);
+    if (lastEnd <= 0) return 0;
+    const ratio = t / lastEnd;
     return done ? Math.min(1, ratio) : Math.min(0.99, ratio);
   };
 
@@ -87,7 +85,6 @@ function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
       if (!data.audioBase64) { failed = true; done = true; return; }
 
       words = data.words ?? [];
-      totalChars = words.reduce((s, w) => s + w.text.length, 0);
 
       const bin = atob(data.audioBase64);
       const bytes = new Uint8Array(bin.length);
