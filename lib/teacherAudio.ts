@@ -66,13 +66,18 @@ function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
     return done ? Math.min(1, ratio) : Math.min(0.99, ratio);
   };
 
-  // Word-boundary char count, read straight off currentTime — identical logic
-  // to AIDA's karaoke loop (which works). No started/duration gating.
+  // Word-boundary char count, read straight off currentTime.
   const spokenChars = (): number => {
     if (words.length === 0) return -1; // no timings → caller uses progress01
     if (!audio) return 0;
     if (done) return words.map(w => w.text).join(" ").length; // full at end
     const t = audio.currentTime;
+    // CRITICAL: reveal NOTHING until audio is actually advancing. The audio
+    // element exists (and currentTime reads 0) for a real interval while a long
+    // base64 MP3 buffers before play() produces sound. Revealing at t===0 makes
+    // the first word(s) appear before any audio — the "words come first" bug.
+    // Gating on t>0 means text only ever tracks real playback position.
+    if (t <= 0) return 0;
     let active = -1;
     for (let i = 0; i < words.length; i++) {
       if (words[i].start <= t) active = i; else break;
