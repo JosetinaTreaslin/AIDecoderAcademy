@@ -17,6 +17,88 @@ export async function speakAsAida(text: string): Promise<SpeakHandle> {
   return speak(text, "aida");
 }
 
+// Word-synced variant: fetches /api/aida/tts-timed (full audio + per-word
+// timings) and exposes progress01() driven by the actual spoken word boundary,
+// so a typewriter reveals text word-by-word exactly as it is spoken.
+export function speakAsTeacherTimed(text: string): SpeakHandle {
+  return speakTimed(text, "teacher");
+}
+
+export function speakAsAidaTimed(text: string): SpeakHandle {
+  return speakTimed(text, "aida");
+}
+
+function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
+  const controller = new AbortController();
+  let cancelled = false;
+  let audio: HTMLAudioElement | null = null;
+  let url: string | null = null;
+  let words: { text: string; start: number; end: number }[] = [];
+  let totalChars = 0;
+  let done = false;
+
+  const cancel = () => {
+    cancelled = true;
+    controller.abort();
+    if (audio) { try { audio.pause(); } catch { /* ok */ } }
+    if (url) { try { URL.revokeObjectURL(url); } catch { /* ok */ } }
+    audio = null;
+  };
+
+  const progress01 = (): number => {
+    if (!audio) return 0;
+    if (words.length === 0) {
+      // No timings — fall back to plain audio time fraction.
+      const d = audio.duration && isFinite(audio.duration) ? audio.duration : 0;
+      return d > 0 ? Math.min(1, audio.currentTime / d) : 0;
+    }
+    const t = audio.currentTime;
+    let active = -1;
+    for (let i = 0; i < words.length; i++) {
+      if (words[i].start <= t) active = i; else break;
+    }
+    let spoken = 0;
+    for (let i = 0; i <= active; i++) spoken += words[i].text.length;
+    const ratio = totalChars > 0 ? spoken / totalChars : 0;
+    return done ? Math.min(1, ratio) : Math.min(0.99, ratio);
+  };
+
+  (async () => {
+    try {
+      const res = await fetch("/api/aida/tts-timed", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ text, role }),
+        signal:  controller.signal,
+      });
+      if (!res.ok || cancelled) { done = true; return; }
+      const data = await res.json() as {
+        audioBase64?: string;
+        words?: { text: string; start: number; end: number }[];
+      };
+      if (cancelled || !data.audioBase64) { done = true; return; }
+
+      words = data.words ?? [];
+      totalChars = words.reduce((s, w) => s + w.text.length, 0);
+
+      const bin = atob(data.audioBase64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "audio/mpeg" });
+      url = URL.createObjectURL(blob);
+      audio = new Audio(url);
+      audio.onended = () => { done = true; };
+      audio.onerror = () => { done = true; };
+      await audio.play().catch(() => { done = true; });
+    } catch (err) {
+      done = true;
+      if ((err as Error)?.name !== "AbortError") console.error("[teacherAudio timed]", err);
+    }
+  })();
+
+  return { cancel, progress01 };
+}
+
 async function speak(text: string, role: "teacher" | "aida"): Promise<SpeakHandle> {
   const controller = new AbortController();
 

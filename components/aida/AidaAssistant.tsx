@@ -291,7 +291,18 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   const objectiveIdRef     = useRef(activeObjectiveId);
   const pmRef              = useRef(playgroundMessages);
   const sendIdRef          = useRef(0);
-  const audioQueueRef      = useRef<{ audio: HTMLAudioElement; url: string; showText?: string }[]>([]);
+  const audioQueueRef      = useRef<{
+    audio: HTMLAudioElement;
+    url: string;
+    showText?: string;
+    // Karaoke word-by-word reveal (voice mode): words = per-word timings for
+    // this sentence's audio; precedingText = text already revealed from prior
+    // sentences; sentenceText = this sentence's original text.
+    words?: { text: string; start: number; end: number }[];
+    precedingText?: string;
+    sentenceText?: string;
+  }[]>([]);
+  const karaokeRafRef      = useRef<number | null>(null);
   const ttsAbortRef        = useRef<AbortController | null>(null);
   const ttsGenRef          = useRef(0);
   const ttsSentenceAbortRefs    = useRef<AbortController[]>([]);
@@ -584,6 +595,10 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     }
     ttsSentenceAbortRefs.current = [];
     pendingTtsSentencesRef.current = 0;
+    if (karaokeRafRef.current != null) {
+      cancelAnimationFrame(karaokeRafRef.current);
+      karaokeRafRef.current = null;
+    }
   }
 
   function abortAiResponse() {
@@ -722,15 +737,17 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
           rx.lastIndex = scan;
           let m: RegExpExecArray | null;
           while ((m = rx.exec(full)) !== null) {
+            const sentenceStart = scan;
             const sentence = full.slice(scan, m.index + m[0].length).trim();
             const wordCount = sentence.split(/\s+/).length;
             if (sentence.length > 3 && wordCount >= 4) {
               spokenUpTo.current = m.index + m[0].length;
               scan = spokenUpTo.current;
-              // showText = everything up to end of this sentence — revealed when audio starts playing
-              const showText = full.slice(0, spokenUpTo.current);
+              // precedingText = text from earlier sentences (already revealed);
+              // sentence is revealed word-by-word as its audio plays.
+              const precedingText = full.slice(0, sentenceStart);
               setVS("speaking");
-              speakSentence(sentence, showText).catch(() => {});
+              speakSentence(sentence, precedingText).catch(() => {});
             }
           }
         } else {
@@ -750,9 +767,9 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
         fullResponseRef.current = full; // stored so playNextSentence can reveal it at end
         setVS("speaking");
         // Flush remaining text (anything after the last detected sentence boundary)
-        // showText = full text, so when this tail plays the complete response is revealed
-        const tail = full.slice(spokenUpTo.current).trim();
-        if (tail) speakSentence(tail, full).catch(() => {});
+        const tailStart = spokenUpTo.current;
+        const tail = full.slice(tailStart).trim();
+        if (tail) speakSentence(tail, full.slice(0, tailStart)).catch(() => {});
         spokenUpTo.current = 0;
       }
     } catch {
@@ -900,9 +917,10 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   // Unlike speakText(), this does NOT clear the queue or abort prior TTS —
   // it appends audio to the shared queue so sentences play back-to-back.
 
-  // showText: the portion of the full response to reveal in the bubble when this
-  // sentence's audio starts playing. Undefined for non-voice calls.
-  async function speakSentence(sentence: string, showText?: string) {
+  // precedingText: text already revealed from earlier sentences. This sentence
+  // is then revealed word-by-word (karaoke) as its audio plays, using real
+  // per-word timings from /api/aida/tts-timed. Undefined for non-voice calls.
+  async function speakSentence(sentence: string, precedingText?: string) {
     if (!sentence.trim()) return;
     const genId = ttsGenRef.current; // snapshot — barge-in increments this
     const ab = new AbortController();
@@ -929,22 +947,64 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
         }
         return;
       }
-      // Reveal text in sync with audio: show exactly what was streamed up to this sentence
-      if (item.showText) {
-        displayedTextRef.current = item.showText;
-        setMessages(prev => {
-          const copy = [...prev];
-          copy[copy.length - 1] = { role: "assistant", content: item.showText! };
-          return copy;
-        });
-      }
       const { audio, url } = item;
       audioRef.current = audio;
       if (subModeRef.current === "live") liveSetAiSpeakingRef.current(true);
+
+      const base = item.precedingText
+        ? item.precedingText.replace(/\s+$/, "") + " "
+        : "";
+      const words = item.words ?? [];
+      const sentenceText = item.sentenceText ?? "";
+
+      // Stop any prior karaoke loop before starting this sentence's.
+      if (karaokeRafRef.current != null) {
+        cancelAnimationFrame(karaokeRafRef.current);
+        karaokeRafRef.current = null;
+      }
+
+      const setBubble = (content: string) => {
+        displayedTextRef.current = content;
+        setMessages(prev => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", content };
+          return copy;
+        });
+      };
+
+      // Karaoke: reveal words as they're spoken. Falls back to the whole
+      // sentence if no word timings came back.
+      if (words.length > 0) {
+        setBubble(base); // start from prior text; words fill in as spoken
+        const revealLoop = () => {
+          if (ttsGenRef.current !== genId) return;
+          const a = audioRef.current;
+          if (!a) return;
+          const t = a.currentTime;
+          let active = -1;
+          for (let i = 0; i < words.length; i++) {
+            if (words[i].start <= t) active = i; else break;
+          }
+          const spoken = words.slice(0, active + 1).map(w => w.text).join(" ");
+          setBubble(base + spoken);
+          karaokeRafRef.current = requestAnimationFrame(revealLoop);
+        };
+        karaokeRafRef.current = requestAnimationFrame(revealLoop);
+      } else {
+        setBubble(base + sentenceText);
+      }
+
       let advanced = false;
       const advance = () => {
         if (advanced) return;
         advanced = true;
+        if (karaokeRafRef.current != null) {
+          cancelAnimationFrame(karaokeRafRef.current);
+          karaokeRafRef.current = null;
+        }
+        // Ensure the full sentence text is shown once audio ends (rAF may stop
+        // a word or two short of the very end).
+        setBubble(base + (sentenceText || words.map(w => w.text).join(" ")));
         URL.revokeObjectURL(url);
         audioRef.current = null;
         playNextSentence();
@@ -955,54 +1015,40 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     }
 
     try {
-      const res = await fetch("/api/aida/tts", {
+      // /api/aida/tts-timed returns the full sentence audio + per-word timings
+      // in one JSON response, enabling karaoke word-by-word reveal.
+      const res = await fetch("/api/aida/tts-timed", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ text: sentence }),
         signal:  ab.signal,
       });
-      if (!res.ok || !res.body) return;
+      if (!res.ok) return;
+      if (ttsGenRef.current !== genId) return;
 
-      const reader  = res.body.getReader();
-      const decoder = new TextDecoder();
-      let   buf       = "";
-      let   firstChunk = true;
+      const data = await res.json() as {
+        audioBase64?: string;
+        words?: { text: string; start: number; end: number }[];
+      };
+      if (ttsGenRef.current !== genId) return;
+      if (!data.audioBase64) return;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (ttsGenRef.current !== genId) break;
+      const bin   = atob(data.audioBase64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob  = new Blob([bytes], { type: "audio/mpeg" });
+      const url   = URL.createObjectURL(blob);
+      const audio = new Audio(url);
 
-        buf += decoder.decode(value, { stream: true });
-        const frames = buf.split("\n\n");
-        buf = frames.pop() ?? "";
+      audioQueueRef.current.push({
+        audio,
+        url,
+        words:         data.words ?? [],
+        precedingText: precedingText,
+        sentenceText:  sentence,
+      });
 
-        for (const frame of frames) {
-          const line = frame.trim();
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6);
-          if (data === "[DONE]") continue;
-
-          const bin   = atob(data);
-          const bytes = new Uint8Array(bin.length);
-          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-          const blob  = new Blob([bytes], { type: "audio/mpeg" });
-          const url   = URL.createObjectURL(blob);
-          const audio = new Audio(url);
-          // Tag only the FIRST chunk with showText — subsequent chunks of the
-          // same sentence don't re-reveal text
-          audioQueueRef.current.push({ audio, url, showText: firstChunk ? showText : undefined });
-
-          if (firstChunk) {
-            firstChunk = false;
-            if (!audioRef.current) playNextSentence();
-          }
-        }
-      }
-
-      if (ttsGenRef.current === genId && !audioRef.current && audioQueueRef.current.length > 0) {
-        playNextSentence();
-      }
+      if (!audioRef.current) playNextSentence();
     } catch (err) {
       if ((err as Error)?.name === "AbortError") return;
     } finally {

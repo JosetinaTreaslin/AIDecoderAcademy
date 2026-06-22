@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { speakAsTeacher, type SpeakHandle } from "@/lib/teacherAudio";
+import { speakAsTeacherTimed, type SpeakHandle } from "@/lib/teacherAudio";
 import type { ObjectiveRubric } from "@/lib/objectiveRubrics";
 import { pickTeacherOpeningLine } from "@/lib/teacherPersona";
 
@@ -96,8 +96,10 @@ export function TeacherDialogue({ open, rubric, onClose, onValidate, onComplete 
     stopSpeaking();
     setText(line);
     setRevealed(0);
-    speakRef.current = null;
-    speakAsTeacher(line).then(h => { speakRef.current = h; }).catch(() => {});
+    // Word-synced handle (returns synchronously). progress01() now tracks the
+    // actual spoken word, so the typewriter reveals text word-by-word as SAGE
+    // speaks it.
+    speakRef.current = speakAsTeacherTimed(line);
   }
 
   // ── Typewriter — text appears only as audio plays, never ahead of it.
