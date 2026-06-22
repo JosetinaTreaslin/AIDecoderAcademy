@@ -100,34 +100,35 @@ export function TeacherDialogue({ open, rubric, onClose, onValidate, onComplete 
     speakAsTeacher(line).then(h => { speakRef.current = h; }).catch(() => {});
   }
 
-  // ── Typewriter — synced to audio progress when audio is playing,
-  //    falls back to ~30cps when audio fails or hasn't started yet. ─────
+  // ── Typewriter — text appears only as audio plays, never ahead of it.
+  //    Safety fallback reveals text after 2.5 s in case audio fails. ────
   useEffect(() => {
     if (!open) return;
     if (text.length === 0) return;
 
     let raf = 0;
-    let fallbackStart = 0;
+    let waitStarted = 0;
 
     const tick = (now: number) => {
       const handle = speakRef.current;
       const audioProgress = handle?.progress01() ?? 0;
 
-      // If audio is reporting real progress, sync to it.
-      // Otherwise fall back to a steady 33ms/char timer.
       let target: number;
       if (audioProgress > 0) {
+        // Audio is playing — reveal text in sync with how much has been spoken
         target = Math.floor(text.length * audioProgress);
       } else {
-        if (fallbackStart === 0) fallbackStart = now;
-        target = Math.min(text.length, Math.floor((now - fallbackStart) / 33));
+        // Audio hasn't started yet — hold text hidden
+        // Safety: if audio fails or stalls beyond 2.5 s, fast-reveal at ~67 cps
+        if (!waitStarted) waitStarted = now;
+        const waited = now - waitStarted;
+        target = waited > 2500
+          ? Math.min(text.length, Math.floor((waited - 2500) / 15))
+          : 0;
       }
 
       setRevealed(prev => (target > prev ? target : prev));
-
-      if (target < text.length) {
-        raf = requestAnimationFrame(tick);
-      }
+      if (target < text.length) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);

@@ -291,9 +291,14 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   const objectiveIdRef     = useRef(activeObjectiveId);
   const pmRef              = useRef(playgroundMessages);
   const sendIdRef          = useRef(0);
-  const audioQueueRef      = useRef<{ audio: HTMLAudioElement; url: string }[]>([]);
+  const audioQueueRef      = useRef<{ audio: HTMLAudioElement; url: string; showText?: string }[]>([]);
   const ttsAbortRef        = useRef<AbortController | null>(null);
   const ttsGenRef          = useRef(0);
+  const ttsSentenceAbortRefs    = useRef<AbortController[]>([]);
+  const spokenUpTo              = useRef(0);
+  const pendingTtsSentencesRef  = useRef(0);
+  const fullResponseRef         = useRef("");  // complete AI response text (voice mode)
+  const displayedTextRef        = useRef("");  // text currently shown in bubble (voice mode)
   const cancelledRef       = useRef(false);
   const mediaRecorderRef   = useRef<MediaRecorder | null>(null);
   const audioChunksRef     = useRef<Blob[]>([]);
@@ -562,6 +567,7 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     // Abort any in-flight requests so stale responses don't append messages later
     if (sttAbortRef.current) { sttAbortRef.current.abort(); sttAbortRef.current = null; }
     if (ttsAbortRef.current) { ttsAbortRef.current.abort(); ttsAbortRef.current = null; }
+    abortAllTtsSentences();
     ++sendIdRef.current; // invalidate any in-flight coreSend stream
     ++ttsGenRef.current;
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
@@ -572,7 +578,16 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   // Live mode interruption: kill the AI's audio + LLM stream WITHOUT touching
   // the mic — the Live session owns the mic via its VAD/worklet. This is the
   // key difference vs cleanupVoice(), which fully tears voice down.
+  function abortAllTtsSentences() {
+    for (const ab of ttsSentenceAbortRefs.current) {
+      try { ab.abort(); } catch {}
+    }
+    ttsSentenceAbortRefs.current = [];
+    pendingTtsSentencesRef.current = 0;
+  }
+
   function abortAiResponse() {
+    abortAllTtsSentences();
     if (ttsAbortRef.current) { ttsAbortRef.current.abort(); ttsAbortRef.current = null; }
     ++sendIdRef.current; // invalidate any in-flight coreSend stream reader
     ++ttsGenRef.current; // invalidate any in-flight playNext callbacks
@@ -587,6 +602,10 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     if (!text.trim()) return;
 
     const myId = ++sendIdRef.current;
+    spokenUpTo.current = 0;
+    pendingTtsSentencesRef.current = 0;
+    fullResponseRef.current = "";
+    displayedTextRef.current = "";
 
     // Drop inline thought-bubble nudges from the conversation history — they
     // are AIDA's observations to the kid, not turns in the back-and-forth, so
@@ -694,19 +713,47 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
         if (done) break;
         if (sendIdRef.current !== myId) break; // superseded by barge-in
         full += decoder.decode(value, { stream: true });
-        const captured = full;
-        setMessages(prev => {
-          const copy = [...prev];
-          copy[copy.length - 1] = { role: "assistant", content: captured };
-          return copy;
-        });
+
+        if (modeRef.current === "voice") {
+          // Voice mode: hold back text — reveal it in sync with audio playback below
+          let scan = spokenUpTo.current;
+          // Avoids splitting on "Dr.", "Mr.", "A.I." etc.
+          const rx = /(?<!(?:Mr|Mrs|Ms|Dr|Prof|Jr|Sr|St|vs|etc|approx|Fig|Vol|No))[!?]+(?:\s|$)|(?<!(?:Mr|Mrs|Ms|Dr|Prof|Jr|Sr|St|vs|etc|approx|Fig|Vol|No))\.+(?:\s+[A-Z]|\s*$)/g;
+          rx.lastIndex = scan;
+          let m: RegExpExecArray | null;
+          while ((m = rx.exec(full)) !== null) {
+            const sentence = full.slice(scan, m.index + m[0].length).trim();
+            const wordCount = sentence.split(/\s+/).length;
+            if (sentence.length > 3 && wordCount >= 4) {
+              spokenUpTo.current = m.index + m[0].length;
+              scan = spokenUpTo.current;
+              // showText = everything up to end of this sentence — revealed when audio starts playing
+              const showText = full.slice(0, spokenUpTo.current);
+              setVS("speaking");
+              speakSentence(sentence, showText).catch(() => {});
+            }
+          }
+        } else {
+          // Text mode: show immediately as it streams
+          const captured = full;
+          setMessages(prev => {
+            const copy = [...prev];
+            copy[copy.length - 1] = { role: "assistant", content: captured };
+            return copy;
+          });
+        }
       }
 
       if (sendIdRef.current !== myId) return;
 
       if (modeRef.current === "voice" && full.trim()) {
+        fullResponseRef.current = full; // stored so playNextSentence can reveal it at end
         setVS("speaking");
-        await speakTextRef.current(full);
+        // Flush remaining text (anything after the last detected sentence boundary)
+        // showText = full text, so when this tail plays the complete response is revealed
+        const tail = full.slice(spokenUpTo.current).trim();
+        if (tail) speakSentence(tail, full).catch(() => {});
+        spokenUpTo.current = 0;
       }
     } catch {
       if (sendIdRef.current !== myId) return;
@@ -843,6 +890,138 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     } catch (err) {
       if ((err as Error)?.name === "AbortError") return;
       if (ttsGenRef.current === myGen && voiceStateRef.current === "speaking") {
+        setVS("idle");
+        if (subModeRef.current === "live") liveSetAiSpeakingRef.current(false);
+      }
+    }
+  }
+
+  // ── Sentence-level TTS (called per-sentence during SSE stream) ──────────
+  // Unlike speakText(), this does NOT clear the queue or abort prior TTS —
+  // it appends audio to the shared queue so sentences play back-to-back.
+
+  // showText: the portion of the full response to reveal in the bubble when this
+  // sentence's audio starts playing. Undefined for non-voice calls.
+  async function speakSentence(sentence: string, showText?: string) {
+    if (!sentence.trim()) return;
+    const genId = ttsGenRef.current; // snapshot — barge-in increments this
+    const ab = new AbortController();
+    ttsSentenceAbortRefs.current.push(ab);
+    pendingTtsSentencesRef.current++;
+
+    function playNextSentence() {
+      if (ttsGenRef.current !== genId) return;
+      const item = audioQueueRef.current.shift();
+      if (!item) {
+        audioRef.current = null;
+        if (pendingTtsSentencesRef.current <= 0 && voiceStateRef.current === "speaking") {
+          // All audio done — show the complete response as a safety net
+          const finalText = fullResponseRef.current;
+          if (finalText) {
+            setMessages(prev => {
+              const copy = [...prev];
+              copy[copy.length - 1] = { role: "assistant", content: finalText };
+              return copy;
+            });
+          }
+          setVS("idle");
+          if (subModeRef.current === "live") liveSetAiSpeakingRef.current(false);
+        }
+        return;
+      }
+      // Reveal text in sync with audio: show exactly what was streamed up to this sentence
+      if (item.showText) {
+        displayedTextRef.current = item.showText;
+        setMessages(prev => {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", content: item.showText! };
+          return copy;
+        });
+      }
+      const { audio, url } = item;
+      audioRef.current = audio;
+      if (subModeRef.current === "live") liveSetAiSpeakingRef.current(true);
+      let advanced = false;
+      const advance = () => {
+        if (advanced) return;
+        advanced = true;
+        URL.revokeObjectURL(url);
+        audioRef.current = null;
+        playNextSentence();
+      };
+      audio.onended = advance;
+      audio.onerror = advance;
+      audio.play().catch(advance);
+    }
+
+    try {
+      const res = await fetch("/api/aida/tts", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ text: sentence }),
+        signal:  ab.signal,
+      });
+      if (!res.ok || !res.body) return;
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buf       = "";
+      let   firstChunk = true;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (ttsGenRef.current !== genId) break;
+
+        buf += decoder.decode(value, { stream: true });
+        const frames = buf.split("\n\n");
+        buf = frames.pop() ?? "";
+
+        for (const frame of frames) {
+          const line = frame.trim();
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6);
+          if (data === "[DONE]") continue;
+
+          const bin   = atob(data);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const blob  = new Blob([bytes], { type: "audio/mpeg" });
+          const url   = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          // Tag only the FIRST chunk with showText — subsequent chunks of the
+          // same sentence don't re-reveal text
+          audioQueueRef.current.push({ audio, url, showText: firstChunk ? showText : undefined });
+
+          if (firstChunk) {
+            firstChunk = false;
+            if (!audioRef.current) playNextSentence();
+          }
+        }
+      }
+
+      if (ttsGenRef.current === genId && !audioRef.current && audioQueueRef.current.length > 0) {
+        playNextSentence();
+      }
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") return;
+    } finally {
+      pendingTtsSentencesRef.current = Math.max(0, pendingTtsSentencesRef.current - 1);
+      // If this was the last sentence and nothing is playing, show full text + go idle
+      if (
+        pendingTtsSentencesRef.current === 0 &&
+        !audioRef.current &&
+        audioQueueRef.current.length === 0 &&
+        voiceStateRef.current === "speaking"
+      ) {
+        const finalText = fullResponseRef.current;
+        if (finalText) {
+          setMessages(prev => {
+            const copy = [...prev];
+            copy[copy.length - 1] = { role: "assistant", content: finalText };
+            return copy;
+          });
+        }
         setVS("idle");
         if (subModeRef.current === "live") liveSetAiSpeakingRef.current(false);
       }

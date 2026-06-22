@@ -15,7 +15,7 @@ const TEACHER_VOICE_ID = process.env.ELEVENLABS_TEACHER_VOICE_ID ?? "JBFqnCBsd6R
 // Used by the Classroom Teacher persona.
 const CLASSROOM_VOICE_ID = process.env.ELEVENLABS_CLASSROOM_VOICE_ID ?? "1qEiC6qsybMkmnNdVMbK";
 
-const ELEVENLABS_MODEL = "eleven_flash_v2_5"; // ~75ms first-byte latency
+const ELEVENLABS_MODEL = "eleven_turbo_v2_5"; // ~275ms first-byte latency, better voice quality
 
 // Per-role voice tuning. Lower stability + higher style = more emotional
 // range (good for AIDA's friend energy). Higher stability + lower style =
