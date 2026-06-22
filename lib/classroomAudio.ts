@@ -7,10 +7,25 @@ export const BHAVNA_VOICE_ID = process.env.ELEVENLABS_CLASSROOM_VOICE_ID
 
 export interface VoiceSpec {
   voiceId: string;
-  settings?: { stability: number; similarity_boost: number; style?: number };
+  settings?: { stability: number; similarity_boost: number; style?: number; use_speaker_boost?: boolean };
+  modelId?: string;
 }
 
 const DEFAULT_SETTINGS = { stability: 0.45, similarity_boost: 0.8, style: 0.35 };
+const DEFAULT_MODEL_ID = "eleven_multilingual_v2";
+
+// Expressive voice for the audio overview — warmer and more human than the flat
+// default. Lower stability = more natural intonation; higher style = more
+// expressiveness; speaker boost adds presence. Overview-only: podcast/AIDA
+// voices keep DEFAULT_SETTINGS. eleven_turbo_v2_5 is noticeably less robotic
+// than multilingual_v2 and still supports /with-timestamps word alignment.
+export const OVERVIEW_VOICE_SETTINGS = {
+  stability: 0.3,
+  similarity_boost: 0.75,
+  style: 0.55,
+  use_speaker_boost: true,
+};
+export const OVERVIEW_MODEL_ID = "eleven_turbo_v2_5";
 
 // Synthesize ONE line to a complete MP3 buffer (non-streaming endpoint).
 export async function synthLine(text: string, voice: VoiceSpec): Promise<Buffer> {
@@ -25,7 +40,7 @@ export async function synthLine(text: string, voice: VoiceSpec): Promise<Buffer>
       },
       body: JSON.stringify({
         text,
-        model_id: "eleven_multilingual_v2",
+        model_id: voice.modelId ?? DEFAULT_MODEL_ID,
         voice_settings: voice.settings ?? DEFAULT_SETTINGS,
       }),
     },
@@ -83,7 +98,7 @@ export async function synthLineWithTimestamps(
       },
       body: JSON.stringify({
         text,
-        model_id: "eleven_multilingual_v2",
+        model_id: voice.modelId ?? DEFAULT_MODEL_ID,
         voice_settings: voice.settings ?? DEFAULT_SETTINGS,
       }),
     },
