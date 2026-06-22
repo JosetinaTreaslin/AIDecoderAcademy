@@ -3,6 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { FlashcardDeck, parseFlashcards } from "./FlashcardDeck";
 import type { FlashCard } from "./FlashcardDeck";
+import { AudioOverviewMessage, type AudioOverviewPayload } from "./AudioOverviewMessage";
+import { PodcastLoading, type LoadProgress } from "./PodcastLoading";
+import { PodcastPlayer, type PodcastResult } from "./PodcastPlayer";
+import { BlogModal } from "./BlogModal";
+import type { BlogPanel } from "./BlogModal";
+import { MindMapView } from "./MindMapView";
+import type { MindMapNode } from "./MindMapView";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, Play, X } from "lucide-react";
 import { MessageBubble } from "@/components/playground/MessageBubble";
@@ -14,6 +21,9 @@ interface Props {
   chapter: Chapter;
   onBack:  () => void;
 }
+
+// Local extension: classroom messages may carry a rich audio-overview payload.
+type ClassroomMessage = Message & { audioOverview?: AudioOverviewPayload };
 
 interface SavedItem  { id: string; title: string; preview: string; content: string; createdAt: number; tags: string[]; }
 interface VideoItem  {
@@ -50,8 +60,8 @@ const TILES = [
   { key:"mindmap",    label:"Mind Map",         active:false, top:"33%" },
   { key:"comic",      label:"Comic Creations",  active:false, top:"44%" },
   { key:"explainer",  label:"Explainer Videos", active:false, top:"55%" },
-  { key:"audio",      label:"Audio Overview",   active:false, top:"66%" },
-  { key:"podcast",    label:"Audio Podcast",    active:false, top:"77%" },
+  { key:"audio",      label:"Audio Overview",   active:true,  top:"66%" },
+  { key:"podcast",    label:"Audio Podcast",    active:true,  top:"77%" },
 ] as const;
 
 const TILE_PROMPTS: Record<string, (t: string) => string> = {
@@ -65,8 +75,26 @@ interface FlashcardResult {
   saved:   boolean;
 }
 
+interface BlogResult {
+  topic:         string;
+  title:         string;
+  subject?:      string;
+  panels:        BlogPanel[];
+  keyTakeaways:  string[];
+  saved:         boolean;
+}
+
+interface MindmapResult {
+  topic:  string;
+  root:   MindMapNode;
+  saved:  boolean;
+}
+
 const ACCENT     = "#2563eb";
 const ACCENT_GLO = "rgba(37,99,235,0.35)";
+
+// ── Set to true to see all clickable zone outlines for positioning ─────────────
+const DEBUG_ZONES = false;
 
 export function ClassroomArena({ chapter, onBack }: Props) {
   const [profile,    setProfile]    = useState<Profile | null>(null);
@@ -75,16 +103,30 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [savedItems,   setSavedItems]   = useState<SavedItem[]>([]);
   const [viewingItem,  setViewingItem]  = useState<SavedItem | null>(null);
   const [binDragOver,  setBinDragOver]  = useState(false);
-  const [messages,     setMessages]     = useState<Message[]>([]);
+  const [messages,     setMessages]     = useState<ClassroomMessage[]>([]);
   const [isStreaming,  setIsStreaming]  = useState(false);
   const [mode,           setMode]           = useState<"notes" | "videos">("notes");
   const [playingVideo,   setPlayingVideo]   = useState<VideoItem | null>(null);
+  const [flashcardCards, setFlashcardCards] = useState<FlashCard[] | null>(null);
+  const [flashcardRaw,   setFlashcardRaw]   = useState("");
+  const [audioOverviewMode, setAudioOverviewMode] = useState(false);
+  const [podcastProgress, setPodcastProgress] = useState<LoadProgress | null>(null);
+  const [podcast,         setPodcast]         = useState<PodcastResult | null>(null);
+  const bottomRef           = useRef<HTMLDivElement>(null);
+  const taRef               = useRef<HTMLTextAreaElement>(null);
+  const pendingFlashcardRef = useRef(false);
+  const wasStreamingRef     = useRef(false);
+  const messagesRef         = useRef<ClassroomMessage[]>([]);
   const [flashcardResults, setFlashcardResults] = useState<Record<string, FlashcardResult>>({});
   const [flashcardModalData, setFlashcardModalData] = useState<{ topic: string; subject?: string; cards: FlashCard[] } | null>(null);
   const [flashcardMode, setFlashcardMode] = useState(false);
-  const [panelFilter,   setPanelFilter]   = useState<"notes" | "flashcards">("notes");
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const taRef     = useRef<HTMLTextAreaElement>(null);
+  const [blogMode,      setBlogMode]      = useState(false);
+  const [mindmapMode,   setMindmapMode]   = useState(false);
+  const [blogResults,   setBlogResults]   = useState<Record<string, BlogResult>>({});
+  const [blogModalData, setBlogModalData] = useState<{ topic: string; title: string; subject?: string; panels: BlogPanel[]; keyTakeaways?: string[] } | null>(null);
+  const [mindmapResults,   setMindmapResults]   = useState<Record<string, MindmapResult>>({});
+  const [mindmapModalData, setMindmapModalData] = useState<{ topic: string; root: MindMapNode } | null>(null);
+  const [panelFilter,   setPanelFilter]   = useState<"notes" | "flashcards" | "blog" | "mindmap">("notes");
 
   useEffect(() => {
     fetch("/api/profile")
@@ -104,13 +146,19 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         setSavedItems(
           filtered.map((c: any) => {
             const tags = Array.isArray(c.tags) ? c.tags as string[] : [];
-            const isFC = tags.includes("flashcards");
+            const isFC   = tags.includes("flashcards");
+            const isBlog = tags.includes("blog");
             let preview = (c.content as string).replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60);
             if (isFC) {
               try {
                 const j = JSON.parse(c.content);
                 preview = `${Array.isArray(j.cards) ? j.cards.length : "?"} cards`;
               } catch { preview = "flashcards"; }
+            } else if (isBlog) {
+              try {
+                const j = JSON.parse(c.content);
+                preview = `${Array.isArray(j.panels) ? j.panels.length : "?"} panels`;
+              } catch { preview = "blog"; }
             }
             return { id: c.id, title: c.title, preview, content: c.content, tags, createdAt: new Date(c.created_at).getTime() };
           })
@@ -221,7 +269,6 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           : m
       ));
       setFlashcardResults(prev => ({ ...prev, [asstId]: { topic: resolvedTopic, subject: chapter.subject, cards, saved: false } }));
-      setFlashcardMode(false);
     } catch (e) {
       console.error("[flashcards/generate]", e);
       setMessages(prev => prev.map(m =>
@@ -232,14 +279,288 @@ export function ClassroomArena({ chapter, onBack }: Props) {
     }
   }, [profile, isStreaming, chapter.chapter_title, chapter.subject]);
 
+  // Validates a student-typed topic, then generates an illustrated comic-strip blog for it
+  const handleBlogTopic = useCallback(async (topic: string) => {
+    if (!profile || isStreaming) return;
+
+    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: topic, outputType: "text", createdAt: new Date() };
+    const asstId = crypto.randomUUID();
+    const loadingMsg: Message = {
+      id: asstId, role: "assistant",
+      content: `Creating an illustrated blog for "${topic}"… generating panels and images, this may take a minute.`,
+      outputType: "text", isLoading: true, createdAt: new Date(),
+    };
+    setMessages(prev => [...prev, userMsg, loadingMsg]);
+    setIsStreaming(true);
+
+    try {
+      const res = await fetch("/api/classroom/blog/generate", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ topic, chapterTitle: chapter.chapter_title, subject: chapter.subject }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      const data = await res.json() as { valid: boolean; reason?: string; topic?: string; title?: string; panels?: BlogPanel[]; keyTakeaways?: string[] };
+
+      if (!data.valid) {
+        setMessages(prev => prev.map(m =>
+          m.id === asstId
+            ? { ...m, content: data.reason || `That doesn't seem to be part of "${chapter.chapter_title}" — try a topic from this chapter.`, isLoading: false }
+            : m
+        ));
+        return;
+      }
+
+      const resolvedTopic  = data.topic ?? topic;
+      const resolvedTitle  = data.title ?? resolvedTopic;
+      const panels         = data.panels ?? [];
+      const keyTakeaways   = data.keyTakeaways ?? [];
+      setMessages(prev => prev.map(m =>
+        m.id === asstId
+          ? { ...m, content: `✅ Created "${resolvedTitle}" — ${panels.length} illustrated panel${panels.length !== 1 ? "s" : ""} ready.`, isLoading: false }
+          : m
+      ));
+      setBlogResults(prev => ({ ...prev, [asstId]: { topic: resolvedTopic, title: resolvedTitle, subject: chapter.subject, panels, keyTakeaways, saved: false } }));
+    } catch (e) {
+      console.error("[blog/generate]", e);
+      setMessages(prev => prev.map(m =>
+        m.id === asstId ? { ...m, content: "Sorry, couldn't create the blog. Please try again.", isLoading: false } : m
+      ));
+    } finally {
+      setIsStreaming(false);
+    }
+  }, [profile, isStreaming, chapter.chapter_title, chapter.subject]);
+
+  // Validates topic + generates a mindmap tree via /api/classroom/mindmap/generate
+  const handleMindmapTopic = useCallback(async (topic: string) => {
+    if (!profile || isStreaming) return;
+
+    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: topic, outputType: "text", createdAt: new Date() };
+    const asstId = crypto.randomUUID();
+    const loadingMsg: Message = {
+      id: asstId, role: "assistant",
+      content: `Building a mind map for "${topic}"… mapping concepts and connections.`,
+      outputType: "text", isLoading: true, createdAt: new Date(),
+    };
+    setMessages(prev => [...prev, userMsg, loadingMsg]);
+    setIsStreaming(true);
+
+    try {
+      const res = await fetch("/api/classroom/mindmap/generate", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ topic, chapterTitle: chapter.chapter_title, subject: chapter.subject }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      const data = await res.json() as { valid: boolean; reason?: string; topic?: string; root?: MindMapNode };
+
+      if (!data.valid) {
+        setMessages(prev => prev.map(m =>
+          m.id === asstId
+            ? { ...m, content: data.reason || `That doesn't seem to be part of "${chapter.chapter_title}" — try a topic from this chapter.`, isLoading: false }
+            : m
+        ));
+        return;
+      }
+
+      const resolvedTopic = data.topic ?? topic;
+      const root = data.root!;
+      setMessages(prev => prev.map(m =>
+        m.id === asstId
+          ? { ...m, content: `🧠 Mind map ready for "${resolvedTopic}" — click Open to explore!`, isLoading: false }
+          : m
+      ));
+      setMindmapResults(prev => ({ ...prev, [asstId]: { topic: resolvedTopic, root, saved: false } }));
+    } catch (e) {
+      console.error("[mindmap/generate]", e);
+      setMessages(prev => prev.map(m =>
+        m.id === asstId ? { ...m, content: "Sorry, couldn't generate the mind map. Please try again.", isLoading: false } : m
+      ));
+    } finally {
+      setIsStreaming(false);
+    }
+  }, [profile, isStreaming, chapter.chapter_title, chapter.subject]);
+
+  // Persists a generated mindmap to My Creations
+  const handleMindmapSave = useCallback((messageId: string) => {
+    const result = mindmapResults[messageId];
+    if (!result || result.saved) return;
+
+    const { topic, root } = result;
+    const title   = `Mind Map: ${topic}`;
+    const content = JSON.stringify({ topic, root });
+    const tempId  = crypto.randomUUID();
+
+    setMindmapResults(prev => ({ ...prev, [messageId]: { ...prev[messageId], saved: true } }));
+    setSavedItems(prev => [
+      { id: tempId, title, preview: "mind map", content, tags: ["classroom", chapter.chapter_title, "mindmap"], createdAt: Date.now() },
+      ...prev,
+    ].slice(0, 10));
+    fetch("/api/creations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title, type: "chat", output_type: "text", content,
+        tags: ["classroom", chapter.chapter_title, "mindmap"],
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.creation?.id) {
+          setSavedItems(prev => prev.map(item => item.id === tempId ? { ...item, id: data.creation.id } : item));
+        }
+      })
+      .catch(() => {});
+  }, [chapter.chapter_title, mindmapResults]);
+
+  // Persists a generated blog to My Creations
+  const handleBlogSave = useCallback((messageId: string) => {
+    const result = blogResults[messageId];
+    if (!result || result.saved) return;
+
+    const { topic, title, panels, keyTakeaways } = result;
+    const preview = `${panels.length} panel${panels.length !== 1 ? "s" : ""}`;
+    const content = JSON.stringify({ topic, title, panels, keyTakeaways });
+    const tempId  = crypto.randomUUID();
+
+    setBlogResults(prev => ({ ...prev, [messageId]: { ...prev[messageId], saved: true } }));
+    setSavedItems(prev => [
+      { id: tempId, title, preview, content, tags: ["classroom", chapter.chapter_title, "blog"], createdAt: Date.now() },
+      ...prev,
+    ].slice(0, 10));
+    fetch("/api/creations", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        title, type: "chat", output_type: "text", content,
+        tags: ["classroom", chapter.chapter_title, "blog"],
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.creation?.id) {
+          setSavedItems(prev => prev.map(item => item.id === tempId ? { ...item, id: data.creation.id } : item));
+        }
+      })
+      .catch(() => {});
+  }, [chapter.chapter_title, blogResults]);
+
+  // Persist generated audio (overview/podcast) to creations. The creations
+  // schema only allows type ∈ story|code|art|quiz|chat|mixed (no "audio") and
+  // has no file_url column, so we save as type:"chat" + output_type:"audio"
+  // with the playable URL embedded in content JSON. type:"chat" also matches
+  // the ?type=chat mount-reload filter, so saved audio reloads on return.
+  const saveAudioCreation = useCallback((title: string, content: string, kind: "audio" | "podcast") => {
+    const tempId = crypto.randomUUID();
+    const preview = kind === "podcast" ? "Podcast episode" : "Audio overview";
+    setSavedItems(prev => [
+      { id: tempId, title, preview, content, tags: ["classroom", chapter.chapter_title, kind], createdAt: Date.now() },
+      ...prev,
+    ].slice(0, 10));
+    fetch("/api/creations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title, type: "chat", output_type: "audio", content,
+        tags: ["classroom", chapter.chapter_title, kind],
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.creation?.id) {
+          setSavedItems(prev => prev.map(item => item.id === tempId ? { ...item, id: data.creation.id } : item));
+        }
+      })
+      .catch(() => {});
+  }, [chapter.chapter_title]);
+
+  // Generates an audio overview and renders it as a chat message (loading →
+  // audio payload, or a funny off-topic quip). Declared before `send` because
+  // `send` depends on it.
+  const runOverview = useCallback(async (focus?: string) => {
+    const loadingId = crypto.randomUUID();
+    setMessages(prev => [...prev, {
+      id: loadingId, role: "assistant", outputType: "text",
+      content: "🎙️ Recording your overview…", isLoading: true, createdAt: new Date(),
+    } as ClassroomMessage]);
+    try {
+      const r = await fetch("/api/classroom/audio-overview", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chapterTitle: chapter.chapter_title, focus }),
+      });
+      if (!r.ok) throw new Error("bad status");
+      const data = await r.json();
+
+      if (data.offTopic) {
+        setMessages(prev => prev.map(m => m.id === loadingId
+          ? { ...m, content: data.quip, isLoading: false } : m));
+        return;
+      }
+
+      const payload: AudioOverviewPayload = {
+        audioUrl: data.audioUrl, title: data.title, script: data.script,
+        words: data.words ?? [], formulas: data.formulas ?? [], keyPoints: data.keyPoints ?? [],
+        table: data.table ?? null,
+      };
+      setMessages(prev => prev.map(m => m.id === loadingId
+        ? ({ ...m, content: data.title, isLoading: false, outputType: "audio", audioOverview: payload } as ClassroomMessage)
+        : m));
+      saveAudioCreation(data.title, JSON.stringify({ audioUrl: data.audioUrl, script: data.script }), "audio");
+    } catch {
+      setMessages(prev => prev.map(m => m.id === loadingId
+        ? { ...m, content: "Couldn't make your overview — please try again.", isLoading: false } : m));
+    }
+  }, [chapter.chapter_title, saveAudioCreation]);
+
   const send = useCallback(async (text: string) => {
     const t = text.trim();
     if (!t || !profile || isStreaming) return;
     setInput("");
     if (taRef.current) taRef.current.style.height = "auto";
-    if (flashcardMode) await handleFlashcardTopic(t);
+    if (audioOverviewMode) {
+      // Sticky: every message is an overview until the student exits the mode.
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(), role: "user", outputType: "text",
+        content: t, createdAt: new Date(),
+      } as ClassroomMessage]);
+      await runOverview(t);
+      return;
+    }
+    if (flashcardMode)  await handleFlashcardTopic(t);
+    else if (blogMode)  await handleBlogTopic(t);
+    else if (mindmapMode) await handleMindmapTopic(t);
     else await sendMessage(t);
-  }, [profile, isStreaming, sendMessage, flashcardMode, handleFlashcardTopic]);
+  }, [profile, isStreaming, sendMessage, audioOverviewMode, runOverview, flashcardMode, handleFlashcardTopic, blogMode, handleBlogTopic, mindmapMode, handleMindmapTopic]);
+
+  const runPodcast = useCallback(async (topic: string) => {
+    setPodcastProgress({ stage: "persona" });
+    try {
+      const r = await fetch("/api/classroom/podcast", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, chapterTitle: chapter.chapter_title }),
+      });
+      if (!r.body) { setPodcastProgress({ stage: "error", message: "No response" }); return; }
+      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
+      while (true) {
+        const { done, value } = await reader.read(); if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const frames = buf.split("\n\n"); buf = frames.pop() ?? "";
+        for (const f of frames) {
+          const line = f.trim(); if (!line.startsWith("data:")) continue;
+          const evt = JSON.parse(line.slice(5).trim());
+          if (evt.stage === "done") {
+            setPodcast(evt as PodcastResult); setPodcastProgress(null);
+            saveAudioCreation(evt.title, JSON.stringify({ audioUrl: evt.audioUrl, transcript: evt.transcript, persona: evt.persona }), "podcast");
+          }
+          else setPodcastProgress(evt as LoadProgress);
+        }
+      }
+    } catch (e) {
+      setPodcastProgress({ stage: "error", message: (e as Error).message });
+    }
+  }, [chapter.chapter_title, saveAudioCreation]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
@@ -382,17 +703,24 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
       {/* ── Toolbar hotspot: Notes ───────────────────────────────────────────── */}
       <div
-        onClick={() => { setMode("notes"); setPanelFilter("notes"); setFlashcardMode(false); setMessages([]); }}
-        className="absolute"
-        style={{ left:"0", top:"10%", width:"12.5%", height:"7.5%", zIndex:20, cursor:"pointer" }}
+        onClick={() => {
+          if (!flashcardMode && !blogMode && !mindmapMode && panelFilter === "notes" && mode === "notes") return;
+          setMode("notes"); setPanelFilter("notes"); setFlashcardMode(false); setBlogMode(false); setMindmapMode(false); setMessages([]);
+        }}
+        className="absolute group"
+        style={{ left:"1%", top:"10%", width:"12%", height:"7.5%", zIndex:20, cursor:"pointer",
+          ...(DEBUG_ZONES ? { border:"2px solid #22c55e", background:"rgba(34,197,94,0.15)", borderRadius:6 } : {}) }}
         title="Notes hotspot"
-      />
+      >
+        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#22c55e", fontFamily:"monospace", pointerEvents:"none" }}>NOTES</span>}
+      </div>
 
       {/* ── Toolbar hotspot: Flashcards ──────────────────────────────────────── */}
       <div
         onClick={() => {
+          if (flashcardMode) return;
           setMode("notes"); setPanelFilter("flashcards");
-          setMessages([]);
+          setBlogMode(false); setMindmapMode(false);
           setFlashcardMode(true);
           setMessages([{
             id: crypto.randomUUID(), role: "assistant",
@@ -400,18 +728,120 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             outputType: "text", createdAt: new Date(),
           }]);
         }}
-        className="absolute"
-        style={{ left:"0", top:"19%", width:"13%", height:"7%", zIndex:20, cursor:"pointer" }}
+        className="absolute group"
+        style={{ left:"1%", top:"19%", width:"12%", height:"7%", zIndex:20, cursor:"pointer",
+          ...(DEBUG_ZONES ? { border:"2px solid #f59e0b", background:"rgba(245,158,11,0.15)", borderRadius:6 } : {}) }}
         title="Flashcards hotspot"
-      />
+      >
+        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#f59e0b", fontFamily:"monospace", pointerEvents:"none" }}>FLASHCARDS</span>}
+      </div>
+
+      {/* ── Toolbar hotspot: Mind Map ────────────────────────────────────────── */}
+      <div
+        onClick={() => {
+          if (mindmapMode) return;
+          setMode("notes"); setPanelFilter("mindmap");
+          setFlashcardMode(false); setBlogMode(false);
+          setMindmapMode(true);
+          setMessages([{
+            id: crypto.randomUUID(), role: "assistant",
+            content: `🧠 Mind Map mode is on — type a topic from "${chapter.chapter_title}" below and I'll build an interactive mind map for it.`,
+            outputType: "text", createdAt: new Date(),
+          }]);
+        }}
+        className="absolute group"
+        style={{ left:"1%", top:"28%", width:"12%", height:"8%", zIndex:20, cursor:"pointer",
+          ...(DEBUG_ZONES ? { border:"2px solid #a78bfa", background:"rgba(167,139,250,0.15)", borderRadius:6 } : {}) }}
+        title="Mind Map hotspot"
+      >
+        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#a78bfa", fontFamily:"monospace", pointerEvents:"none" }}>MIND MAP</span>}
+      </div>
+
+      {/* ── Toolbar hotspot: Comic / Blog ────────────────────────────────────── */}
+      <div
+        onClick={() => {
+          if (blogMode) return;
+          setMode("notes"); setPanelFilter("blog");
+          setFlashcardMode(false); setMindmapMode(false);
+          setBlogMode(true);
+          setMessages([{
+            id: crypto.randomUUID(), role: "assistant",
+            content: `🎨 Blog mode is on — type a topic from "${chapter.chapter_title}" below and I'll create an illustrated comic blog for it.`,
+            outputType: "text", createdAt: new Date(),
+          }]);
+        }}
+        className="absolute group"
+        style={{ left:"1%", top:"37%", width:"12%", height:"8%", zIndex:20, cursor:"pointer",
+          ...(DEBUG_ZONES ? { border:"2px solid #f472b6", background:"rgba(244,114,182,0.15)", borderRadius:6 } : {}) }}
+        title="Comic/Blog hotspot"
+      >
+        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#f472b6", fontFamily:"monospace", pointerEvents:"none" }}>BLOG</span>}
+      </div>
 
       {/* ── Toolbar hotspot: Explainer Videos ────────────────────────────────── */}
       <div
-        onClick={() => setMode("videos")}
-        className="absolute"
-        style={{ left:0, top:"45%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer" }}
+        onClick={() => {
+          if (mode === "videos") return;
+          setFlashcardMode(false); setBlogMode(false); setMindmapMode(false);
+          setMode("videos");
+        }}
+        className="absolute group"
+        style={{ left:"1%", top:"45%", width:"12%", height:"8.5%", zIndex:20, cursor:"pointer",
+          ...(DEBUG_ZONES ? { border:"2px solid #38bdf8", background:"rgba(56,189,248,0.15)", borderRadius:6 } : {}) }}
         title="Videos hotspot"
-      />
+      >
+        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#38bdf8", fontFamily:"monospace", pointerEvents:"none" }}>VIDEOS</span>}
+      </div>
+
+      {/* ── Toolbar hotspot: Audio Overview (toggles sticky overview mode) ───── */}
+      <div
+        onClick={() => {
+          if (isStreaming) return;
+          if (audioOverviewMode) {
+            setAudioOverviewMode(false);
+            setMessages(prev => [...prev, {
+              id: crypto.randomUUID(), role: "assistant", outputType: "text",
+              content: "✅ Exited Audio Overview mode — back to normal chat.",
+              createdAt: new Date(),
+            } as ClassroomMessage]);
+            return;
+          }
+          setMode("notes");
+          setAudioOverviewMode(true);
+          setMessages(prev => [...prev, {
+            id: crypto.randomUUID(), role: "assistant", outputType: "text",
+            content: `🎧 **Audio Overview mode is ON.** Every message becomes an overview of *${chapter.chapter_title}* — the whole chapter, or any subtopic. (This chapter only 😄) Tap Audio Overview again to exit.`,
+            createdAt: new Date(),
+          } as ClassroomMessage]);
+        }}
+        className="absolute"
+        style={{ left:0, top:"66%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer",
+          ...(DEBUG_ZONES ? { border:"2px solid #fb923c", background:"rgba(251,146,60,0.15)", borderRadius:6 } : {}) }}
+      >
+        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#fb923c", fontFamily:"monospace", pointerEvents:"none" }}>AUDIO OVW</span>}
+      </div>
+
+      {/* ── Active-mode glow over the Audio Overview tile ───────────────────── */}
+      {audioOverviewMode && (
+        <motion.div
+          className="absolute pointer-events-none"
+          style={{ left:0, top:"66%", width:"13%", height:"8.5%", zIndex:19, borderRadius:12,
+            border:"1.5px solid rgba(200,168,75,0.9)",
+            boxShadow:"0 0 18px rgba(200,168,75,0.65), inset 0 0 14px rgba(200,168,75,0.35)" }}
+          animate={{ opacity:[0.45,1,0.45] }}
+          transition={{ duration:1.6, repeat:Infinity, ease:"easeInOut" }}
+        />
+      )}
+
+      {/* ── Toolbar hotspot: Audio Podcast (invisible clickable zone) ────────── */}
+      <div
+        onClick={() => { setAudioOverviewMode(false); runPodcast(input.trim() || chapter.chapter_title); setInput(""); }}
+        className="absolute"
+        style={{ left:0, top:"77%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer",
+          ...(DEBUG_ZONES ? { border:"2px solid #e879f9", background:"rgba(232,121,249,0.15)", borderRadius:6 } : {}) }}
+      >
+        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#e879f9", fontFamily:"monospace", pointerEvents:"none" }}>PODCAST</span>}
+      </div>
 
       {/* ── My Creations / Videos panel — overlaid on left wall panel ─────────── */}
       <div className="absolute overflow-y-auto"
@@ -477,10 +907,98 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                     );
                   })}
                 </div>
+              ) : panelFilter === "mindmap" ? (
+                /* ── Mindmap grid: 2 columns ── */
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, paddingRight:4, paddingBottom:8 }}>
+                  {savedItems.filter(item => item.tags.includes("mindmap")).slice(0, 10).map(item => {
+                    const topic = item.title.replace(/^Mind Map:\s*/, "");
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity:0, scale:0.92 }}
+                        animate={{ opacity:1, scale:1 }}
+                        transition={{ duration:0.2 }}
+                        onClick={() => {
+                          try {
+                            const j = JSON.parse(item.content);
+                            if (j.root) setMindmapModalData({ topic: j.topic ?? topic, root: j.root });
+                          } catch {}
+                        }}
+                        whileHover={{ scale:1.04, boxShadow:"0 6px 18px rgba(139,92,246,0.3)" }}
+                        className="cursor-pointer rounded-xl overflow-hidden"
+                        style={{ background:"rgba(255,255,255,0.92)", border:"2px solid rgba(139,92,246,0.35)", boxShadow:"0 2px 10px rgba(15,28,77,0.08)" }}
+                      >
+                        <div style={{ width:"100%", aspectRatio:"6/2", overflow:"hidden", background:"linear-gradient(135deg,#1e1b4b,#0d1535)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>
+                          🧠
+                        </div>
+                        <div style={{ padding:"4px 5px 5px" }}>
+                          <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:9, color:"#0f1c4d",
+                            display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.3 }}>
+                            {topic}
+                          </p>
+                          <p style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:8, color:"rgba(139,92,246,0.9)", marginTop:2, fontWeight:700 }}>
+                            mind map
+                          </p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              ) : panelFilter === "blog" ? (
+                /* ── Blog grid: 2 columns ── */
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, paddingRight:4, paddingBottom:8 }}>
+                  {savedItems.filter(item => item.tags.includes("blog")).slice(0, 10).map(item => {
+                    let firstImageUrl: string | undefined;
+                    let panelCount = 0;
+                    try {
+                      const j = JSON.parse(item.content);
+                      firstImageUrl = j.panels?.[0]?.imageUrl;
+                      panelCount = Array.isArray(j.panels) ? j.panels.length : 0;
+                    } catch {}
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity:0, scale:0.92 }}
+                        animate={{ opacity:1, scale:1 }}
+                        transition={{ duration:0.2 }}
+                        onClick={() => {
+                          try {
+                            const j = JSON.parse(item.content);
+                            if (Array.isArray(j.panels) && j.panels.length > 0) {
+                              setBlogModalData({ topic: j.topic ?? item.title, title: j.title ?? item.title, subject: chapter.subject, panels: j.panels, keyTakeaways: j.keyTakeaways });
+                            }
+                          } catch {}
+                        }}
+                        whileHover={{ scale:1.04, boxShadow:"0 6px 18px rgba(37,99,235,0.3)" }}
+                        className="cursor-pointer rounded-xl overflow-hidden"
+                        style={{ background:"rgba(255,255,255,0.92)", border:"2px solid rgba(37,99,235,0.35)", boxShadow:"0 2px 10px rgba(15,28,77,0.08)" }}
+                      >
+                        <div style={{ width:"100%", aspectRatio:"6/2", overflow:"hidden", background:"#EFF6FF" }}>
+                          {firstImageUrl
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={firstImageUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                            : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>🎨</div>
+                          }
+                        </div>
+                        <div style={{ padding:"4px 5px 5px" }}>
+                          <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:9, color:"#0f1c4d",
+                            display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.3 }}>
+                            {item.title}
+                          </p>
+                          {panelCount > 0 && (
+                            <p style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:8, color:"rgba(37,99,235,0.8)", marginTop:2, fontWeight:700 }}>
+                              {panelCount} panels
+                            </p>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
               ) : (
                 /* ── Notes list: full-width vertical ── */
                 <AnimatePresence>
-                  {savedItems.filter(item => !item.tags.includes("flashcards")).map(item => (
+                  {savedItems.filter(item => !item.tags.includes("flashcards") && !item.tags.includes("blog") && !item.tags.includes("mindmap")).map(item => (
                     <div key={item.id} draggable
                       onDragStart={(e: React.DragEvent<HTMLDivElement>) => {
                         e.dataTransfer.setData("application/classroom-item", item.id);
@@ -505,9 +1023,17 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                   ))}
                 </AnimatePresence>
               )}
-              {savedItems.filter(item => panelFilter === "flashcards" ? item.tags.includes("flashcards") : !item.tags.includes("flashcards")).length === 0 && (
+              {savedItems.filter(item =>
+                panelFilter === "flashcards" ? item.tags.includes("flashcards") :
+                panelFilter === "blog"       ? item.tags.includes("blog") :
+                panelFilter === "mindmap"    ? item.tags.includes("mindmap") :
+                !item.tags.includes("flashcards") && !item.tags.includes("blog") && !item.tags.includes("mindmap")
+              ).length === 0 && (
                 <p className="text-[10px] text-center pt-3 opacity-30" style={{ color:"#0f1c4d" }}>
-                  {panelFilter === "flashcards" ? "Saved flashcard\ndecks appear here" : "Saved notes\nappear here"}
+                  {panelFilter === "flashcards" ? "Saved flashcard\ndecks appear here" :
+                   panelFilter === "blog"       ? "Saved blogs\nappear here" :
+                   panelFilter === "mindmap"    ? "Saved mind maps\nappear here" :
+                   "Saved notes\nappear here"}
                 </p>
               )}
             </motion.div>
@@ -583,8 +1109,8 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         style={{
           position: "absolute",
           bottom: "2%",
-          left:   "9%",
-          width:  "18%",
+          left:   "18%",
+          width:  "6.5%",
           zIndex: 18,
           display: "flex",
           alignItems: "flex-end",
@@ -640,8 +1166,8 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         style={{
           position: "absolute",
           bottom: "2%",
-          left:   "9%",
-          width:  "18%",
+          left:   "18%",
+          width:  "6.5%",
           zIndex: 18,
           display: "flex",
           alignItems: "flex-end",
@@ -706,7 +1232,9 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           )}
 
           {messages.map(msg => {
-            const fcResult = flashcardResults[msg.id];
+            const fcResult   = flashcardResults[msg.id];
+            const blogResult = blogResults[msg.id];
+            const mmResult   = mindmapResults[msg.id];
             return (
               <MessageBubble
                 key={msg.id}
@@ -716,10 +1244,21 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                 arenaAccent={ACCENT}
                 arenaAccentGlow={ACCENT_GLO}
                 arenaId={1}
-                onSave={fcResult ? () => handleFlashcardSave(msg.id) : handleSave}
-                onOpen={fcResult && !msg.isLoading
-                  ? () => setFlashcardModalData({ topic: fcResult.topic, subject: fcResult.subject, cards: fcResult.cards })
-                  : undefined}
+                onSave={
+                  fcResult   ? () => handleFlashcardSave(msg.id) :
+                  blogResult ? () => handleBlogSave(msg.id) :
+                  mmResult   ? () => handleMindmapSave(msg.id) :
+                  handleSave
+                }
+                onOpen={
+                  fcResult && !msg.isLoading
+                    ? () => setFlashcardModalData({ topic: fcResult.topic, subject: fcResult.subject, cards: fcResult.cards })
+                    : blogResult && !msg.isLoading
+                      ? () => setBlogModalData({ topic: blogResult.topic, title: blogResult.title, subject: blogResult.subject, panels: blogResult.panels, keyTakeaways: blogResult.keyTakeaways })
+                      : mmResult && !msg.isLoading
+                        ? () => setMindmapModalData({ topic: mmResult.topic, root: mmResult.root })
+                        : undefined
+                }
               />
             );
           })}
@@ -737,6 +1276,37 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
           <div ref={bottomRef} />
         </div>
+
+        {/* ── Audio Overview active chip ─────────────────────────────────────── */}
+        {audioOverviewMode && (
+          <div style={{ flexShrink:0, padding:"0 4px 6px" }}>
+            <motion.div
+              initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full w-fit"
+              style={{ background:"linear-gradient(180deg, rgba(200,168,75,0.22), rgba(200,168,75,0.10))",
+                border:"1px solid rgba(200,168,75,0.55)",
+                boxShadow:"0 0 16px rgba(200,168,75,0.35)" }}>
+              <motion.span style={{ width:7, height:7, borderRadius:"50%", background:"#C8A84B", display:"inline-block" }}
+                animate={{ opacity:[0.4,1,0.4] }} transition={{ duration:1.4, repeat:Infinity }} />
+              <span className="text-xs font-semibold" style={{ color:"#F4E4B8" }}>
+                🎧 Audio Overview ON — every message becomes an overview
+              </span>
+              <button
+                onClick={() => {
+                  setAudioOverviewMode(false);
+                  setMessages(prev => [...prev, {
+                    id: crypto.randomUUID(), role: "assistant", outputType: "text",
+                    content: "✅ Exited Audio Overview mode — back to normal chat.",
+                    createdAt: new Date(),
+                  } as ClassroomMessage]);
+                }}
+                className="text-xs font-bold ml-1 px-2 py-0.5 rounded-full hover:opacity-80"
+                style={{ background:"rgba(200,168,75,0.85)", color:"#1a1206" }}>
+                Exit
+              </button>
+            </motion.div>
+          </div>
+        )}
 
         {/* ── Input bar — dark pill, Creator's Room style ────────────────────── */}
         <div style={{ flexShrink:0, padding:"0 4px 8px" }}>
@@ -757,14 +1327,52 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               </button>
             </div>
           )}
+          {blogMode && (
+            <div className="flex items-center justify-between" style={{ padding:"0 4px 6px" }}>
+              <span
+                className="text-xs font-bold px-2.5 py-1 rounded-full"
+                style={{ background:"rgba(37,99,235,0.16)", border:"1px solid rgba(37,99,235,0.4)", color:"#60a5fa", fontFamily:"'DM Sans',sans-serif" }}
+              >
+                🎨 Blog mode — type a topic from this chapter
+              </span>
+              <button
+                onClick={() => setBlogMode(false)}
+                className="text-xs font-semibold px-2.5 py-1 rounded-full transition-colors hover:bg-white/10"
+                style={{ color:"rgba(255,255,255,0.5)", fontFamily:"'DM Sans',sans-serif" }}
+              >
+                Exit
+              </button>
+            </div>
+          )}
+          {mindmapMode && (
+            <div className="flex items-center justify-between" style={{ padding:"0 4px 6px" }}>
+              <span
+                className="text-xs font-bold px-2.5 py-1 rounded-full"
+                style={{ background:"rgba(139,92,246,0.16)", border:"1px solid rgba(139,92,246,0.4)", color:"#a78bfa", fontFamily:"'DM Sans',sans-serif" }}
+              >
+                🧠 Mind Map mode — type a topic from this chapter
+              </span>
+              <button
+                onClick={() => setMindmapMode(false)}
+                className="text-xs font-semibold px-2.5 py-1 rounded-full transition-colors hover:bg-white/10"
+                style={{ color:"rgba(255,255,255,0.5)", fontFamily:"'DM Sans',sans-serif" }}
+              >
+                Exit
+              </button>
+            </div>
+          )}
           <div style={{ display:"flex", alignItems:"center", gap:8,
             background:"linear-gradient(180deg, rgba(18,28,72,0.92) 0%, rgba(10,16,52,0.95) 100%)",
             backdropFilter:"blur(24px)",
             borderRadius:16, padding:"10px 12px",
-            border: flashcardMode ? "1px solid rgba(245,166,35,0.45)" : "1px solid rgba(100,140,255,0.25)",
+            border: flashcardMode ? "1px solid rgba(245,166,35,0.45)" : blogMode ? "1px solid rgba(37,99,235,0.55)" : mindmapMode ? "1px solid rgba(139,92,246,0.55)" : "1px solid rgba(100,140,255,0.25)",
             boxShadow: flashcardMode
               ? "0 0 0 1px rgba(245,166,35,0.12), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"
-              : "0 0 0 1px rgba(100,140,255,0.08), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
+              : blogMode
+                ? "0 0 0 1px rgba(37,99,235,0.15), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"
+                : mindmapMode
+                  ? "0 0 0 1px rgba(139,92,246,0.15), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"
+                  : "0 0 0 1px rgba(100,140,255,0.08), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
 
             <textarea
               ref={taRef}
@@ -776,14 +1384,19 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                 t.style.height = Math.min(t.scrollHeight, 80) + "px";
               }}
               onKeyDown={handleKey}
-              placeholder={flashcardMode ? `Type a topic from "${chapter.chapter_title}" for flashcards…` : "Ask anything about this chapter…"}
+              placeholder={
+                flashcardMode ? `Type a topic from "${chapter.chapter_title}" for flashcards…` :
+                blogMode      ? `Type a topic from "${chapter.chapter_title}" for the illustrated blog…` :
+                mindmapMode   ? `Type a topic from "${chapter.chapter_title}" for the mind map…` :
+                "Ask anything about this chapter…"
+              }
               rows={1}
               disabled={!profile}
               style={{ flex:1, resize:"none", border:"none", outline:"none",
                 background:"transparent", fontSize:15, fontWeight:500,
                 color:"rgba(255,255,255,0.92)", fontFamily:"inherit",
                 lineHeight:1.5, overflowY:"hidden",
-                caretColor: flashcardMode ? "#F5A623" : ACCENT, userSelect:"text" }}
+                caretColor: flashcardMode ? "#F5A623" : blogMode ? "#60a5fa" : mindmapMode ? "#a78bfa" : ACCENT, userSelect:"text" }}
             />
 
             <button onClick={() => send(input)} disabled={!canSend}
@@ -870,6 +1483,36 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           />
         )}
       </AnimatePresence>
+
+      {/* ── Blog/comic overlay ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {blogModalData && (
+          <BlogModal
+            topic={blogModalData.topic}
+            title={blogModalData.title}
+            subject={blogModalData.subject}
+            panels={blogModalData.panels}
+            keyTakeaways={blogModalData.keyTakeaways}
+            onClose={() => setBlogModalData(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Mind Map overlay ───────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {mindmapModalData && (
+          <MindMapView
+            topic={mindmapModalData.topic}
+            root={mindmapModalData.root}
+            onClose={() => setMindmapModalData(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Audio Overview now renders as an in-chat message (AudioOverviewMessage).
+             Podcast overlays remain below. ──────────────────────────────────── */}
+      {podcastProgress && <PodcastLoading progress={podcastProgress} />}
+      {podcast && <PodcastPlayer result={podcast} onClose={() => setPodcast(null)} />}
 
       {/* ── Saved item viewer modal ─────────────────────────────────────────── */}
       <AnimatePresence>

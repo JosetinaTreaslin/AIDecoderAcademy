@@ -1,3 +1,5 @@
+@import "katex/dist/katex.min.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -52,6 +54,12 @@
     rgba(124, 58, 237, 0.08) 0%,
     transparent 55%
   );
+}
+
+/* Disable WorksheetIcon pointer events while a creation is being dragged,
+   so it cannot block drag events from reaching the bin drop target. */
+body.is-dragging-creation .worksheet-icon {
+  pointer-events: none !important;
 }
 
 @keyframes aida-slide-up {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -655,7 +655,7 @@ export default function ClassroomPage() {
               {view === "select-type" && selectedChapter && (
                 <motion.div key="select-type" {...FADE} className="flex-1 overflow-hidden flex flex-col">
                   <TestTypeSelector chapter={selectedChapter} onSelect={handleTypeSelect}
-                    onBack={() => { setView("pick"); setLoadError(null); }} />
+                    onBack={() => { setView("objective"); setLoadError(null); }} />
                 </motion.div>
               )}
 
@@ -681,7 +681,7 @@ export default function ClassroomPage() {
                 <motion.div key="mcq-test" {...FADE} className="flex-1 overflow-hidden flex flex-col">
                   <MCQTest paperId={paper.paperId} questionIds={paper.questionIds}
                     questions={paper.questions as MCQQuestion[]} chapter={paper.chapter}
-                    onComplete={handleMcqComplete} onBack={() => setView("select-type")} />
+                    onComplete={handleMcqComplete} onBack={() => setView("objective")} />
                 </motion.div>
               )}
 
@@ -689,21 +689,21 @@ export default function ClassroomPage() {
                 <motion.div key="written-test" {...FADE} className="flex-1 overflow-hidden flex flex-col">
                   <WrittenTest paperId={paper.paperId} questions={paper.questions as WrittenQuestion[]}
                     chapter={paper.chapter} onComplete={handleWrittenComplete}
-                    onBack={() => setView("select-type")} onPhaseChange={setWrittenPhase} />
+                    onBack={() => setView("objective")} onPhaseChange={setWrittenPhase} />
                 </motion.div>
               )}
 
               {view === "mcq-result" && mcqResult && paper && (
                 <motion.div key="mcq-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
                   <ScoreReport result={mcqResult} chapterTitle={paper.chapter.chapter_title}
-                    onRetry={retryMcq} onHome={() => setView("landing")} />
+                    onRetry={retryMcq} onHome={() => setView("landing")} onBack={() => setView("objective")} />
                 </motion.div>
               )}
 
               {view === "written-result" && writtenResult && paper && (
                 <motion.div key="written-result" {...FADE} className="flex-1 overflow-hidden flex flex-col">
                   <WrittenScoreReport result={writtenResult} chapterTitle={paper.chapter.chapter_title}
-                    onRetry={retryWritten} onHome={() => setView("landing")} />
+                    onRetry={retryWritten} onHome={() => setView("landing")} onBack={() => setView("objective")} />
                 </motion.div>
               )}
 
