@@ -20,6 +20,9 @@ let ttsGen = 0;
 let activeAudio: HTMLAudioElement | null = null;
 let activeQueue: { audio: HTMLAudioElement; url: string }[] = [];
 let activeTtsAbort: AbortController | null = null;
+// Word timings for the line currently being spoken (karaoke reveal).
+let activeWords: { text: string; start: number; end: number }[] = [];
+let activeDone = false;
 
 /** Hard-stop all teacher TTS — current chunk, queued chunks, and the fetch. */
 function haltTeacherTts() {
@@ -31,6 +34,28 @@ function haltTeacherTts() {
     URL.revokeObjectURL(url);
   }
   activeQueue = [];
+  activeWords = [];
+  activeDone = false;
+}
+
+/** Char count to reveal, snapped to the last word whose audio timestamp has
+ *  passed. Returns -1 when there are no word timings (caller shows full text).
+ *  Reveals nothing until currentTime > 0 so text never leads the voice. */
+function teacherSpokenChars(): number {
+  if (activeWords.length === 0) return -1;
+  const fullLen = activeWords.map(w => w.text).join(" ").length;
+  if (activeDone) return fullLen;
+  if (!activeAudio) return 0;
+  const t = activeAudio.currentTime;
+  if (t <= 0) return 0;
+  let active = -1;
+  for (let i = 0; i < activeWords.length; i++) {
+    if (activeWords[i].start <= t) active = i; else break;
+  }
+  if (active < 0) return 0;
+  let n = active; // spaces between revealed words
+  for (let i = 0; i <= active; i++) n += activeWords[i].text.length;
+  return n;
 }
 
 interface Options {
@@ -53,6 +78,9 @@ export interface UseTeacherVoiceReturn {
   toggleTap:    () => void;
   toggleLive:   () => void;
   speak:        (text: string) => Promise<void>;
+  /** Char count to reveal for the line being spoken (word-boundary, audio-synced).
+   *  Returns -1 when no word timings are available. */
+  spokenChars:  () => number;
   cleanup:      () => void;
 }
 
@@ -124,71 +152,51 @@ export function useTeacherVoice(opts: Options): UseTeacherVoiceReturn {
     activeTtsAbort = new AbortController();
     const mySignal = activeTtsAbort.signal;
 
-    let streamDone = false, firstChunk = true;
-
-    function playNext() {
-      if (ttsGen !== myGen) return;
-      const item = activeQueue.shift();
-      if (!item) {
-        activeAudio = null;
-        if (streamDone && voiceStateRef.current === "speaking") {
-          setVoiceState("idle");
-          if (subModeRef.current === "live") liveSetSpeakingRef.current(false);
-        }
-        return;
-      }
-      const { audio, url } = item;
-      activeAudio = audio;
-      if (subModeRef.current === "live") liveSetSpeakingRef.current(true);
-      let advanced = false;
-      const advance = () => {
-        if (advanced) return; advanced = true;
-        URL.revokeObjectURL(url);
-        if (activeAudio === audio) activeAudio = null;
-        playNext();
-      };
-      audio.onended = advance; audio.onerror = advance;
-      audio.play().catch(advance);
-    }
-
     try {
       setVoiceState("speaking");
-      const res = await fetch("/api/aida/tts", {
+      // tts-timed returns the whole line's audio + per-word timings in one JSON
+      // response — enables karaoke reveal (text tracks the voice, never leads).
+      const res = await fetch("/api/aida/tts-timed", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ text, role: "classroom" }),
         signal:  mySignal,
       });
       if (ttsGen !== myGen) return;
-      if (!res.ok || !res.body) throw new Error("TTS failed");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (ttsGen !== myGen) break;
-        buf += decoder.decode(value, { stream: true });
-        const frames = buf.split("\n\n");
-        buf = frames.pop() ?? "";
-        for (const frame of frames) {
-          const line = frame.trim();
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6);
-          if (data === "[DONE]") { streamDone = true; continue; }
-          const bin = atob(data);
-          const bytes = new Uint8Array(bin.length);
-          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-          const blob = new Blob([bytes], { type: "audio/mpeg" });
-          const url  = URL.createObjectURL(blob);
-          activeQueue.push({ audio: new Audio(url), url });
-          if (firstChunk) { firstChunk = false; playNext(); }
-        }
-      }
-      streamDone = true;
+      if (!res.ok) throw new Error("TTS failed");
+      const data = await res.json() as {
+        audioBase64?: string;
+        words?: { text: string; start: number; end: number }[];
+      };
       if (ttsGen !== myGen) return;
-      if (!activeAudio && activeQueue.length > 0) { playNext(); return; }
-      if (!activeAudio && voiceStateRef.current === "speaking") setVoiceState("idle");
+      if (!data.audioBase64) throw new Error("TTS empty");
+
+      activeWords = data.words ?? [];
+      activeDone = false;
+
+      const bin = atob(data.audioBase64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "audio/mpeg" });
+      const url  = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      activeAudio = audio;
+      if (subModeRef.current === "live") liveSetSpeakingRef.current(true);
+
+      let advanced = false;
+      const advance = () => {
+        if (advanced) return; advanced = true;
+        activeDone = true; // keeps reveal at full text after playback ends
+        URL.revokeObjectURL(url);
+        if (activeAudio === audio) activeAudio = null;
+        if (ttsGen === myGen && voiceStateRef.current === "speaking") {
+          setVoiceState("idle");
+          if (subModeRef.current === "live") liveSetSpeakingRef.current(false);
+        }
+      };
+      audio.onended = advance;
+      audio.onerror = advance;
+      audio.play().catch(advance);
     } catch (err) {
       if ((err as Error)?.name === "AbortError") return;
       if (ttsGen === myGen) {
@@ -313,6 +321,7 @@ export function useTeacherVoice(opts: Options): UseTeacherVoiceReturn {
 
   return {
     voiceState, subMode, setSubMode, voiceOK, voiceError, muted, toggleMute,
-    micStream, liveState: live.state, toggleTap, toggleLive, speak, cleanup,
+    micStream, liveState: live.state, toggleTap, toggleLive, speak,
+    spokenChars: teacherSpokenChars, cleanup,
   };
 }

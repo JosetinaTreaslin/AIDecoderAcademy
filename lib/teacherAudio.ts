@@ -11,6 +11,7 @@ export interface SpeakHandle {
   // until audio actually starts, and only fast-reveal if the audio failed.
   failed?:    () => boolean;
   started?:   () => boolean;
+  done?:      () => boolean; // audio finished playing (or failed)
   // Word-boundary reveal (timed variant): number of characters to show, snapped
   // to the last word whose audio timestamp has been reached. Mirrors AIDA's
   // working karaoke (reads currentTime directly — no gating). Returns -1 if
@@ -37,7 +38,11 @@ export function speakAsAidaTimed(text: string): SpeakHandle {
   return speakTimed(text, "aida");
 }
 
-function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
+export function speakAsClassroomTimed(text: string): SpeakHandle {
+  return speakTimed(text, "classroom");
+}
+
+function speakTimed(text: string, role: "teacher" | "aida" | "classroom"): SpeakHandle {
   const controller = new AbortController();
   let cancelled = false;
   let audio: HTMLAudioElement | null = null;
@@ -125,7 +130,7 @@ function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
     }
   })();
 
-  return { cancel, progress01, spokenChars, failed: () => failed, started: () => started };
+  return { cancel, progress01, spokenChars, failed: () => failed, started: () => started, done: () => done };
 }
 
 async function speak(text: string, role: "teacher" | "aida"): Promise<SpeakHandle> {

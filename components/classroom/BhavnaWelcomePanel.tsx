@@ -15,7 +15,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Volume2, VolumeX, X, ArrowRight, MessageSquare } from "lucide-react";
 import { buildClassroomGreeting } from "@/lib/teacherPanelGreeting";
-import { speakBhavna } from "./bhavnaTts";
+import { speakAsClassroomTimed, type SpeakHandle } from "@/lib/teacherAudio";
 import type { Profile } from "@/types";
 
 interface Props {
@@ -37,7 +37,8 @@ const HINT_AUDIO_KEY = "bhavna:hintAudio";
 
 export function BhavnaWelcomePanel({ profile, onClose, onOpenChat }: Props) {
   const [audioOn, setAudioOn] = useState(true);
-  const ttsAbortRef = useRef<AbortController | null>(null);
+  const [revealed, setRevealed] = useState(0);
+  const speakRef = useRef<SpeakHandle | null>(null);
 
   // Greeting is built once — learner-model aware, returning-student framing.
   const greetingRef = useRef(
@@ -56,15 +57,37 @@ export function BhavnaWelcomePanel({ profile, onClose, onOpenChat }: Props) {
     return () => { window.dispatchEvent(new CustomEvent("validator-panel-close")); };
   }, []);
 
-  // ── Prefetch + play the spoken greeting on mount ──────────────────────────
+  // ── Play the spoken greeting on mount + reveal text word-by-word ──────────
   useEffect(() => {
     const muted = typeof window !== "undefined" && localStorage.getItem(HINT_AUDIO_KEY) === "off";
-    if (muted) { setAudioOn(false); return; }
-    const ctrl = new AbortController();
-    ttsAbortRef.current = ctrl;
-    speakBhavna(greeting.spoken, ctrl.signal).catch(() => { /* autoplay block — silent */ });
-    return () => ctrl.abort();
-  }, [greeting.spoken]);
+    if (muted) { setAudioOn(false); setRevealed(greeting.text.length); return; }
+    setRevealed(0);
+    speakRef.current = speakAsClassroomTimed(greeting.spoken);
+    return () => { speakRef.current?.cancel(); speakRef.current = null; };
+  }, [greeting.spoken, greeting.text.length]);
+
+  // Typewriter — reveals greeting.text in sync with the spoken audio, then the
+  // full text once audio ends. Text never appears ahead of the voice.
+  useEffect(() => {
+    if (!audioOn) return;
+    const fullLen = greeting.text.length;
+    let raf = 0;
+    const tick = () => {
+      const h = speakRef.current;
+      const finished = (h?.failed?.() ?? false) || (h?.done?.() ?? false);
+      let target: number;
+      if (finished) {
+        target = fullLen;
+      } else {
+        const sc = h?.spokenChars?.() ?? -1;
+        target = sc >= 0 ? Math.min(fullLen, sc) : 0; // -1 → hold (loading)
+      }
+      setRevealed(prev => (target > prev ? target : prev));
+      if (target < fullLen) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [audioOn, greeting.text]);
 
   const toggleAudio = useCallback(() => {
     setAudioOn(v => {
@@ -73,18 +96,18 @@ export function BhavnaWelcomePanel({ profile, onClose, onOpenChat }: Props) {
         localStorage.setItem(HINT_AUDIO_KEY, next ? "on" : "off");
       }
       if (!next) {
-        ttsAbortRef.current?.abort();
+        speakRef.current?.cancel(); speakRef.current = null;
+        setRevealed(greetingRef.current.text.length); // muted → show full text
       } else {
-        const ctrl = new AbortController();
-        ttsAbortRef.current = ctrl;
-        speakBhavna(greetingRef.current.spoken, ctrl.signal).catch(() => {});
+        setRevealed(0);
+        speakRef.current = speakAsClassroomTimed(greetingRef.current.spoken);
       }
       return next;
     });
   }, []);
 
   const close = useCallback(() => {
-    ttsAbortRef.current?.abort();
+    speakRef.current?.cancel(); speakRef.current = null;
     onClose();
   }, [onClose]);
 
@@ -196,7 +219,7 @@ export function BhavnaWelcomePanel({ profile, onClose, onOpenChat }: Props) {
                 👩‍🏫 YOUR CLASSROOM TEACHER
               </p>
               <p style={{ color: TEXT_HI, fontSize: 14, lineHeight: 1.65 }}>
-                {greeting.text}
+                {greeting.text.slice(0, revealed)}
               </p>
               <div className="flex gap-2 flex-wrap">
                 <button
@@ -210,7 +233,7 @@ export function BhavnaWelcomePanel({ profile, onClose, onOpenChat }: Props) {
                   Let&rsquo;s begin <ArrowRight size={13} />
                 </button>
                 <button
-                  onClick={() => { ttsAbortRef.current?.abort(); onOpenChat(); }}
+                  onClick={() => { speakRef.current?.cancel(); speakRef.current = null; onOpenChat(); }}
                   className="px-4 py-2 rounded-full text-[12px] font-semibold flex items-center gap-1.5"
                   style={{
                     background: "rgba(255,255,255,0.06)",

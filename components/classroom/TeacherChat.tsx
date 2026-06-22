@@ -127,6 +127,13 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
   // Stable speak ref — lets `send` drop `voice` from its deps
   const speakRef = useRef(voice.speak);
   speakRef.current = voice.speak;
+  // Live refs for the karaoke reveal in voice mode.
+  const spokenCharsRef = useRef(voice.spokenChars);
+  spokenCharsRef.current = voice.spokenChars;
+  const vsRef = useRef(voice.voiceState);
+  vsRef.current = voice.voiceState;
+  const mutedRef = useRef(voice.muted);
+  mutedRef.current = voice.muted;
 
   useEffect(() => {
     onSpeakingChange?.(voice.voiceState === "speaking");
@@ -192,22 +199,56 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
             const parsed = JSON.parse(payload);
             if (parsed.content) {
               full += parsed.content;
-              setMessages(prev => {
-                const copy = [...prev];
-                copy[copy.length - 1] = { role: "assistant", content: full, streaming: true };
-                return copy;
-              });
+              // Voice mode: hold the bubble (shows "…") and reveal word-by-word
+              // synced to Bhavna's audio after the stream finishes. Text mode:
+              // stream straight into the bubble as it arrives.
+              if (ioRef.current !== "voice") {
+                setMessages(prev => {
+                  const copy = [...prev];
+                  copy[copy.length - 1] = { role: "assistant", content: full, streaming: true };
+                  return copy;
+                });
+              }
             }
           } catch { /* ignore malformed frame */ }
         }
       }
       if (streamGenRef.current !== myGen) return;
-      setMessages(prev => {
-        const copy = [...prev];
-        copy[copy.length - 1] = { role: "assistant", content: full, streaming: false };
-        return copy;
-      });
-      if (ioRef.current === "voice" && full.trim()) void speakRef.current(full);
+
+      const setBubble = (content: string, streaming: boolean) => {
+        setMessages(prev => {
+          const copy = [...prev];
+          if (copy[copy.length - 1]?.role === "assistant") {
+            copy[copy.length - 1] = { role: "assistant", content, streaming };
+          }
+          return copy;
+        });
+      };
+
+      if (ioRef.current === "voice" && full.trim() && !mutedRef.current) {
+        // Start audio (sets word timings) and reveal text word-by-word in sync.
+        void speakRef.current(full);
+        let everSpoke = false;
+        const startT = performance.now();
+        const revealTick = () => {
+          if (streamGenRef.current !== myGen) return;
+          const speaking = vsRef.current === "speaking";
+          if (speaking) everSpoke = true;
+          const sc = spokenCharsRef.current();
+          // sc === -1 (timings not loaded yet) → hold at 0 so text never leads.
+          const target = sc >= 0 ? Math.min(full.length, sc) : 0;
+          // Finalize once audio has started then ended, or if it never started
+          // within 1.5s (autoplay blocked / failed) so text isn't stuck hidden.
+          const finalize = (everSpoke && !speaking) ||
+                           (!everSpoke && performance.now() - startT > 1500);
+          setBubble(finalize ? full : full.slice(0, target), !finalize);
+          if (!finalize) requestAnimationFrame(revealTick);
+        };
+        requestAnimationFrame(revealTick);
+      } else {
+        // Text mode (or muted): show the full reply immediately.
+        setBubble(full, false);
+      }
     } catch (e) {
       if ((e as Error)?.name === "AbortError") return;
       if (streamGenRef.current !== myGen) return;
