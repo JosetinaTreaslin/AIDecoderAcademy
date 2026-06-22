@@ -113,25 +113,28 @@ export function TeacherDialogue({ open, rubric, onClose, onValidate, onComplete 
 
     const tick = (now: number) => {
       const handle = speakRef.current;
-      const audioProgress = handle?.progress01() ?? 0;
       const failed = handle?.failed?.() ?? false;
 
+      // Prefer word-boundary reveal (reads currentTime directly — same as AIDA).
+      const sc = handle?.spokenChars?.() ?? -1;
+
       let target: number;
-      if (audioProgress > 0) {
-        // Audio is playing — reveal text in sync with how much has been spoken
-        target = Math.floor(text.length * audioProgress);
-      } else if (failed) {
+      if (failed) {
         // Audio genuinely failed — fast-reveal so text isn't stuck hidden
         if (!failStart) failStart = now;
         target = Math.min(text.length, Math.floor((now - failStart) / 15));
+      } else if (sc >= 0) {
+        // Word-by-word: show exactly the words whose audio has played
+        target = Math.min(text.length, sc);
       } else {
-        // Audio still loading (with-timestamps returns the whole clip at once)
-        // — hold text hidden so it never appears ahead of the voice.
-        target = 0;
+        // No word timings — fall back to proportional audio progress
+        const p = handle?.progress01() ?? 0;
+        target = Math.floor(text.length * p);
       }
 
       setRevealed(prev => (target > prev ? target : prev));
-      if (target < text.length || (audioProgress < 1 && !failed)) raf = requestAnimationFrame(tick);
+      // Keep ticking until the whole line is revealed (audio drives the pace).
+      if (target < text.length) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);

@@ -11,6 +11,11 @@ export interface SpeakHandle {
   // until audio actually starts, and only fast-reveal if the audio failed.
   failed?:    () => boolean;
   started?:   () => boolean;
+  // Word-boundary reveal (timed variant): number of characters to show, snapped
+  // to the last word whose audio timestamp has been reached. Mirrors AIDA's
+  // working karaoke (reads currentTime directly — no gating). Returns -1 if
+  // word timings aren't available so the caller can fall back to progress01.
+  spokenChars?: () => number;
 }
 
 export async function speakAsTeacher(text: string): Promise<SpeakHandle> {
@@ -51,20 +56,32 @@ function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
   };
 
   const progress01 = (): number => {
-    // Hold at 0 until audio is actually playing — prevents text appearing
-    // before any sound (base64 MP3 buffering makes currentTime readable as 0
-    // before playback audibly begins).
-    if (!audio || !started) return 0;
+    if (!audio) return 0;
     const t = audio.currentTime;
-    // Drive purely off real playback time vs the last word's end time. This is
-    // robust even when a base64 MP3 reports duration === Infinity until fully
-    // buffered (which broke the char-ratio approach: freeze then jump).
     const lastEnd = words.length > 0
       ? words[words.length - 1].end
       : (audio.duration && isFinite(audio.duration) ? audio.duration : 0);
     if (lastEnd <= 0) return 0;
     const ratio = t / lastEnd;
     return done ? Math.min(1, ratio) : Math.min(0.99, ratio);
+  };
+
+  // Word-boundary char count, read straight off currentTime — identical logic
+  // to AIDA's karaoke loop (which works). No started/duration gating.
+  const spokenChars = (): number => {
+    if (words.length === 0) return -1; // no timings → caller uses progress01
+    if (!audio) return 0;
+    if (done) return words.map(w => w.text).join(" ").length; // full at end
+    const t = audio.currentTime;
+    let active = -1;
+    for (let i = 0; i < words.length; i++) {
+      if (words[i].start <= t) active = i; else break;
+    }
+    if (active < 0) return 0;
+    // chars of words[0..active] joined with single spaces (matches display text)
+    let n = active; // spaces between revealed words
+    for (let i = 0; i <= active; i++) n += words[i].text.length;
+    return n;
   };
 
   (async () => {
@@ -103,7 +120,7 @@ function speakTimed(text: string, role: "teacher" | "aida"): SpeakHandle {
     }
   })();
 
-  return { cancel, progress01, failed: () => failed, started: () => started };
+  return { cancel, progress01, spokenChars, failed: () => failed, started: () => started };
 }
 
 async function speak(text: string, role: "teacher" | "aida"): Promise<SpeakHandle> {
