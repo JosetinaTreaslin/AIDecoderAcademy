@@ -11,7 +11,12 @@ export interface VoiceSpec {
   voiceId: string;
   settings?: { stability: number; similarity_boost: number; style?: number; use_speaker_boost?: boolean };
   modelId?: string;
+  speed?: number;
 }
+
+// 0.85 = ~15% slower than default — gives students time to follow along.
+// ElevenLabs accepts 0.7–1.2; 1.0 is default.
+export const BHAVNA_SPEED = 0.85;
 
 const DEFAULT_SETTINGS = { stability: 0.45, similarity_boost: 0.8, style: 0.35 };
 const DEFAULT_MODEL_ID = "eleven_multilingual_v2";
@@ -50,6 +55,7 @@ export async function synthLine(
         text,
         model_id: model,
         voice_settings: voice.settings ?? DEFAULT_SETTINGS,
+        ...(voice.speed !== undefined && { speed: voice.speed }),
       }),
     },
   );
@@ -108,6 +114,7 @@ export async function synthLineWithTimestamps(
         text,
         model_id: voice.modelId ?? DEFAULT_MODEL_ID,
         voice_settings: voice.settings ?? DEFAULT_SETTINGS,
+        ...(voice.speed !== undefined && { speed: voice.speed }),
       }),
     },
   );
