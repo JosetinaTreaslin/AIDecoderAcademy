@@ -26,6 +26,10 @@ interface Props {
   profile: Profile | null;
   chapterTitle?: string;
   hidden?: boolean;
+  // "full" = full-body standee (default, used on landing/maps/objective).
+  // "avatar" = small circular head/face companion (classroom chapter/arena view)
+  //            so she never overlaps the toolbar, My Creations panel, or chat.
+  variant?: "full" | "avatar";
 }
 
 const GOLD      = "#E0B14C";
@@ -75,7 +79,7 @@ function deriveLearnerHints(profile: Profile | null): string[] {
 // and re-greets — the desired behaviour.
 let _bhavnaWelcomed = false;
 
-export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
+export function TeacherCharacter({ profile, chapterTitle, hidden, variant = "full" }: Props) {
   const [chatOpen,    setChatOpen]    = useState(false);
   const [lectureOpen, setLectureOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
@@ -249,22 +253,21 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="fixed z-30 pointer-events-none"
-        style={{
-          left:   "13%",
-          bottom: "0px",
-          height: "clamp(280px, 38vh, 460px)",
-          width:  "auto",
-        }}
+        style={variant === "avatar"
+          ? { left: "1.5%", bottom: "3%", height: "clamp(72px, 9vh, 112px)", width: "auto" }
+          : { left: "13%", bottom: "0px", height: "clamp(280px, 38vh, 460px)", width: "auto" }}
       >
-        {/* Floor glow — wider pulse range when speaking */}
+        {/* Floor / avatar glow — wider pulse range when speaking */}
         <motion.div
           className="absolute pointer-events-none"
-          style={{
-            bottom: 0, left: "50%", transform: "translateX(-50%)",
-            width: "130%", height: "36%",
-            background: `radial-gradient(ellipse at center bottom, ${GOLD_GLOW} 0%, transparent 70%)`,
-            filter: "blur(10px)",
-          }}
+          style={variant === "avatar"
+            ? { inset: -6, borderRadius: "50%",
+                background: `radial-gradient(circle at center, ${GOLD_GLOW} 0%, transparent 72%)`,
+                filter: "blur(8px)" }
+            : { bottom: 0, left: "50%", transform: "translateX(-50%)",
+                width: "130%", height: "36%",
+                background: `radial-gradient(ellipse at center bottom, ${GOLD_GLOW} 0%, transparent 70%)`,
+                filter: "blur(10px)" }}
           animate={{ opacity: speaking ? [0.2, 1.0, 0.2] : 0.45, scale: speaking ? [0.95, 1.05, 0.95] : 1 }}
           transition={speaking
             ? { duration: 1.0, repeat: Infinity, ease: "easeInOut" }
@@ -282,14 +285,16 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/classroom/teacher-bhavna.png"
+            src={variant === "avatar" ? "/classroom/teacher-bhavna-face.png" : "/classroom/teacher-bhavna.png"}
             alt="Ms. Bhavna — your classroom teacher"
             draggable={false}
             className="select-none h-full w-auto block"
-            style={{
-              objectFit: "contain",
-              filter: "drop-shadow(0 12px 22px rgba(0,0,0,0.45))",
-            }}
+            style={variant === "avatar"
+              ? { objectFit: "cover", aspectRatio: "1 / 1", height: "100%", width: "auto",
+                  borderRadius: "50%", border: `2px solid ${GOLD}`,
+                  boxShadow: `0 6px 18px rgba(0,0,0,0.45), 0 0 16px ${GOLD_GLOW}` }
+              : { objectFit: "contain",
+                  filter: "drop-shadow(0 12px 22px rgba(0,0,0,0.45))" }}
           />
         </motion.button>
 
