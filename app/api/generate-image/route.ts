@@ -73,7 +73,7 @@ async function buildEditPromptWithVision(
           "You are a visual description writer for an AI image generator. " +
           "You will see an existing image and a modification request. " +
           "Write a complete image prompt for the NEW image that:\n" +
-          " 1. Preserves the SUBJECT IDENTITY of the original (face shape, hair, clothing, palette, composition).\n" +
+          " 1. Preserves the SUBJECT IDENTITY of the original (face shape, hair, clothing, palette, composition, GENDER).\n" +
           " 2. Applies the modification request precisely.\n" +
           " 3. Restates concrete visual details you can see in the source image — colours, lighting, framing.\n" +
           "Output ONLY the image prompt — no preamble, no quotes, no commentary. Max 130 words.",
