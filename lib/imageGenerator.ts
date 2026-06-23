@@ -182,8 +182,12 @@ async function generateFal(prompt: string, model: ImageModel, imageUrl?: string)
         // instruction is the prompt. Qwen applies edits faithfully but drifts on
         // vague prompts, so we append an explicit preservation clause so it
         // changes ONLY what the instruction asks and keeps the flux look.
+        // Identity (gender/face/skin tone/age/body) is pinned FIRST — without it
+        // a heavy restyle like "make an avatar of me" can flip the subject's
+        // gender or face (Linear AI-167). Only matters when a person is present;
+        // harmless for object/scene edits.
         body.image_urls = [imageUrl];
-        body.prompt = `${clean}. Keep the same character, art style, pose, framing, glasses/accessories, clothing, and background — change ONLY what the instruction asks.`;
+        body.prompt = `${clean}. If the image shows a person, keep the SAME person — same gender, face, facial features, skin tone, ethnicity, age, and body type. Also keep the same art style, pose, framing, glasses/accessories, clothing, and background — change ONLY what the instruction explicitly asks.`;
       }
       resp = await fetch(`https://queue.fal.run/${endpoint}`, {
         method: "POST", headers,

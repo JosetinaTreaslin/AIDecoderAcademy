@@ -484,6 +484,16 @@ export function CreationsRoom({
     // Allow attachment-only sends — kid can drop a file in and hit Enter
     // without typing anything. Block only when truly empty.
     if ((!t && !hasAttachments) || isStreaming) return;
+    // Don't send while an attachment is still uploading. The send BUTTON is
+    // already gated on this, but Enter calls send() directly — without this
+    // guard, pressing Enter mid-upload ships an image marker whose URL is still
+    // "uploading"/data:, which the image route's https-only regex drops, so it
+    // silently falls back to text-to-image and invents a new person (Linear
+    // AI-167: avatar comes out the wrong gender). Wait for the https URL.
+    if (uploadingIds.size > 0) {
+      showPasteWarning("⏳ Still saving your image — give it a second, then hit send.");
+      return;
+    }
     // Build context from all injected items (image, doc, saved creations etc.)
     const ctx     = injected
       .filter(c => !input.includes(buildPromptMarker(c).trim()))
