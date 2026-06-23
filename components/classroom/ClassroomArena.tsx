@@ -53,15 +53,21 @@ function getVideos(subject: string): VideoItem[] {
   }];
 }
 
-// Left toolbar tile hotspot positions (% of viewport)
+// Left toolbar tile hotspots. `top` = VISUAL CENTER of the tile (% of viewport),
+// measured from the background art; the hotspot div is centred on it via
+// translateY(-50%). Single source of truth — the hotspots below map over this,
+// so updating the art only means updating these positions (never hand-editing
+// individual divs). `debug` is the outline colour shown when DEBUG_ZONES is on.
 const TILES = [
-  { key:"notes",      label:"Notes",           active:true,  top:"11%" },
-  { key:"flashcards", label:"Flashcards",       active:true,  top:"22%" },
-  { key:"mindmap",    label:"Mind Map",         active:false, top:"33%" },
-  { key:"comic",      label:"Comic Creations",  active:false, top:"44%" },
-  { key:"explainer",  label:"Explainer Videos", active:false, top:"55%" },
-  { key:"audio",      label:"Audio Overview",   active:true,  top:"66%" },
-  { key:"podcast",    label:"Audio Podcast",    active:true,  top:"77%" },
+  { key:"flashcards",  label:"Flashcards",       active:true,  top:"12.5%", debug:"#f59e0b" },
+  { key:"mindmap",     label:"Mind Maps",        active:true,  top:"21.0%", debug:"#a78bfa" },
+  { key:"blogs",       label:"Blogs",            active:true,  top:"30.0%", debug:"#60a5fa" },
+  { key:"explainer",   label:"Explainer Videos", active:true,  top:"38.0%", debug:"#38bdf8" },
+  { key:"comic",       label:"Comic Creations",  active:false, top:"46.5%", debug:"#fb7185" },
+  { key:"audio",       label:"Audio Overview",   active:true,  top:"55.5%", debug:"#fb923c" },
+  { key:"infographic", label:"Infographic",      active:false, top:"63.5%", debug:"#34d399" },
+  { key:"podcast",     label:"Audio Podcast",    active:true,  top:"72.0%", debug:"#e879f9" },
+  { key:"notes",       label:"Notes",            active:true,  top:"80.0%", debug:"#22c55e" },
 ] as const;
 
 const TILE_PROMPTS: Record<string, (t: string) => string> = {
@@ -701,151 +707,155 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         </div>
       </div>
 
-      {/* ── Toolbar hotspot: Notes ───────────────────────────────────────────── */}
-      <div
-        onClick={() => {
-          if (!flashcardMode && !blogMode && !mindmapMode && panelFilter === "notes" && mode === "notes") return;
-          setMode("notes"); setPanelFilter("notes"); setFlashcardMode(false); setBlogMode(false); setMindmapMode(false); setMessages([]);
-        }}
-        className="absolute group"
-        style={{ left:"1%", top:"10%", width:"12%", height:"7.5%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES ? { border:"2px solid #22c55e", background:"rgba(34,197,94,0.15)", borderRadius:6 } : {}) }}
-        title="Notes hotspot"
-      >
-        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#22c55e", fontFamily:"monospace", pointerEvents:"none" }}>NOTES</span>}
-      </div>
+      {/* ── Toolbar hotspots — mapped from TILES so click targets always track
+              the background art. Each div is centred on its tile via
+              translateY(-50%). Inactive tiles (comic, infographic) show a
+              Bhavna "coming soon" teaser instead of a mode. ──────────────────── */}
+      {TILES.map(({ key, top, active, debug }) => (
+        <div
+          key={key}
+          onClick={() => {
+            switch (key) {
+              case "notes": {
+                if (!flashcardMode && !blogMode && !mindmapMode && panelFilter === "notes" && mode === "notes") return;
+                setMode("notes"); setPanelFilter("notes"); setFlashcardMode(false); setBlogMode(false); setMindmapMode(false); setAudioOverviewMode(false); setMessages([]);
+                break;
+              }
+              case "flashcards": {
+                if (flashcardMode) return;
+                setMode("notes"); setPanelFilter("flashcards");
+                setBlogMode(false); setMindmapMode(false); setAudioOverviewMode(false); setFlashcardMode(true);
+                setMessages([{
+                  id: crypto.randomUUID(), role: "assistant",
+                  content: `✏️ Flashcard mode is on — type a topic from "${chapter.chapter_title}" below and I'll build a flashcard deck for it.`,
+                  outputType: "text", createdAt: new Date(),
+                }]);
+                break;
+              }
+              case "mindmap": {
+                if (mindmapMode) return;
+                setMode("notes"); setPanelFilter("mindmap");
+                setFlashcardMode(false); setBlogMode(false); setAudioOverviewMode(false); setMindmapMode(true);
+                setMessages([{
+                  id: crypto.randomUUID(), role: "assistant",
+                  content: `🧠 Mind Map mode is on — type a topic from "${chapter.chapter_title}" below and I'll build an interactive mind map for it.`,
+                  outputType: "text", createdAt: new Date(),
+                }]);
+                break;
+              }
+              case "blogs": {
+                if (blogMode) return;
+                setMode("notes"); setPanelFilter("blog");
+                setFlashcardMode(false); setMindmapMode(false); setAudioOverviewMode(false); setBlogMode(true);
+                setMessages([{
+                  id: crypto.randomUUID(), role: "assistant",
+                  content: `🎨 Blog mode is on — type a topic from "${chapter.chapter_title}" below and I'll create an illustrated comic blog for it.`,
+                  outputType: "text", createdAt: new Date(),
+                }]);
+                break;
+              }
+              case "explainer": {
+                if (mode === "videos") return;
+                setFlashcardMode(false); setBlogMode(false); setMindmapMode(false); setAudioOverviewMode(false);
+                setMode("videos");
+                break;
+              }
+              case "audio": {
+                if (isStreaming) return;
+                if (audioOverviewMode) {
+                  setAudioOverviewMode(false);
+                  setMessages(prev => [...prev, {
+                    id: crypto.randomUUID(), role: "assistant", outputType: "text",
+                    content: "✅ Exited Audio Overview mode — back to normal chat.",
+                    createdAt: new Date(),
+                  } as ClassroomMessage]);
+                  return;
+                }
+                setMode("notes");
+                setAudioOverviewMode(true);
+                setMessages(prev => [...prev, {
+                  id: crypto.randomUUID(), role: "assistant", outputType: "text",
+                  content: `🎧 **Audio Overview mode is ON.** Every message becomes an overview of *${chapter.chapter_title}* — the whole chapter, or any subtopic. (This chapter only 😄) Tap Audio Overview again to exit.`,
+                  createdAt: new Date(),
+                } as ClassroomMessage]);
+                break;
+              }
+              case "podcast": {
+                setAudioOverviewMode(false);
+                runPodcast(input.trim() || chapter.chapter_title);
+                setInput("");
+                break;
+              }
+              case "comic": {
+                // Coming soon — Bhavna teases it (curiosity hook for 6–16 yr olds)
+                setMessages(prev => [...prev, {
+                  id: crypto.randomUUID(), role: "assistant", outputType: "text",
+                  content: `🦸 **Comic Creations is coming soon!** Picture your whole chapter turned into a comic strip — superhero scientists, sneaky math villains, and cliff-hanger plot twists made of pure physics. 👀 Keep your eyes peeled… this one's going to be *legendary*.`,
+                  createdAt: new Date(),
+                } as ClassroomMessage]);
+                break;
+              }
+              case "infographic": {
+                // Coming soon teaser
+                setMessages(prev => [...prev, {
+                  id: crypto.randomUUID(), role: "assistant", outputType: "text",
+                  content: `📊 **Infographics are coming soon!** Soon you'll snap any topic into one colourful, scroll-stopping cheat-sheet you'll actually want on your wall. Stay tuned! ✨`,
+                  createdAt: new Date(),
+                } as ClassroomMessage]);
+                break;
+              }
+            }
+          }}
+          className="absolute"
+          style={{
+            left: "1%", top, width: "13%", height: "7%",
+            transform: "translateY(-50%)", zIndex: 20, cursor: "pointer",
+            ...(DEBUG_ZONES ? { border: `2px solid ${debug}`, background: `${debug}26`, borderRadius: 6 } : {}),
+          }}
+          title={`${key} hotspot`}
+        >
+          {DEBUG_ZONES && (
+            <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:debug, fontFamily:"monospace", pointerEvents:"none" }}>
+              {key.toUpperCase()}{active ? "" : " (soon)"}
+            </span>
+          )}
+        </div>
+      ))}
 
-      {/* ── Toolbar hotspot: Flashcards ──────────────────────────────────────── */}
-      <div
-        onClick={() => {
-          if (flashcardMode) return;
-          setMode("notes"); setPanelFilter("flashcards");
-          setBlogMode(false); setMindmapMode(false);
-          setFlashcardMode(true);
-          setMessages([{
-            id: crypto.randomUUID(), role: "assistant",
-            content: `✏️ Flashcard mode is on — type a topic from "${chapter.chapter_title}" below and I'll build a flashcard deck for it.`,
-            outputType: "text", createdAt: new Date(),
-          }]);
-        }}
-        className="absolute group"
-        style={{ left:"1%", top:"19%", width:"12%", height:"7%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES ? { border:"2px solid #f59e0b", background:"rgba(245,158,11,0.15)", borderRadius:6 } : {}) }}
-        title="Flashcards hotspot"
-      >
-        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#f59e0b", fontFamily:"monospace", pointerEvents:"none" }}>FLASHCARDS</span>}
-      </div>
-
-      {/* ── Toolbar hotspot: Mind Map ────────────────────────────────────────── */}
-      <div
-        onClick={() => {
-          if (mindmapMode) return;
-          setMode("notes"); setPanelFilter("mindmap");
-          setFlashcardMode(false); setBlogMode(false);
-          setMindmapMode(true);
-          setMessages([{
-            id: crypto.randomUUID(), role: "assistant",
-            content: `🧠 Mind Map mode is on — type a topic from "${chapter.chapter_title}" below and I'll build an interactive mind map for it.`,
-            outputType: "text", createdAt: new Date(),
-          }]);
-        }}
-        className="absolute group"
-        style={{ left:"1%", top:"28%", width:"12%", height:"8%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES ? { border:"2px solid #a78bfa", background:"rgba(167,139,250,0.15)", borderRadius:6 } : {}) }}
-        title="Mind Map hotspot"
-      >
-        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#a78bfa", fontFamily:"monospace", pointerEvents:"none" }}>MIND MAP</span>}
-      </div>
-
-      {/* ── Toolbar hotspot: Comic / Blog ────────────────────────────────────── */}
-      <div
-        onClick={() => {
-          if (blogMode) return;
-          setMode("notes"); setPanelFilter("blog");
-          setFlashcardMode(false); setMindmapMode(false);
-          setBlogMode(true);
-          setMessages([{
-            id: crypto.randomUUID(), role: "assistant",
-            content: `🎨 Blog mode is on — type a topic from "${chapter.chapter_title}" below and I'll create an illustrated comic blog for it.`,
-            outputType: "text", createdAt: new Date(),
-          }]);
-        }}
-        className="absolute group"
-        style={{ left:"1%", top:"37%", width:"12%", height:"8%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES ? { border:"2px solid #f472b6", background:"rgba(244,114,182,0.15)", borderRadius:6 } : {}) }}
-        title="Comic/Blog hotspot"
-      >
-        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#f472b6", fontFamily:"monospace", pointerEvents:"none" }}>BLOG</span>}
-      </div>
-
-      {/* ── Toolbar hotspot: Explainer Videos ────────────────────────────────── */}
-      <div
-        onClick={() => {
-          if (mode === "videos") return;
-          setFlashcardMode(false); setBlogMode(false); setMindmapMode(false);
-          setMode("videos");
-        }}
-        className="absolute group"
-        style={{ left:"1%", top:"45%", width:"12%", height:"8.5%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES ? { border:"2px solid #38bdf8", background:"rgba(56,189,248,0.15)", borderRadius:6 } : {}) }}
-        title="Videos hotspot"
-      >
-        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#38bdf8", fontFamily:"monospace", pointerEvents:"none" }}>VIDEOS</span>}
-      </div>
-
-      {/* ── Toolbar hotspot: Audio Overview (toggles sticky overview mode) ───── */}
-      <div
-        onClick={() => {
-          if (isStreaming) return;
-          if (audioOverviewMode) {
-            setAudioOverviewMode(false);
-            setMessages(prev => [...prev, {
-              id: crypto.randomUUID(), role: "assistant", outputType: "text",
-              content: "✅ Exited Audio Overview mode — back to normal chat.",
-              createdAt: new Date(),
-            } as ClassroomMessage]);
-            return;
-          }
-          setMode("notes");
-          setAudioOverviewMode(true);
-          setMessages(prev => [...prev, {
-            id: crypto.randomUUID(), role: "assistant", outputType: "text",
-            content: `🎧 **Audio Overview mode is ON.** Every message becomes an overview of *${chapter.chapter_title}* — the whole chapter, or any subtopic. (This chapter only 😄) Tap Audio Overview again to exit.`,
-            createdAt: new Date(),
-          } as ClassroomMessage]);
-        }}
-        className="absolute"
-        style={{ left:0, top:"66%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES ? { border:"2px solid #fb923c", background:"rgba(251,146,60,0.15)", borderRadius:6 } : {}) }}
-      >
-        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#fb923c", fontFamily:"monospace", pointerEvents:"none" }}>AUDIO OVW</span>}
-      </div>
-
-      {/* ── Active-mode glow over the Audio Overview tile ───────────────────── */}
-      {audioOverviewMode && (
-        <motion.div
-          className="absolute pointer-events-none"
-          style={{ left:0, top:"66%", width:"13%", height:"8.5%", zIndex:19, borderRadius:12,
-            border:"1.5px solid rgba(200,168,75,0.9)",
-            boxShadow:"0 0 18px rgba(200,168,75,0.65), inset 0 0 14px rgba(200,168,75,0.35)" }}
-          animate={{ opacity:[0.45,1,0.45] }}
-          transition={{ duration:1.6, repeat:Infinity, ease:"easeInOut" }}
-        />
-      )}
-
-      {/* ── Toolbar hotspot: Audio Podcast (invisible clickable zone) ────────── */}
-      <div
-        onClick={() => { setAudioOverviewMode(false); runPodcast(input.trim() || chapter.chapter_title); setInput(""); }}
-        className="absolute"
-        style={{ left:0, top:"77%", width:"13%", height:"8.5%", zIndex:20, cursor:"pointer",
-          ...(DEBUG_ZONES ? { border:"2px solid #e879f9", background:"rgba(232,121,249,0.15)", borderRadius:6 } : {}) }}
-      >
-        {DEBUG_ZONES && <span style={{ position:"absolute", top:2, left:4, fontSize:9, fontWeight:700, color:"#e879f9", fontFamily:"monospace", pointerEvents:"none" }}>PODCAST</span>}
-      </div>
+      {/* ── Selected-tile highlight — dark-glass marker over the active mode's
+              tile. Tracks whichever mode is on (notes/flashcards/mindmap/blog/
+              explainer/audio); podcast is a one-shot action so it has no
+              persistent selected state. ──────────────────────────────────────── */}
+      {(() => {
+        const selectedKey =
+          audioOverviewMode                              ? "audio" :
+          mode === "videos"                              ? "explainer" :
+          flashcardMode                                  ? "flashcards" :
+          mindmapMode                                    ? "mindmap" :
+          blogMode                                       ? "blogs" :
+          (mode === "notes" && panelFilter === "notes")  ? "notes" :
+          null;
+        if (!selectedKey) return null;
+        const tile = TILES.find(t => t.key === selectedKey);
+        if (!tile) return null;
+        return (
+          <motion.div
+            className="absolute pointer-events-none"
+            style={{
+              left:"1.5%", top: `calc(${tile.top} - 0.5%)`, width:"13%", height:"7.7%",
+              transform:"translateY(-50%)", zIndex:19, borderRadius:14,
+              border:"2px solid rgba(224,177,76,0.95)",
+              boxShadow:"0 0 16px rgba(224,177,76,0.60), 0 0 38px rgba(224,177,76,0.26), inset 0 0 12px rgba(224,177,76,0.18)",
+            }}
+            animate={{ opacity:[0.55,1,0.55] }}
+            transition={{ duration:1.8, repeat:Infinity, ease:"easeInOut" }}
+          />
+        );
+      })()}
 
       {/* ── My Creations / Videos panel — overlaid on left wall panel ─────────── */}
       <div className="absolute overflow-y-auto"
-        style={{ left:"15.5%", top:"15.5%", width:"17%", height:"72%",
+        style={{ left:"17.6%", top:"14%", width:"16.7%", height:"68%",
           zIndex:18, scrollbarWidth:"none" }}>
 
         <AnimatePresence mode="wait">
@@ -1214,7 +1224,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         }
       `}</style>
       <div className="absolute flex flex-col classroom-chat"
-        style={{ left:"36%", top:"10%", width:"60%", height:"70%", zIndex:15 }}>
+        style={{ left:"38%", top:"12%", width:"59%", height:"70%", zIndex:15 }}>
 
         {/* Message list — no background, messages float on the whiteboard */}
         <div className="flex-1 min-h-0 overflow-y-auto"

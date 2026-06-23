@@ -515,7 +515,14 @@ export default function ClassroomPage() {
           chapter={selectedChapter}
           onBack={() => setView("objective")}
         />
-        {teacher}
+        {/* Avatar variant — small circular companion so she never overlaps the
+            toolbar / My Creations panel / chat in the chapter view. */}
+        <TeacherCharacter
+          profile={profile}
+          hidden={teacherHidden}
+          chapterTitle={selectedChapter?.chapter_title}
+          variant="avatar"
+        />
       </>
     );
   }
