@@ -6,6 +6,7 @@ import { generatePPT, type PPTInput } from "@/lib/pptGenerator";
 import { createAdminClient } from "@/lib/supabase";
 
 export const runtime     = "nodejs";
+export const dynamic     = "force-dynamic";
 export const maxDuration = 180;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });

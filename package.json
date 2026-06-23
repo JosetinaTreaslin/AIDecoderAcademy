@@ -12,6 +12,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
     "@aws-sdk/client-polly": "^3.1024.0",
+    "@aws-sdk/client-ses": "^3.1075.0",
     "@aws-sdk/client-textract": "^3.1053.0",
     "@clerk/nextjs": "^6.0.0",
     "@fal-ai/client": "^1.10.1",

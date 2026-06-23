@@ -15,6 +15,7 @@ import { extractWorksheet } from "@/lib/worksheetExtract";
 import { createAdminClient } from "@/lib/supabase";
 
 export const runtime     = "nodejs";
+export const dynamic     = "force-dynamic";
 export const maxDuration = 90;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });

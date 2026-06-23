@@ -11,6 +11,7 @@ import { shouldAttachWhiteboard, wrapWhiteboardTranscript } from "@/lib/aidaWhit
 import type { Profile, AgeGroup } from "@/types";
 
 export const runtime     = "nodejs";
+export const dynamic     = "force-dynamic";
 export const maxDuration = 60;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });

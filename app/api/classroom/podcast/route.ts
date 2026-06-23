@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { synthLine, mergeMp3, uploadAudio } from "@/lib/classroomAudio";
 import { matchPersona, buildDynamicPersona, HOST_VOICE } from "@/lib/podcastPersonas";
 
+export const dynamic     = "force-dynamic";
 export const maxDuration = 300;
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

@@ -15,6 +15,7 @@ import type { WrittenFeedbackItem } from "@/types";
 import { annotateAnswerSheets } from "@/lib/annotateAnswerSheet";
 
 export const runtime     = "nodejs";
+export const dynamic     = "force-dynamic";
 export const maxDuration = 120;
 
 // Using OpenRouter for model access — drop-in OpenAI-compatible client

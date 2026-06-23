@@ -14,6 +14,7 @@ import { buildClassroomSystemPrompt } from "@/lib/classroomPersona";
 import type { Profile } from "@/types";
 
 export const runtime     = "nodejs";
+export const dynamic     = "force-dynamic";
 export const maxDuration  = 30;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });

@@ -16,6 +16,7 @@ import { getStagedRubric } from "@/lib/objectiveRubrics";
 // Kept deliberately tiny: gpt-4o-mini, 80 tokens, json mode, ~400ms typical.
 
 export const runtime     = "nodejs";
+export const dynamic     = "force-dynamic";
 export const maxDuration = 15;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });

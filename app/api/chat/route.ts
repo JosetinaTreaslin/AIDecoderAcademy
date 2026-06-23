@@ -8,6 +8,7 @@ import { buildPlaygroundSystemPrompt } from "@/lib/playgroundPersona";
 import { moderateContent } from "@/lib/aidaSafety";
 
 export const runtime = "nodejs";
+export const dynamic     = "force-dynamic";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
