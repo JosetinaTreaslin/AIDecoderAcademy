@@ -34,7 +34,7 @@ export const PERSONAS: PodcastPersona[] = [
     speakingStyle: "calm, folksy, uses food and small-town metaphors",
     catchphrases: ["Now, here's the thing…", "It's simpler than folks make it"],
     voice: GUEST_VOICES.elderMale,
-    expertise: ["investing", "money", "stocks", "saving", "finance", "economy", "business"],
+    expertise: ["investing", "money", "stocks", "saving", "finance", "economy", "economics", "business", "market", "markets", "trade", "profit", "budget", "entrepreneur", "bank", "banking"],
   },
   {
     id: "astrophysicist",
@@ -45,7 +45,7 @@ export const PERSONAS: PodcastPersona[] = [
     speakingStyle: "excitable, paints word-pictures of space",
     catchphrases: ["Picture this…", "And here's where it gets wild"],
     voice: GUEST_VOICES.brightFemale,
-    expertise: ["space", "astronomy", "stars", "planets", "black holes", "galaxy", "universe", "physics", "gravity"],
+    expertise: ["space", "astronomy", "astrophysics", "stars", "planet", "planets", "solar", "sun", "moon", "cosmos", "cosmic", "orbit", "telescope", "comet", "asteroid", "rocket", "satellite", "nebula", "constellation", "astronaut", "black holes", "galaxy", "galaxies", "universe", "physics", "gravity"],
   },
   {
     id: "evolution-biologist",
@@ -56,7 +56,7 @@ export const PERSONAS: PodcastPersona[] = [
     speakingStyle: "narrative, lots of animal examples",
     catchphrases: ["Life finds a way…", "Out in the field, I once saw…"],
     voice: GUEST_VOICES.elderMale,
-    expertise: ["evolution", "biology", "animals", "species", "natural selection", "genetics", "life", "cells"],
+    expertise: ["evolution", "biology", "botany", "zoology", "anatomy", "animals", "plant", "plants", "leaf", "leaves", "photosynthesis", "respiration", "species", "organism", "organisms", "tissue", "tissues", "cell", "cells", "natural selection", "genetics", "gene", "genes", "dna", "heredity", "reproduction", "bacteria", "microbe", "nutrition", "digestion", "life"],
   },
   {
     id: "coder",
@@ -67,7 +67,7 @@ export const PERSONAS: PodcastPersona[] = [
     speakingStyle: "snappy, uses game and recipe analogies",
     catchphrases: ["Think of it like a recipe…", "Computers are gloriously literal"],
     voice: GUEST_VOICES.brightFemale,
-    expertise: ["coding", "programming", "computer", "software", "algorithm", "ai", "internet", "technology"],
+    expertise: ["coding", "code", "programming", "computer", "computers", "software", "algorithm", "algorithms", "python", "java", "javascript", "html", "app", "apps", "web", "internet", "robot", "robotics", "data", "cyber", "ai", "technology", "tech"],
   },
   {
     id: "climate-scientist",
@@ -78,7 +78,7 @@ export const PERSONAS: PodcastPersona[] = [
     speakingStyle: "clear, measured, uses everyday weather examples",
     catchphrases: ["The data tells a story…", "Small changes add up"],
     voice: GUEST_VOICES.calmFemale,
-    expertise: ["climate", "weather", "environment", "global warming", "earth", "pollution", "energy", "ecosystem"],
+    expertise: ["climate", "weather", "environment", "environmental", "global warming", "warming", "earth", "pollution", "carbon", "greenhouse", "ocean", "oceans", "renewable", "sustainability", "recycling", "atmosphere", "biodiversity", "conservation", "forest", "forests", "energy", "ecosystem"],
   },
   {
     id: "historian",
@@ -89,7 +89,7 @@ export const PERSONAS: PodcastPersona[] = [
     speakingStyle: "storyteller, cliffhangers",
     catchphrases: ["Now, picture the year…", "History never repeats — but it rhymes"],
     voice: GUEST_VOICES.warmMale,
-    expertise: ["history", "ancient", "war", "empire", "civilization", "king", "revolution", "past"],
+    expertise: ["history", "historical", "ancient", "medieval", "war", "battle", "empire", "emperor", "kingdom", "dynasty", "civilization", "civilisation", "colonial", "independence", "freedom", "revolution", "movement", "nationalism", "monument", "heritage", "king"],
   },
   {
     id: "mathematician",
@@ -100,7 +100,7 @@ export const PERSONAS: PodcastPersona[] = [
     speakingStyle: "uses puzzles, patterns, everyday shapes",
     catchphrases: ["Spot the pattern…", "Math is just careful noticing"],
     voice: GUEST_VOICES.calmFemale,
-    expertise: ["math", "mathematics", "geometry", "algebra", "trigonometry", "numbers", "shapes", "equations"],
+    expertise: ["math", "maths", "mathematics", "arithmetic", "geometry", "algebra", "trigonometry", "calculus", "probability", "statistics", "number", "numbers", "integer", "integers", "fraction", "fractions", "decimal", "decimals", "percentage", "ratio", "ratios", "polynomial", "theorem", "angle", "angles", "triangle", "triangles", "circle", "shapes", "equations", "graph", "coordinate", "mensuration"],
   },
   {
     id: "chemist",
@@ -111,22 +111,42 @@ export const PERSONAS: PodcastPersona[] = [
     speakingStyle: "energetic, kitchen-chemistry analogies",
     catchphrases: ["Let's mix it up…", "Everything is chemistry, really"],
     voice: GUEST_VOICES.energeticMale,
-    expertise: ["chemistry", "reaction", "atoms", "molecule", "acid", "element", "compound", "matter"],
+    expertise: ["chemistry", "chemical", "chemicals", "reaction", "reactions", "atom", "atoms", "molecule", "molecules", "acid", "acids", "base", "bases", "salt", "salts", "element", "elements", "compound", "compounds", "metal", "metals", "periodic", "bond", "bonds", "oxidation", "mixture", "solution", "gas", "gases", "liquid", "solid", "alkali", "catalyst", "matter"],
   },
 ];
 
-// Lowercase token overlap between topic and each persona's expertise tags.
+// A tag "hits" a topic word on an exact match, or on a shared stem so plurals
+// and inflections count (acids↔acid, triangles↔triangle, trigonometric↔
+// trigonometry, programming↔program). Gated to length >= 4 so short tags
+// (ai, ph, war, gas, sun) only match EXACTLY — this prevents noise like "ion"
+// matching "revolution" or "art" matching "earth".
+function tagHits(token: string, tag: string): boolean {
+  if (token === tag) return true;
+  if (token.length >= 4 && tag.length >= 4) {
+    return token.startsWith(tag) || tag.startsWith(token);
+  }
+  return false;
+}
+
+// Score each persona by how many of its expertise tags the topic evokes; the
+// highest-scoring specialist wins, else null → caller uses the generic guest.
 export function matchPersona(topic: string): PodcastPersona | null {
   const tokens = topic.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
   let best: PodcastPersona | null = null;
   let bestScore = 0;
   for (const p of PERSONAS) {
     let score = 0;
-    for (const tag of p.expertise) if (tokens.includes(tag)) score += 1;
+    for (const tag of p.expertise) {
+      if (tokens.some((tok) => tagHits(tok, tag))) score += 1;
+    }
     if (score > bestScore) { bestScore = score; best = p; }
   }
   return bestScore > 0 ? best : null;
 }
+
+// Portrait helpers live in a client-safe module (no server imports). Re-export
+// here so server code + existing tests can keep importing them from podcastPersonas.
+export { personaPortrait, GENERIC_PORTRAIT } from "@/lib/podcastPortraits";
 
 // Fictional generic archetype — NOT based on any real person. Used when no
 // curated persona matches, keeping the long tail copyright-safe.

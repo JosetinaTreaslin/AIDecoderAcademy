@@ -78,6 +78,7 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
   const [lectureOpen, setLectureOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [speaking,    setSpeaking]    = useState(false);
+  const [podcastOpen, setPodcastOpen] = useState(false);
   const writer = useClassroomWriter();
 
   // ── Hint-bubble state ──────────────────────────────────────────────────────
@@ -153,13 +154,27 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
     return () => evs.forEach(e => window.removeEventListener(e, mark));
   }, []);
 
+  // ── Stand down while a podcast is generating/playing ──────────────────────
+  // ClassroomArena broadcasts podcast-open/-close. The nudge bubble must not
+  // surface or speak over the episode audio.
+  useEffect(() => {
+    const open  = () => setPodcastOpen(true);
+    const close = () => setPodcastOpen(false);
+    window.addEventListener("podcast-open", open);
+    window.addEventListener("podcast-close", close);
+    return () => {
+      window.removeEventListener("podcast-open", open);
+      window.removeEventListener("podcast-close", close);
+    };
+  }, []);
+
   // ── Hide the bubble (and any audio) while a panel is open ─────────────────
   useEffect(() => {
-    if (chatOpen || lectureOpen || welcomeOpen) {
+    if (chatOpen || lectureOpen || welcomeOpen || podcastOpen) {
       setHintText(null);
       ttsAbortRef.current?.abort();
     }
-  }, [chatOpen, lectureOpen, welcomeOpen]);
+  }, [chatOpen, lectureOpen, welcomeOpen, podcastOpen]);
 
   // ── Contextual nudge cycle ─────────────────────────────────────────────────
   // Surfaces a hint only when the student hasn't interacted with the page in a
@@ -167,7 +182,7 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
   // First hint waits 15s, then rotates every ~98s (8s visible + 90s gap).
   // Max 3 hints per page load — after that, no more nudges.
   useEffect(() => {
-    if (hidden || chatOpen || lectureOpen || welcomeOpen) return;
+    if (hidden || chatOpen || lectureOpen || welcomeOpen || podcastOpen) return;
 
     let showTimer: ReturnType<typeof setTimeout>;
     let hideTimer: ReturnType<typeof setTimeout>;
@@ -220,7 +235,7 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
       clearTimeout(hideTimer);
       ttsAbortRef.current?.abort();
     };
-  }, [hidden, chatOpen, lectureOpen, welcomeOpen, audioOn, learnerHints]);
+  }, [hidden, chatOpen, lectureOpen, welcomeOpen, podcastOpen, audioOn, learnerHints]);
 
   if (hidden) return null;
 
