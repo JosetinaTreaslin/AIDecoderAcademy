@@ -4,6 +4,7 @@ import {
   synthLineWithTimestamps,
   uploadAudio,
   BHAVNA_VOICE_ID,
+  BHAVNA_SPEED,
   OVERVIEW_VOICE_SETTINGS,
   OVERVIEW_MODEL_ID,
 } from "@/lib/classroomAudio";
@@ -81,6 +82,7 @@ export async function POST(req: Request) {
     voiceId: BHAVNA_VOICE_ID,
     settings: OVERVIEW_VOICE_SETTINGS,
     modelId: OVERVIEW_MODEL_ID,
+    speed: BHAVNA_SPEED,
   });
   const audioUrl = await uploadAudio(mp3, `overview/${userId}/${Date.now()}.mp3`);
 

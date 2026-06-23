@@ -1,4 +1,4 @@
-import { BHAVNA_VOICE_ID, type VoiceSpec } from "@/lib/classroomAudio";
+import { BHAVNA_VOICE_ID, BHAVNA_SPEED, type VoiceSpec } from "@/lib/classroomAudio";
 
 export interface PodcastPersona {
   id: string;
@@ -22,7 +22,7 @@ const GUEST_VOICES: Record<string, VoiceSpec> = {
   youngMale:    { voiceId: "TX3LPaxmHKxFdv7VOQHJ" }, // Liam
 };
 
-export const HOST_VOICE: VoiceSpec = { voiceId: BHAVNA_VOICE_ID };
+export const HOST_VOICE: VoiceSpec = { voiceId: BHAVNA_VOICE_ID, speed: BHAVNA_SPEED };
 
 export const PERSONAS: PodcastPersona[] = [
   {
