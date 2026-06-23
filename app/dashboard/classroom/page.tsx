@@ -425,60 +425,53 @@ export default function ClassroomPage() {
   );
 
   // ── Landing view — full viewport, hub style ────────────────────────────────
+  // No Ms. Bhavna on this page — kept out of the subject hub.
   if (view === "landing") {
     return (
-      <>
-        <ClassroomLanding profile={profile} onEnter={(subjectId) => {
-          setActiveSubject(subjectId);
-          if (subjectId === "mathematics") setView("math-chapters");
-          else if (subjectId === "kannada") setView("kannada-chapters");
-          else setView("chapters");
-        }} />
-        {teacher}
-      </>
+      <ClassroomLanding profile={profile} onEnter={(subjectId) => {
+        setActiveSubject(subjectId);
+        if (subjectId === "mathematics") setView("math-chapters");
+        else if (subjectId === "kannada") setView("kannada-chapters");
+        else setView("chapters");
+      }} />
     );
   }
 
   // ── Chemistry chapter map — full viewport ────────────────────────────────
+  // No Ms. Bhavna on this page — kept out of the hexagon chapter map.
   if (view === "chapters") {
     return (
-      <>
-        <ChapterMapPage
-          onChapterSelect={goToObjective}
-          onBack={() => setView("landing")}
-        />
-        {teacher}
-      </>
+      <ChapterMapPage
+        onChapterSelect={goToObjective}
+        onBack={() => setView("landing")}
+      />
     );
   }
 
   // ── Kannada chapter map — full viewport ──────────────────────────────────
+  // No Ms. Bhavna on this page — kept out of the hexagon chapter map.
   if (view === "kannada-chapters") {
     return (
-      <>
-        <KannadaChapterMapPage
-          onChapterSelect={goToObjective}
-          onBack={() => setView("landing")}
-        />
-        {teacher}
-      </>
+      <KannadaChapterMapPage
+        onChapterSelect={goToObjective}
+        onBack={() => setView("landing")}
+      />
     );
   }
 
   // ── Mathematics chapter map — full viewport ───────────────────────────────
+  // No Ms. Bhavna on this page — kept out of the hexagon chapter map.
   if (view === "math-chapters") {
     return (
-      <>
-        <MathChapterMapPage
-          onChapterSelect={goToObjective}
-          onBack={() => setView("landing")}
-        />
-        {teacher}
-      </>
+      <MathChapterMapPage
+        onChapterSelect={goToObjective}
+        onBack={() => setView("landing")}
+      />
     );
   }
 
   // ── Objective page — full viewport ────────────────────────────────────────
+  // No Ms. Bhavna on this page — kept out of the chapter detail screen.
   if (view === "objective" && selectedChapter) {
     const chapterMapView = activeSubject === "mathematics" ? "math-chapters"
                          : activeSubject === "kannada"     ? "kannada-chapters"
@@ -491,19 +484,16 @@ export default function ClassroomPage() {
                             : "not_started";
 
     return (
-      <>
-        <ObjectivePage
-          chapter={selectedChapter}
-          onSelectTest={(type) => loadPaper(selectedChapter, type)}
-          onBack={() => setView(chapterMapView)}
-          onEnterArena={() => setView("arena")}
-          onCorrectNotes={() => setView("correct-notes")}
-          assignment={currentAssignment}
-          assignmentStatus={assignmentStatus}
-          onOpenAssignment={() => setView("assignment")}
-        />
-        {teacher}
-      </>
+      <ObjectivePage
+        chapter={selectedChapter}
+        onSelectTest={(type) => loadPaper(selectedChapter, type)}
+        onBack={() => setView(chapterMapView)}
+        onEnterArena={() => setView("arena")}
+        onCorrectNotes={() => setView("correct-notes")}
+        assignment={currentAssignment}
+        assignmentStatus={assignmentStatus}
+        onOpenAssignment={() => setView("assignment")}
+      />
     );
   }
 
