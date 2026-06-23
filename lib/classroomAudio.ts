@@ -1,9 +1,11 @@
 import { createAdminClient } from "@/lib/supabase";
 
 const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY!;
-// Mirror the Bhavna voice id used by app/api/aida/tts (role: "classroom").
+// Rachel (21m00Tcm4TlvDq8ikWAM) — clear articulation of maths/science terms
+// (sine, cosine, theta, hypotenuse etc.) without mispronunciation.
+// Alternatives to A/B test: Charlotte XB0fDUnXU5powFXDhCwa (UK), Serena pMsXgVXv3BLzUgSXRplE
 export const BHAVNA_VOICE_ID = process.env.ELEVENLABS_CLASSROOM_VOICE_ID
-  ?? "1qEiC6qsybMkmnNdVMbK";
+  ?? "21m00Tcm4TlvDq8ikWAM";
 
 export interface VoiceSpec {
   voiceId: string;
