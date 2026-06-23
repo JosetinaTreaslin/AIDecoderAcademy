@@ -446,9 +446,14 @@ export function MessageBubble({
 
           {/* Image */}
           {!isEmpty && isImage && (
-            <div className="rounded-2xl overflow-hidden border border-white/[0.09]"
-              style={{ boxShadow: `0 0 32px ${arenaAccentGlow}` }}>
+            <div
+              onClick={() => window.dispatchEvent(new CustomEvent("preview-image", { detail: { url: message.content.trim(), fromChat: true } }))}
+              className="rounded-2xl overflow-hidden border border-white/[0.09] cursor-pointer"
+              style={{ boxShadow: `0 0 32px ${arenaAccentGlow}`, transition: "transform 0.2s ease" }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = "scale(1.05)"}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "scale(1)"}>
               <img src={message.content.trim()} alt="Generated image"
+                draggable={false}
                 className="w-full max-w-[220px] object-cover rounded-xl"/>
             </div>
           )}
