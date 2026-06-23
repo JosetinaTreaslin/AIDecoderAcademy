@@ -50,8 +50,19 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error("[AIDA STT] Deepgram error:", res.status, errText);
-      return new Response("STT failed", { status: 502 });
+      console.error("[AIDA STT] Deepgram error:", res.status, errText, "ct:", deepgramCt, "bytes:", audioBuf.length);
+      // Surface the real Deepgram status + message so failures are diagnosable
+      // from the browser Network tab (and not silently collapsed to "failed").
+      return new Response(
+        JSON.stringify({
+          error:  "STT failed",
+          status: res.status,
+          detail: errText.slice(0, 500),
+          sentContentType: deepgramCt,
+          bytes:  audioBuf.length,
+        }),
+        { status: 502, headers: { "Content-Type": "application/json" } },
+      );
     }
 
     const data = await res.json();

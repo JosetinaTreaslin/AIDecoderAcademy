@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { speakAsTeacher, type SpeakHandle } from "@/lib/teacherAudio";
+import { speakAsTeacherTimed, type SpeakHandle } from "@/lib/teacherAudio";
 import type { ObjectiveRubric } from "@/lib/objectiveRubrics";
 import { pickTeacherOpeningLine } from "@/lib/teacherPersona";
 
@@ -96,38 +96,45 @@ export function TeacherDialogue({ open, rubric, onClose, onValidate, onComplete 
     stopSpeaking();
     setText(line);
     setRevealed(0);
-    speakRef.current = null;
-    speakAsTeacher(line).then(h => { speakRef.current = h; }).catch(() => {});
+    // Word-synced handle (returns synchronously). progress01() now tracks the
+    // actual spoken word, so the typewriter reveals text word-by-word as SAGE
+    // speaks it.
+    speakRef.current = speakAsTeacherTimed(line);
   }
 
-  // ── Typewriter — synced to audio progress when audio is playing,
-  //    falls back to ~30cps when audio fails or hasn't started yet. ─────
+  // ── Typewriter — text appears only as audio plays, never ahead of it.
+  //    Holds hidden while audio loads; fast-reveals only if audio fails. ──
   useEffect(() => {
     if (!open) return;
     if (text.length === 0) return;
 
     let raf = 0;
-    let fallbackStart = 0;
+    let failStart = 0;
 
     const tick = (now: number) => {
       const handle = speakRef.current;
-      const audioProgress = handle?.progress01() ?? 0;
+      const failed = handle?.failed?.() ?? false;
 
-      // If audio is reporting real progress, sync to it.
-      // Otherwise fall back to a steady 33ms/char timer.
+      // Prefer word-boundary reveal (reads currentTime directly — same as AIDA).
+      const sc = handle?.spokenChars?.() ?? -1;
+
       let target: number;
-      if (audioProgress > 0) {
-        target = Math.floor(text.length * audioProgress);
+      if (failed) {
+        // Audio genuinely failed — fast-reveal so text isn't stuck hidden
+        if (!failStart) failStart = now;
+        target = Math.min(text.length, Math.floor((now - failStart) / 15));
+      } else if (sc >= 0) {
+        // Word-by-word: show exactly the words whose audio has played
+        target = Math.min(text.length, sc);
       } else {
-        if (fallbackStart === 0) fallbackStart = now;
-        target = Math.min(text.length, Math.floor((now - fallbackStart) / 33));
+        // No word timings — fall back to proportional audio progress
+        const p = handle?.progress01() ?? 0;
+        target = Math.floor(text.length * p);
       }
 
       setRevealed(prev => (target > prev ? target : prev));
-
-      if (target < text.length) {
-        raf = requestAnimationFrame(tick);
-      }
+      // Keep ticking until the whole line is revealed (audio drives the pace).
+      if (target < text.length) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
