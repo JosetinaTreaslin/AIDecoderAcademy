@@ -34,6 +34,43 @@ export const OVERVIEW_VOICE_SETTINGS = {
 };
 export const OVERVIEW_MODEL_ID = "eleven_turbo_v2_5";
 
+// Convert maths symbols and Greek letters to spoken English before sending to
+// ElevenLabs. Without this, "=" is read as "e", "θ" as "tita", etc.
+export function sanitizeTtsText(raw: string): string {
+  return raw
+    // Greek letters (Unicode)
+    .replace(/θ|Θ/g, "theta")
+    .replace(/α|Α/g, "alpha")
+    .replace(/β|Β/g, "beta")
+    .replace(/γ|Γ/g, "gamma")
+    .replace(/δ|Δ/g, "delta")
+    .replace(/λ|Λ/g, "lambda")
+    .replace(/μ|Μ/g, "mu")
+    .replace(/π|Π/g, "pi")
+    .replace(/σ|Σ/g, "sigma")
+    .replace(/φ|Φ/g, "phi")
+    .replace(/ω|Ω/g, "omega")
+    // Operators and relations
+    .replace(/≈/g, "approximately equals")
+    .replace(/≠/g, "does not equal")
+    .replace(/≤/g, "less than or equal to")
+    .replace(/≥/g, "greater than or equal to")
+    .replace(/=/g, " equals ")
+    .replace(/\+/g, " plus ")
+    .replace(/−/g, " minus ")   // Unicode minus
+    .replace(/×/g, " times ")
+    .replace(/÷/g, " divided by ")
+    .replace(/√/g, "square root of ")
+    .replace(/∞/g, "infinity")
+    // Superscripts
+    .replace(/²/g, " squared")
+    .replace(/³/g, " cubed")
+    .replace(/°/g, " degrees")
+    // Clean up any double-spaces introduced above
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
 // Synthesize ONE line to a complete MP3 buffer (non-streaming endpoint).
 // `model` defaults to multilingual_v2 (highest quality); callers that need lower
 // latency (the podcast) pass a faster tier like eleven_turbo_v2_5.
@@ -52,7 +89,7 @@ export async function synthLine(
         Accept: "audio/mpeg",
       },
       body: JSON.stringify({
-        text,
+        text: sanitizeTtsText(text),
         model_id: model,
         voice_settings: voice.settings ?? DEFAULT_SETTINGS,
         ...(voice.speed !== undefined && { speed: voice.speed }),
@@ -111,7 +148,7 @@ export async function synthLineWithTimestamps(
         Accept: "application/json",
       },
       body: JSON.stringify({
-        text,
+        text: sanitizeTtsText(text),
         model_id: voice.modelId ?? DEFAULT_MODEL_ID,
         voice_settings: voice.settings ?? DEFAULT_SETTINGS,
         ...(voice.speed !== undefined && { speed: voice.speed }),
