@@ -5,7 +5,8 @@ import { FlashcardDeck, parseFlashcards } from "./FlashcardDeck";
 import type { FlashCard } from "./FlashcardDeck";
 import { AudioOverviewMessage, type AudioOverviewPayload } from "./AudioOverviewMessage";
 import { PodcastLoading, type LoadProgress } from "./PodcastLoading";
-import { PodcastPlayer, type PodcastResult } from "./PodcastPlayer";
+import { PodcastStage, type PodcastStageResult } from "./PodcastStage";
+import { speakBhavna } from "./bhavnaTts";
 import { BlogModal } from "./BlogModal";
 import type { BlogPanel } from "./BlogModal";
 import { MindMapView } from "./MindMapView";
@@ -15,6 +16,7 @@ import { ChevronLeft, Play, X } from "lucide-react";
 import { MessageBubble } from "@/components/playground/MessageBubble";
 import type { Message }  from "@/components/playground/useChat";
 import ReactMarkdown from "react-markdown";
+import { AudioPlayer, type AudioData } from "@/components/playground/AudioPlayer";
 import type { Chapter, Profile, OutputType } from "@/types";
 
 interface Props {
@@ -93,6 +95,19 @@ interface MindmapResult {
 const ACCENT     = "#2563eb";
 const ACCENT_GLO = "rgba(37,99,235,0.35)";
 
+// Shared mute flag used by the passive Bhavna voice surfaces (welcome panel,
+// hint bubble). The podcast-cancel line respects the same toggle.
+const HINT_AUDIO_KEY = "bhavna:hintAudio";
+
+// Bhavna's in-character reactions when a kid stops a podcast mid-record. One is
+// picked at random so repeat cancels don't repeat the same line.
+const PODCAST_CANCEL_LINES = [
+  "Aaand… cut!  You hit stop — recording paused!  Time for a brain break?",
+  "Okay okay, podcast cancelled! Our guest is taking a quick break too.  does finger guns",
+  "Show's off! You hit stop.  Want to try again when you're ready?",
+  "Mic dropped!  You stopped the recording.  Nice job listening to yourself!  ",
+];
+
 // ── Set to true to see all clickable zone outlines for positioning ─────────────
 const DEBUG_ZONES = false;
 
@@ -111,7 +126,9 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [flashcardRaw,   setFlashcardRaw]   = useState("");
   const [audioOverviewMode, setAudioOverviewMode] = useState(false);
   const [podcastProgress, setPodcastProgress] = useState<LoadProgress | null>(null);
-  const [podcast,         setPodcast]         = useState<PodcastResult | null>(null);
+  const [podcast,         setPodcast]         = useState<PodcastStageResult | null>(null);
+  const podcastAbort     = useRef<AbortController | null>(null);
+  const lastPodcastTopic = useRef("");
   const bottomRef           = useRef<HTMLDivElement>(null);
   const taRef               = useRef<HTMLTextAreaElement>(null);
   const pendingFlashcardRef = useRef(false);
@@ -166,6 +183,14 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       })
       .catch(() => {});
   }, [chapter.chapter_title]);
+
+  // Tell the floating Bhavna standee (TeacherCharacter) to stand down while a
+  // podcast is generating OR playing — otherwise its idle nudge bubble fires and
+  // speaks over the episode audio. Mirrors the validator-panel-open pattern.
+  useEffect(() => {
+    const active = !!podcast || !!podcastProgress;
+    window.dispatchEvent(new Event(active ? "podcast-open" : "podcast-close"));
+  }, [podcast, podcastProgress]);
 
   // Sends to the dedicated classroom chat route (NOT /api/chat)
   const sendMessage = useCallback(async (text: string) => {
@@ -471,6 +496,19 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       .then(data => {
         if (data?.creation?.id) {
           setSavedItems(prev => prev.map(item => item.id === tempId ? { ...item, id: data.creation.id } : item));
+          // Lightweight save confirmation for the podcast: a transient Bhavna
+          // bubble that auto-clears after 3s. NOT voiced: the save fires exactly
+          // as the podcast stage opens and starts playing, so speaking would talk
+          // over the episode — and the bubble sits behind the fullscreen stage
+          // anyway, so the student sees it only after they close the stage.
+          if (kind === "podcast") {
+            const bubbleId = crypto.randomUUID();
+            const line = "Saved that one for you!";
+            setMessages(prev => [...prev, {
+              id: bubbleId, role: "assistant", content: line, outputType: "text", createdAt: new Date(),
+            }]);
+            setTimeout(() => setMessages(prev => prev.filter(m => m.id !== bubbleId)), 3000);
+          }
         }
       })
       .catch(() => {});
@@ -507,7 +545,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       setMessages(prev => prev.map(m => m.id === loadingId
         ? ({ ...m, content: data.title, isLoading: false, outputType: "audio", audioOverview: payload } as ClassroomMessage)
         : m));
-      saveAudioCreation(data.title, JSON.stringify({ audioUrl: data.audioUrl, script: data.script }), "audio");
+      saveAudioCreation(data.title, JSON.stringify({ url: data.audioUrl, script: data.script }), "audio");
     } catch {
       setMessages(prev => prev.map(m => m.id === loadingId
         ? { ...m, content: "Couldn't make your overview — please try again.", isLoading: false } : m));
@@ -535,11 +573,16 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   }, [profile, isStreaming, sendMessage, audioOverviewMode, runOverview, flashcardMode, handleFlashcardTopic, blogMode, handleBlogTopic, mindmapMode, handleMindmapTopic]);
 
   const runPodcast = useCallback(async (topic: string) => {
+    lastPodcastTopic.current = topic;
+    podcastAbort.current?.abort();              // cancel any prior run
+    const ctrl = new AbortController();
+    podcastAbort.current = ctrl;
     setPodcastProgress({ stage: "persona" });
     try {
       const r = await fetch("/api/classroom/podcast", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic, chapterTitle: chapter.chapter_title }),
+        signal: ctrl.signal,
       });
       if (!r.body) { setPodcastProgress({ stage: "error", message: "No response" }); return; }
       const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
@@ -551,16 +594,92 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           const line = f.trim(); if (!line.startsWith("data:")) continue;
           const evt = JSON.parse(line.slice(5).trim());
           if (evt.stage === "done") {
-            setPodcast(evt as PodcastResult); setPodcastProgress(null);
-            saveAudioCreation(evt.title, JSON.stringify({ audioUrl: evt.audioUrl, transcript: evt.transcript, persona: evt.persona }), "podcast");
+            setPodcast(evt as PodcastStageResult); setPodcastProgress(null);
+            // Save in AudioPlayer's AudioData shape ({ url, script }) so a saved
+            // podcast is fully playable from My Creations, not just stored.
+            saveAudioCreation(
+              evt.title,
+              JSON.stringify({
+                url: evt.audioUrl,
+                script: {
+                  narrator_text: "",
+                  dialogues: (evt.transcript ?? []).map((t: { speaker: string; text: string }) => ({
+                    character: t.speaker,
+                    text: t.text,
+                  })),
+                },
+                // Future-proofing for full immersive replay: AudioPlayer ignores
+                // these, but a later My Creations renderer can rebuild PodcastStage
+                // (per-line segments + guest) without regenerating the episode.
+                segments: evt.segments ?? [],
+                persona: evt.persona,
+              }),
+              "podcast",
+            );
           }
           else setPodcastProgress(evt as LoadProgress);
         }
       }
     } catch (e) {
+      if ((e as Error).name === "AbortError") return;   // user cancelled — cancelPodcast handles the UX
       setPodcastProgress({ stage: "error", message: (e as Error).message });
+    } finally {
+      if (podcastAbort.current === ctrl) podcastAbort.current = null;
     }
   }, [chapter.chapter_title, saveAudioCreation]);
+
+  // Stop a recording mid-flight: true-abort the stream (no wasted ElevenLabs
+  // TTS), drop the overlay, and let Bhavna react in one in-character chat bubble
+  // (voiced unless the shared hint-audio mute is on).
+  const cancelPodcast = useCallback(() => {
+    podcastAbort.current?.abort();
+    podcastAbort.current = null;
+    setPodcastProgress(null);
+
+    const line = PODCAST_CANCEL_LINES[Math.floor(Math.random() * PODCAST_CANCEL_LINES.length)];
+    setMessages(prev => [...prev, {
+      id:         crypto.randomUUID(),
+      role:       "assistant",
+      content:    line,
+      outputType: "text",
+      createdAt:  new Date(),
+    }]);
+
+    const muted = typeof window !== "undefined" && localStorage.getItem(HINT_AUDIO_KEY) === "off";
+    if (!muted) {
+      const ctrl = new AbortController();
+      speakBhavna(line, ctrl.signal).catch(() => { /* autoplay block / abort — silent */ });
+    }
+  }, []);
+
+  // Open a saved item from the My Creations panel. Podcasts saved with per-line
+  // segments + persona relaunch the full immersive PodcastStage (standees,
+  // speaker highlight, skip, mic). Everything else — notes, audio overviews, and
+  // older podcast saves without segments — opens the read/play modal.
+  const openSavedItem = useCallback((item: SavedItem) => {
+    if (item.tags.includes("podcast")) {
+      try {
+        const parsed = JSON.parse(item.content);
+        if (Array.isArray(parsed?.segments) && parsed.segments.length && parsed?.persona) {
+          setPodcast({
+            title: item.title,
+            persona: parsed.persona,
+            segments: parsed.segments,
+            transcript: parsed.segments.map(
+              (s: { speaker: "host" | "guest"; text: string }) => ({ speaker: s.speaker, text: s.text }),
+            ),
+          });
+          return;
+        }
+      } catch { /* not replayable — fall through to the modal */ }
+    }
+    setViewingItem(item);
+  }, []);
+
+  // Error-state retry: re-run the podcast with the same topic.
+  const retryPodcast = useCallback(() => {
+    runPodcast(lastPodcastTopic.current || chapter.chapter_title);
+  }, [runPodcast, chapter.chapter_title]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
@@ -1008,7 +1127,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                         initial={{ opacity:0, y:-8, scale:0.95 }}
                         animate={{ opacity:1, y:0, scale:1 }}
                         transition={{ duration:0.25 }}
-                        onClick={() => setViewingItem(item)}
+                        onClick={() => openSavedItem(item)}
                         className="rounded-xl p-3 mb-2 cursor-grab"
                         whileHover={{ scale:1.02, boxShadow:"0 4px 16px rgba(37,99,235,0.2)" }}
                         style={{ background:"rgba(255,255,255,0.88)", border:"1px solid rgba(37,99,235,0.2)", boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
@@ -1511,8 +1630,14 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
       {/* ── Audio Overview now renders as an in-chat message (AudioOverviewMessage).
              Podcast overlays remain below. ──────────────────────────────────── */}
-      {podcastProgress && <PodcastLoading progress={podcastProgress} />}
-      {podcast && <PodcastPlayer result={podcast} onClose={() => setPodcast(null)} />}
+      {podcastProgress && (
+        <PodcastLoading
+          progress={podcastProgress}
+          onCancel={cancelPodcast}
+          onRetry={retryPodcast}
+        />
+      )}
+      {podcast && <PodcastStage result={podcast} onClose={() => setPodcast(null)} />}
 
       {/* ── Saved item viewer modal ─────────────────────────────────────────── */}
       <AnimatePresence>
@@ -1554,6 +1679,17 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               {/* Modal content */}
               <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4"
                 style={{ scrollbarWidth:"thin", fontFamily:"'DM Sans', sans-serif", fontSize:15, color:"#0f1c4d", lineHeight:1.7 }}>
+                {(() => {
+                  // Audio saves (podcast + Audio Overview) store JSON, not markdown.
+                  // Detect them and render the player instead of dumping raw JSON.
+                  let audioData: AudioData | null = null;
+                  try {
+                    const parsed = JSON.parse(viewingItem.content);
+                    const url = parsed?.url ?? parsed?.audioUrl;   // tolerate legacy audioUrl saves
+                    if (url && parsed?.script) audioData = { url, script: parsed.script };
+                  } catch { /* not JSON — fall through to markdown */ }
+                  if (audioData) return <AudioPlayer data={audioData} />;
+                  return (
                 <ReactMarkdown
                   components={{
                     h1: ({children}) => <h1 style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:20, margin:"16px 0 6px", color:"#0f1c4d" }}>{children}</h1>,
@@ -1566,6 +1702,8 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                     strong: ({children}) => <strong style={{ fontWeight:700, color:"#0f1c4d" }}>{children}</strong>,
                   }}
                 >{viewingItem.content}</ReactMarkdown>
+                  );
+                })()}
               </div>
             </motion.div>
           </motion.div>

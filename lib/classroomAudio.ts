@@ -13,7 +13,13 @@ export interface VoiceSpec {
 const DEFAULT_SETTINGS = { stability: 0.45, similarity_boost: 0.8, style: 0.35 };
 
 // Synthesize ONE line to a complete MP3 buffer (non-streaming endpoint).
-export async function synthLine(text: string, voice: VoiceSpec): Promise<Buffer> {
+// `model` defaults to multilingual_v2 (highest quality); callers that need lower
+// latency (the podcast) pass a faster tier like eleven_turbo_v2_5.
+export async function synthLine(
+  text: string,
+  voice: VoiceSpec,
+  model: string = "eleven_multilingual_v2",
+): Promise<Buffer> {
   const res = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voice.voiceId}`,
     {
@@ -25,7 +31,7 @@ export async function synthLine(text: string, voice: VoiceSpec): Promise<Buffer>
       },
       body: JSON.stringify({
         text,
-        model_id: "eleven_multilingual_v2",
+        model_id: model,
         voice_settings: voice.settings ?? DEFAULT_SETTINGS,
       }),
     },

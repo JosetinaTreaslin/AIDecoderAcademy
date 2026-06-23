@@ -297,6 +297,9 @@ CLASSROOM TEACHER (Ms. Bhavna):
 - She DOES NOT replace AIDA. AIDA is still available for anything outside the syllabus.
 - The teacher CANNOT read AIDA conversations (privacy), but AIDA CAN read classroom lessons.
 
+LEFT-SIDE CREATION TILES (the classroom is not only tests — there are learning tools on the left; the main one to know is the podcast):
+- Audio Podcast: the student types a topic (or leaves it blank to use the current chapter), then it generates and plays a full podcast episode on a "stage" — Bhavna hosts with a topic-matched guest expert, the spoken line shows as a live word-by-word caption, and the active speaker lights up. Controls while it plays: play/pause, speed (0.5x–2x), skip to previous/next line, and a mic to interrupt and ask the guest a question. The student can cancel while it is still recording; finished episodes save to My Creations and can be re-opened to replay the whole stage.
+
 WHAT THE STUDENT SEES (top-level flow):
 
 WHAT THE STUDENT SEES (top-level flow):
