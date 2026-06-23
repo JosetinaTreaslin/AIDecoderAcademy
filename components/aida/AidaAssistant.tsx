@@ -9,6 +9,8 @@ import { useWhiteboardReader, useValidatorReader, useWorksheetReader, useClassro
 import { useLiveVoice } from "@/components/aida/voice/useLiveVoice";
 import type { LiveState } from "@/components/aida/voice/LiveVoiceSession";
 import type { Profile } from "@/types";
+import { warmVoice } from "@/lib/warmVoice";
+import { warmStt } from "@/lib/warmStt";
 
 // Static welcome lines streamed by the chat route on session __init__.
 // These aren't real conversation — they're hard-coded greetings — and feeding
@@ -198,16 +200,14 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     if (stored === "off") setNudgeAudioEnabled(false);
   }, []);
 
-  // Warm up the TTS pipeline on mount — the first ElevenLabs call each page
-  // load cold-starts ~5s. AIDA renders in the dashboard layout, so this throw-
-  // away request warms /api/aida/tts for every page (AIDA nudges, validator
-  // teacher, etc. all share that endpoint).
+  // Warm up the audio pipelines on mount. AIDA renders in the dashboard layout,
+  // so this runs on every dashboard page (incl. the playground where SAGE
+  // speaks). We warm BOTH the aida and teacher (SAGE) voices across both TTS
+  // routes (/tts stream + /tts-timed karaoke), plus Deepgram STT for tap mode.
+  // All best-effort + deduped per page load (see lib/warmVoice, lib/warmStt).
   useEffect(() => {
-    fetch("/api/aida/tts", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ text: "." }),
-    }).catch(() => { /* warmup is best-effort */ });
+    warmVoice(["aida", "teacher"]);
+    warmStt();
   }, []);
 
   const toggleNudgeAudio = () => {

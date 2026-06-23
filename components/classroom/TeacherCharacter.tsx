@@ -19,6 +19,8 @@ import { TeacherChat } from "./TeacherChat";
 import { LecturePanel } from "./LecturePanel";
 import { BhavnaWelcomePanel } from "./BhavnaWelcomePanel";
 import { speakBhavna } from "./bhavnaTts";
+import { warmVoice } from "@/lib/warmVoice";
+import { warmStt } from "@/lib/warmStt";
 
 interface Props {
   profile: Profile | null;
@@ -106,16 +108,14 @@ export function TeacherCharacter({ profile, chapterTitle, hidden }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Warm up the TTS pipeline on mount ─────────────────────────────────────
-  // ElevenLabs cold-starts ~5s on the first call each page load. A tiny
-  // throwaway request now means the welcome panel, hint bubble, and lesson
-  // audio all hit a warm pipeline and play instantly.
+  // ── Warm up the audio pipelines on mount ──────────────────────────────────
+  // Bhavna speaks via the classroom voice on both TTS routes (/tts stream +
+  // /tts-timed karaoke) — the welcome panel, hint bubble, and lessons all hit a
+  // warm pipeline and play instantly. Also warm Deepgram STT for classroom voice
+  // input. Best-effort + deduped per page load (see lib/warmVoice, lib/warmStt).
   useEffect(() => {
-    fetch("/api/aida/tts", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ text: ".", role: "classroom" }),
-    }).catch(() => { /* warmup is best-effort */ });
+    warmVoice(["classroom"]);
+    warmStt();
   }, []);
 
   // ── Auto-open the welcome panel once per page load ────────────────────────
