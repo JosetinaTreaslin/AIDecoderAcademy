@@ -15,16 +15,12 @@ interface Props {
 //
 // ───────────────────────────────────────────────────────────────────────────
 // MANUAL SIZE KNOB
-//   Edit the two `clamp(...)` values on the SAME line (width + height). They
-//   must stay equal — the sprite is a square. Format is clamp(MIN, IDEAL, MAX):
-//     MIN  = smallest size on tiny screens, in pixels
-//     IDEAL = preferred size, in vw (% of viewport width)
-//     MAX  = largest size on huge screens, in pixels
-//   Current values are HALF of AIDA's size. Bigger = bump all three numbers.
-//   Examples:
-//     clamp(87px, 7.2vw, 135px)  ← current (half of AIDA)
-//     clamp(110px, 9vw, 170px)   ← ~30% bigger
-//     clamp(140px, 11vw, 210px)  ← ~60% bigger
+//   Edit the two `vw` values on the SAME line (width + height). They must
+//   stay equal — the sprite is a square. Plain `vw` (no px floor/ceiling)
+//   so it scales continuously at every window size instead of freezing at
+//   a fixed pixel size on very small or very large screens.
+//   Current value is HALF of AIDA's size. Bigger = bump the number.
+//   Examples: 7.2vw (half of AIDA) · 9vw (~30% bigger) · 11vw (~60% bigger)
 //
 // MANUAL POSITION KNOBS
 //   `right`  — keeps it anchored to AIDA's left edge. The 16px at the end is
@@ -63,14 +59,19 @@ export function WorksheetIcon({ onClick, arenaAccent, arenaAccentGlow, hasDraft 
       onClick={onClick}
       className="fixed z-[100] flex items-end justify-center worksheet-icon"
       style={{
-        // ↓ horizontal: right of viewport, plus AIDA's width, plus tight gap = sits left of AIDA
-        //   Keep the FIRST percentage in this calc identical to AIDA's `right`
-        //   in AidaAssistant.tsx (currently 62%). Change the final `+ Xpx` to
-        //   tune the gap between worksheet and AIDA.
-        right:  "calc(53% + clamp(173px, 14.4vw, 269px) + 4px)",
-        bottom: "20px",                                    // ← matches AIDA's bottom
-        width:  "clamp(260px, 21.6vw, 404px)",             // ← SIZE knob: width  (2× original)
-        height: "clamp(260px, 21.6vw, 404px)",             // ← SIZE knob: height (keep equal to width)
+        // ↓ horizontal: right of viewport, plus the character's width, plus
+        //   tight gap = sits left of it. 53% here (not AidaAssistant's
+        //   literal "62%") is what actually clears the TeacherCharacter
+        //   sprite (left-anchored, separate component) without overlapping
+        //   it — verified empirically, don't "correct" this to 62% without
+        //   checking on screen first.
+        //   The "14.4vw" term MUST stay a plain value (no clamp/px bound) —
+        //   it has to match TeacherCharacter's/AidaAssistant's actual width
+        //   formula exactly, or this drifts left as the window narrows.
+        right:  "calc(53% + 14.4vw + 4px)",
+        bottom: "0px",                                    // ← matches AIDA's bottom exactly
+        width:  "21.6vw",             // ← SIZE knob: width  (2× original) — pure vw, no px floor/ceiling so it scales at every size
+        height: "21.6vw",             // ← SIZE knob: height (keep equal to width)
         background: "transparent",
         border:     "none",
         padding:    0,

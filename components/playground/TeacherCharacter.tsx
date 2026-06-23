@@ -340,8 +340,8 @@ export function TeacherCharacter({ objectiveId, messages, profile, onObjectiveCo
             alt=""
             draggable={false}
             style={{
-              width:     "clamp(173px, 14.4vw, 269px)",  // ← SIZE: 2× original + 20% (was clamp(144px, 12vw, 224px))
-              height:    "clamp(173px, 14.4vw, 269px)",  // ← SIZE: keep equal to width
+              width:     "14.4vw",  // ← SIZE knob — pure vw, no px floor/ceiling so it scales at every window size
+              height:    "14.4vw",  // ← SIZE: keep equal to width
               objectFit: "contain",
               filter:    "drop-shadow(0 0 18px rgba(124,58,237,0.55))",
             }}

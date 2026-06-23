@@ -488,31 +488,48 @@ export function WorksheetPopup({
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
           >
             <div
-              className="pointer-events-auto w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-white/10 bg-[#0F0F1A] shadow-2xl"
-              style={{ boxShadow: `0 0 40px ${arenaAccentGlow}` }}
+              className="pointer-events-auto overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-white/10 bg-[#0F0F1A] shadow-2xl"
+              style={{
+                // Continuous width/height scaling instead of a discrete
+                // Tailwind breakpoint jump (w-full -> sm:max-w-2xl). 48vw
+                // keeps the box actively shrinking/growing all the way up
+                // to ~1400px window width before it hits the 672px cap —
+                // 90vw capped out at just ~747px, so on normal desktop
+                // windows (852px, 1207px, etc.) it sat flat at the ceiling
+                // the whole time, which looked frozen.
+                width: "clamp(280px, 48vw, 672px)",
+                maxHeight: "90vh",
+                boxShadow: `0 0 40px ${arenaAccentGlow}`,
+              }}
             >
               {/* ── Header ─────────────────────────────────────────────── */}
-              <header className="sticky top-0 z-10 flex items-center justify-between gap-2 px-5 py-4 border-b border-white/10 bg-[#0F0F1A]/95 backdrop-blur">
+              {/* Font sizes/padding below use vw (no fixed Tailwind text/px
+                  classes) so the whole popup's text and controls shrink and
+                  grow continuously with the viewport, not just the outer box. */}
+              <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-white/10 bg-[#0F0F1A]/95 backdrop-blur"
+                style={{ padding: "1.6vw 1.8vw" }}>
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-mono">Worksheet</div>
-                  <h2 className="text-lg font-display font-bold" style={{ color: arenaAccent }}>{schema.title}</h2>
+                  <div className="uppercase font-mono text-white/40" style={{ fontSize: "1vw", letterSpacing: "0.18em" }}>Worksheet</div>
+                  <h2 className="font-display font-bold" style={{ color: arenaAccent, fontSize: "1.8vw" }}>{schema.title}</h2>
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 rounded-lg hover:bg-white/5 transition"
+                  className="rounded-lg hover:bg-white/5 transition"
+                  style={{ padding: "0.6vw" }}
                   aria-label="Close worksheet"
                 >
-                  <X size={18} />
+                  <X style={{ width: "1.6vw", height: "1.6vw" }} />
                 </button>
               </header>
 
-              <p className="px-5 pt-4 text-sm text-white/70">{schema.intro}</p>
+              <p className="text-white/70" style={{ padding: "1.4vw 1.8vw 0", fontSize: "1.3vw" }}>{schema.intro}</p>
 
               {/* ── DOCX auto-fill status banner ─────────────────────── */}
               {parseStatus !== "idle" && (
                 <div
-                  className="mx-5 mt-3 px-3 py-2 rounded-lg text-[12px] flex items-center gap-2"
+                  className="rounded-lg flex items-center gap-2"
                   style={{
+                    margin: "0.8vw 1.8vw", padding: "0.5vw 0.8vw", fontSize: "1.1vw",
                     background: parseStatus === "done"
                       ? "rgba(123,255,196,0.08)"
                       : "rgba(255,107,107,0.08)",
@@ -531,7 +548,8 @@ export function WorksheetPopup({
                       : parseError ?? "Couldn't auto-fill from the document. Fill it in manually."}
                   </span>
                   <button
-                    className="ml-auto text-[11px] opacity-60 hover:opacity-100 transition"
+                    className="ml-auto opacity-60 hover:opacity-100 transition"
+                    style={{ fontSize: "1vw" }}
                     onClick={() => { setParseStatus("idle"); setParseError(null); }}
                   >
                     ✕
@@ -540,30 +558,30 @@ export function WorksheetPopup({
               )}
 
               {/* ── Body ─────────────────────────────────────────────── */}
-              <div className="px-5 py-4 space-y-7">
+              <div style={{ padding: "1.6vw 1.8vw", display: "flex", flexDirection: "column", gap: "2.8vw" }}>
                 {schema.sections.map(section => (
                   <section key={section.id}>
-                    <h3 className="text-base font-display font-bold text-white">{section.title}</h3>
+                    <h3 className="font-display font-bold text-white" style={{ fontSize: "1.6vw" }}>{section.title}</h3>
                     {section.subtitle && (
-                      <p className="text-xs text-white/55 mt-1 leading-relaxed">{section.subtitle}</p>
+                      <p className="text-white/55 leading-relaxed" style={{ fontSize: "1.1vw", marginTop: "0.4vw" }}>{section.subtitle}</p>
                     )}
                     {section.body && (
-                      <p className="text-xs text-white/65 mt-2 leading-relaxed whitespace-pre-line">
+                      <p className="text-white/65 leading-relaxed whitespace-pre-line" style={{ fontSize: "1.1vw", marginTop: "0.8vw" }}>
                         {section.body}
                       </p>
                     )}
                     {section.bullets && section.bullets.length > 0 && (
-                      <ul className="mt-2 space-y-1.5 list-disc pl-5 text-xs text-white/65 leading-relaxed">
+                      <ul className="list-disc text-white/65 leading-relaxed" style={{ fontSize: "1.1vw", marginTop: "0.8vw", paddingLeft: "1.4vw", display: "flex", flexDirection: "column", gap: "0.4vw" }}>
                         {section.bullets.map((b, i) => <li key={i}>{b}</li>)}
                       </ul>
                     )}
                     {section.fields.length > 0 && (
-                      <div className="space-y-4 mt-4">
+                      <div style={{ display: "flex", flexDirection: "column", gap: "1.6vw", marginTop: "1.6vw" }}>
                         {section.fields.map(f => (
                           <div key={f.id}>
-                            <label className="block text-sm font-display font-semibold text-white mb-1">{f.label}</label>
+                            <label className="block font-display font-semibold text-white" style={{ fontSize: "1.3vw", marginBottom: "0.4vw" }}>{f.label}</label>
                             {f.description && (
-                              <p className="text-xs text-white/60 mb-2 leading-relaxed whitespace-pre-line">
+                              <p className="text-white/60 leading-relaxed whitespace-pre-line" style={{ fontSize: "1.1vw", marginBottom: "0.8vw" }}>
                                 {f.description}
                               </p>
                             )}
@@ -574,7 +592,8 @@ export function WorksheetPopup({
                                 value={(data[f.id] as string) ?? ""}
                                 onChange={e => update(f.id, e.target.value)}
                                 placeholder={f.placeholder}
-                                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-sm focus:outline-none focus:border-white/30"
+                                className="w-full rounded-lg bg-white/[0.05] border border-white/10 focus:outline-none focus:border-white/30"
+                                style={{ padding: "0.8vw 1.2vw", fontSize: "1.3vw" }}
                               />
                             )}
 
@@ -584,12 +603,13 @@ export function WorksheetPopup({
                                 onChange={e => update(f.id, e.target.value)}
                                 placeholder={f.placeholder}
                                 rows={f.rows ?? 3}
-                                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-sm focus:outline-none focus:border-white/30 resize-y leading-relaxed"
+                                className="w-full rounded-lg bg-white/[0.05] border border-white/10 focus:outline-none focus:border-white/30 resize-y leading-relaxed"
+                                style={{ padding: "0.8vw 1.2vw", fontSize: "1.3vw" }}
                               />
                             )}
 
                             {f.kind === "yesno" && (
-                              <div className="flex gap-2">
+                              <div className="flex" style={{ gap: "0.8vw" }}>
                                 {[true, false].map(isYes => {
                                   const active = data[f.id] === isYes;
                                   return (
@@ -597,8 +617,9 @@ export function WorksheetPopup({
                                       key={String(isYes)}
                                       type="button"
                                       onClick={() => update(f.id, isYes)}
-                                      className="px-3 py-1.5 rounded-lg text-xs border transition"
+                                      className="rounded-lg border transition"
                                       style={{
+                                        padding: "0.6vw 1.2vw", fontSize: "1.1vw",
                                         borderColor: active ? arenaAccent : "rgba(255,255,255,0.1)",
                                         color:       active ? arenaAccent : "rgba(255,255,255,0.7)",
                                         background:  active ? `${arenaAccent}1A` : "transparent",
@@ -612,7 +633,7 @@ export function WorksheetPopup({
                             )}
 
                             {(f.kind === "longtext" || f.kind === "text") && (f.weakEx || f.strongEx) && (
-                              <div className="mt-2 text-[11px] space-y-1">
+                              <div style={{ marginTop: "0.8vw", fontSize: "1vw", display: "flex", flexDirection: "column", gap: "0.4vw" }}>
                                 {f.weakEx && (
                                   <div className="text-white/50 leading-relaxed">
                                     <span className="text-red-400/80 font-semibold">❌ Weak:</span> {f.weakEx}
@@ -627,7 +648,7 @@ export function WorksheetPopup({
                             )}
 
                             {f.kind === "longtext" && f.minWords && typeof data[f.id] === "string" && (
-                              <div className="mt-1 text-[10px] text-white/30 font-mono">
+                              <div className="text-white/30 font-mono" style={{ marginTop: "0.4vw", fontSize: "0.9vw" }}>
                                 {wordCount(data[f.id] as string)} / {f.minWords}+ words
                               </div>
                             )}
@@ -642,18 +663,18 @@ export function WorksheetPopup({
                        upload (OBJ 6 video). For OBJ 10 the comic comes from chat. ── */}
                 {media && (
                   <section>
-                    <h3 className="text-sm font-display font-bold text-white">
-                      {media.kind === "video" ? <Film size={16} className="inline mr-1.5" /> : <ImageIcon size={16} className="inline mr-1.5" />}
+                    <h3 className="font-display font-bold text-white" style={{ fontSize: "1.3vw" }}>
+                      {media.kind === "video" ? <Film className="inline" style={{ width: "1.5vw", height: "1.5vw", marginRight: "0.4vw" }} /> : <ImageIcon className="inline" style={{ width: "1.5vw", height: "1.5vw", marginRight: "0.4vw" }} />}
                       {media.label}
                     </h3>
-                    <p className="text-xs text-white/50 mb-2">{media.hint}</p>
+                    <p className="text-white/50" style={{ fontSize: "1.1vw", marginBottom: "0.6vw" }}>{media.hint}</p>
 
                     <label
-                      className="block rounded-lg border-2 border-dashed border-white/15 px-4 py-3 text-center cursor-pointer hover:border-white/25 transition"
-                      style={{ background: "rgba(255,255,255,0.02)" }}
+                      className="block rounded-lg border-2 border-dashed border-white/15 text-center cursor-pointer hover:border-white/25 transition"
+                      style={{ background: "rgba(255,255,255,0.02)", padding: "1vw 1.4vw" }}
                     >
-                      <Upload size={16} className="inline mr-2 text-white/60" />
-                      <span className="text-xs text-white/70">
+                      <Upload className="inline text-white/60" style={{ width: "1.5vw", height: "1.5vw", marginRight: "0.6vw" }} />
+                      <span className="text-white/70" style={{ fontSize: "1.1vw" }}>
                         {mediaUploading > 0 ? `Uploading${mediaUploading > 1 ? ` (${mediaUploading})` : ""}…` : `Drop or click to upload`}
                       </span>
                       <input
@@ -669,18 +690,18 @@ export function WorksheetPopup({
                     </label>
 
                     {mediaUrls.length > 0 && (
-                      <div className={media.kind === "video" ? "mt-2" : "mt-2 grid grid-cols-4 gap-2"}>
+                      <div className={media.kind === "video" ? "" : "grid grid-cols-4"} style={{ marginTop: "0.6vw", gap: media.kind === "video" ? undefined : "0.6vw" }}>
                         {mediaUrls.map((url, i) => (
                           <div key={url} className="relative rounded-md overflow-hidden border border-white/10">
                             {media.kind === "video"
-                              ? <video src={url} controls className="w-full max-h-64 object-contain bg-black"/>
+                              ? <video src={url} controls className="w-full object-contain bg-black" style={{ maxHeight: "16vw" }}/>
                               : <img  src={url} alt={`media-${i}`} className="w-full aspect-square object-cover"/>
                             }
                             <button
                               type="button"
                               onClick={() => removeMedia(i)}
-                              className="absolute top-1 right-1 rounded-full bg-black/70 text-white text-xs"
-                              style={{ width: 20, height: 20 }}
+                              className="absolute top-1 right-1 rounded-full bg-black/70 text-white"
+                              style={{ width: "1.4vw", height: "1.4vw", fontSize: "1vw" }}
                             >×</button>
                           </div>
                         ))}
@@ -691,39 +712,41 @@ export function WorksheetPopup({
 
                 {/* ── Notes ── */}
                 <section>
-                  <h3 className="text-sm font-display font-bold text-white">📝 Notes — optional</h3>
-                  <p className="text-xs text-white/50 mb-2">Anything you want the validator to know. Worksheet wins for grading; this is supplementary.</p>
+                  <h3 className="font-display font-bold text-white" style={{ fontSize: "1.3vw" }}>📝 Notes — optional</h3>
+                  <p className="text-white/50" style={{ fontSize: "1.1vw", marginBottom: "0.6vw" }}>Anything you want the validator to know. Worksheet wins for grading; this is supplementary.</p>
                   <textarea
                     value={notes}
                     onChange={e => updateNotes(e.target.value)}
                     rows={3}
                     placeholder="e.g. 'Panel 3 makes me laugh — Funny Test = yes.'"
-                    className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-sm focus:outline-none focus:border-white/30 resize-y"
+                    className="w-full rounded-lg bg-white/[0.05] border border-white/10 focus:outline-none focus:border-white/30 resize-y"
+                    style={{ padding: "0.8vw 1.2vw", fontSize: "1.3vw" }}
                   />
                 </section>
 
                 {uploadError && (
-                  <div className="text-xs text-red-400 px-1">{uploadError}</div>
+                  <div className="text-red-400" style={{ fontSize: "1.1vw", padding: "0 0.2vw" }}>{uploadError}</div>
                 )}
 
                 {/* ── Prompt Builder — synthesizes worksheet into a polished prompt ── */}
                 <section
-                  className="rounded-2xl border p-4"
+                  className="rounded-2xl border"
                   style={{
+                    padding: "1.4vw",
                     borderColor: `${arenaAccent}33`,
                     background:  `linear-gradient(180deg, ${arenaAccent}0F, transparent 60%)`,
                   }}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start" style={{ gap: "1vw" }}>
                     <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: `${arenaAccent}26`, color: arenaAccent }}
+                      className="rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ width: "3.2vw", height: "3.2vw", background: `${arenaAccent}26`, color: arenaAccent }}
                     >
-                      <Sparkles size={18} />
+                      <Sparkles style={{ width: "1.6vw", height: "1.6vw" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-display font-bold text-white">Build my prompt</h3>
-                      <p className="text-xs text-white/55 mt-0.5 leading-relaxed">
+                      <h3 className="font-display font-bold text-white" style={{ fontSize: "1.3vw" }}>Build my prompt</h3>
+                      <p className="text-white/55 leading-relaxed" style={{ fontSize: "1.1vw", marginTop: "0.2vw" }}>
                         Turn your worksheet into a copy-paste-ready prompt using prompt-engineering best practices.
                         {schema.legacyId ? " Tailored to this objective's goal." : ""}
                       </p>
@@ -732,59 +755,62 @@ export function WorksheetPopup({
                       type="button"
                       onClick={generatePrompt}
                       disabled={promptLoading}
-                      className="px-3 py-2 rounded-lg text-xs font-display font-bold transition flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                      className="rounded-lg font-display font-bold transition flex items-center disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                       style={{
+                        padding: "0.6vw 1.2vw", fontSize: "1.1vw", gap: "0.5vw",
                         background: arenaAccent,
                         color:      "#08080F",
                       }}
                     >
                       {promptLoading
-                        ? <><RefreshCw size={13} className="animate-spin" /> Building…</>
+                        ? <><RefreshCw className="animate-spin" style={{ width: "1.1vw", height: "1.1vw" }} /> Building…</>
                         : generatedPrompt
-                          ? <><RefreshCw size={13} /> Re-generate</>
-                          : <><Sparkles size={13} /> Generate Prompt</>}
+                          ? <><RefreshCw style={{ width: "1.1vw", height: "1.1vw" }} /> Re-generate</>
+                          : <><Sparkles style={{ width: "1.1vw", height: "1.1vw" }} /> Generate Prompt</>}
                     </button>
                   </div>
 
                   {promptError && (
-                    <div className="mt-3 text-xs text-red-400 leading-relaxed">{promptError}</div>
+                    <div className="text-red-400 leading-relaxed" style={{ marginTop: "0.6vw", fontSize: "1.1vw" }}>{promptError}</div>
                   )}
 
                   {generatedPrompt && !promptLoading && (
-                    <div className="mt-3">
+                    <div style={{ marginTop: "0.6vw" }}>
                       <div
-                        className="rounded-xl p-3 text-xs leading-relaxed font-mono whitespace-pre-wrap text-white/85"
+                        className="rounded-xl leading-relaxed font-mono whitespace-pre-wrap text-white/85"
                         style={{
+                          padding: "0.6vw", fontSize: "1vw",
                           background:  "rgba(0,0,0,0.35)",
                           border:      "1px solid rgba(255,255,255,0.08)",
-                          maxHeight:   "260px",
+                          maxHeight:   "18vw",
                           overflowY:   "auto",
                         }}
                       >
                         {generatedPrompt}
                       </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center" style={{ marginTop: "0.4vw", gap: "0.6vw" }}>
                         <button
                           type="button"
                           onClick={copyPrompt}
-                          className="px-3 py-1.5 rounded-lg text-xs border transition flex items-center gap-1.5"
+                          className="rounded-lg border transition flex items-center"
                           style={{
+                            padding: "0.4vw 1vw", fontSize: "1.1vw", gap: "0.4vw",
                             borderColor: `${arenaAccent}66`,
                             color:       arenaAccent,
                             background:  promptCopied ? `${arenaAccent}26` : "transparent",
                           }}
                         >
-                          {promptCopied ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+                          {promptCopied ? <><Check style={{ width: "1vw", height: "1vw" }} /> Copied!</> : <><Copy style={{ width: "1vw", height: "1vw" }} /> Copy</>}
                         </button>
                         <button
                           type="button"
                           onClick={sendPromptToWhiteboard}
-                          className="px-3 py-1.5 rounded-lg text-xs font-display font-bold transition flex items-center gap-1.5"
-                          style={{ background: arenaAccent, color: "#08080F" }}
+                          className="rounded-lg font-display font-bold transition flex items-center"
+                          style={{ padding: "0.4vw 1vw", fontSize: "1.1vw", gap: "0.4vw", background: arenaAccent, color: "#08080F" }}
                         >
-                          <MessageSquare size={12} /> Send to Whiteboard
+                          <MessageSquare style={{ width: "1vw", height: "1vw" }} /> Send to Whiteboard
                         </button>
-                        <span className="text-[10px] text-white/40">
+                        <span className="text-white/40" style={{ fontSize: "0.9vw" }}>
                           (drops it into the chat input — you can edit before sending)
                         </span>
                       </div>
@@ -794,28 +820,31 @@ export function WorksheetPopup({
               </div>
 
               {/* ── Footer ─────────────────────────────────────────── */}
-              <footer className="sticky bottom-0 px-5 py-3 border-t border-white/10 bg-[#0F0F1A]/95 backdrop-blur flex items-center justify-between gap-2">
-                <div className="text-[11px] text-white/50 flex items-center gap-2">
+              <footer className="sticky bottom-0 border-t border-white/10 bg-[#0F0F1A]/95 backdrop-blur flex items-center justify-between"
+                style={{ padding: "1vw 1.8vw", gap: "0.8vw" }}>
+                <div className="text-white/50 flex items-center" style={{ fontSize: "1vw", gap: "0.6vw" }}>
                   {tooBig
                     ? <span className="text-red-400">Too long — trim to save.</span>
                     : savedAt
-                      ? <span><Save size={12} className="inline mr-1" />Draft saved</span>
+                      ? <span className="flex items-center"><Save style={{ width: "1.1vw", height: "1.1vw", marginRight: "0.3vw" }} />Draft saved</span>
                       : <span>Autosaves as you type</span>}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center" style={{ gap: "0.6vw" }}>
                   <button
                     type="button"
                     onClick={discard}
-                    className="px-3 py-1.5 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/5 transition flex items-center gap-1"
+                    className="rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition flex items-center"
+                    style={{ padding: "0.4vw 1vw", fontSize: "1.1vw", gap: "0.3vw" }}
                   >
-                    <Trash2 size={12} /> Discard
+                    <Trash2 style={{ width: "1vw", height: "1vw" }} /> Discard
                   </button>
                   <button
                     type="button"
                     onClick={downloadDocx}
-                    className="px-3 py-1.5 rounded-lg text-xs text-white/60 hover:text-white hover:bg-white/5 transition flex items-center gap-1"
+                    className="rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition flex items-center"
+                    style={{ padding: "0.4vw 1vw", fontSize: "1.1vw", gap: "0.3vw" }}
                   >
-                    <Download size={12} /> Download .docx
+                    <Download style={{ width: "1vw", height: "1vw" }} /> Download .docx
                   </button>
                   <button
                     type="button"
@@ -825,13 +854,14 @@ export function WorksheetPopup({
                       mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
                       notes:     notes.trim().length > 0 ? notes : undefined,
                     })}
-                    className="px-4 py-2 rounded-lg text-xs font-display font-bold transition flex items-center gap-1.5"
+                    className="rounded-lg font-display font-bold transition flex items-center"
                     style={{
+                      padding: "0.6vw 1.4vw", fontSize: "1.1vw", gap: "0.5vw",
                       background: arenaAccent,
                       color:      "#08080F",
                     }}
                   >
-                    <Send size={14} /> Save & ready for validation
+                    <Send style={{ width: "1.2vw", height: "1.2vw" }} /> Save & ready for validation
                   </button>
                 </div>
               </footer>

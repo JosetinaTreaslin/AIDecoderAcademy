@@ -1652,8 +1652,8 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
           style={{
             right:  "62%",                          // ← horizontal position (% from right — higher = more LEFT)
             bottom: "0px",                         // ← vertical position (px from bottom)
-            width:  "clamp(173px, 14.4vw, 269px)",    // ← SIZE: matched to SAGE (was clamp(128px, 11vw, 192px))
-            height: "clamp(173px, 14.4vw, 269px)",    // ← SIZE: keep equal to width
+            width:  "14.4vw",    // ← SIZE knob — pure vw, no px floor/ceiling so it scales at every window size
+            height: "14.4vw",    // ← SIZE: keep equal to width
           }}
         >
           {/* Panel — absolute above the button, centered horizontally */}

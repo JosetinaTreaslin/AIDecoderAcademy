@@ -102,17 +102,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onMouseEnter={showNav}
         onMouseLeave={scheduleHide}
       >
-        <div className="flex items-center justify-between px-5 py-2.5 w-full gap-4">
+        {/* Pure vmin throughout — no fixed Tailwind px sizing — so the whole
+            nav bar shrinks and grows continuously with the window, same as
+            the playground panel elements. */}
+        <div className="flex items-center justify-between w-full" style={{ padding: "1.3vmin 2.5vmin", gap: "2vmin" }}>
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: arena.accent }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <Link href="/" className="flex items-center flex-shrink-0" style={{ gap: "1.3vmin" }}>
+            <div className="rounded-lg flex items-center justify-center"
+              style={{ width: "3.5vmin", height: "3.5vmin", background: arena.accent }}>
+              <svg viewBox="0 0 16 16" fill="none" style={{ width: "1.8vmin", height: "1.8vmin" }}>
                 <path d="M8 2L14 6V10L8 14L2 10V6L8 2Z" fill="#08080F"/>
               </svg>
             </div>
-            <span className="font-display font-black text-base tracking-tight hidden sm:block" style={{ color: "#1a1a2e" }}>
+            <span className="font-display font-black tracking-tight hidden sm:block" style={{ color: "#1a1a2e", fontSize: "2vmin" }}>
               AI<span style={{ color: arena.accent }}>Decoder</span>
             </span>
           </Link>
@@ -121,25 +124,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex-1" />
 
           {/* Right — XP + level + avatar */}
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex items-center flex-shrink-0" style={{ gap: "1.5vmin" }}>
             {profile && (
-              <div className="hidden sm:flex items-center gap-2.5">
+              <div className="hidden sm:flex items-center" style={{ gap: "1.3vmin" }}>
                 {/* Level badge */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border"
-                  style={{ background: arena.accentDim, borderColor: arena.accent + "40" }}>
-                  <span className="text-sm">{arena.emoji}</span>
-                  <span className="font-display font-black text-xs" style={{ color: arena.accent }}>
+                <div className="flex items-center rounded-xl border"
+                  style={{ gap: "0.75vmin", padding: "0.5vmin 1.3vmin", background: arena.accentDim, borderColor: arena.accent + "40" }}>
+                  <span style={{ fontSize: "1.8vmin" }}>{arena.emoji}</span>
+                  <span className="font-display font-black" style={{ color: arena.accent, fontSize: "1.5vmin" }}>
                     Lv {level}
                   </span>
                 </div>
 
                 {/* XP bar */}
-                <div className="w-24 space-y-0.5">
+                <div style={{ width: "12vmin", display: "flex", flexDirection: "column", gap: "0.25vmin" }}>
                   <div className="flex justify-between">
-                    <span className="text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.35)" }}>{xp} XP</span>
-                    {!isMaxed && <span className="text-[9px] font-mono" style={{ color: "rgba(0,0,0,0.25)" }}>{nextThreshold}</span>}
+                    <span className="font-mono" style={{ color: "rgba(0,0,0,0.35)", fontSize: "1.1vmin" }}>{xp} XP</span>
+                    {!isMaxed && <span className="font-mono" style={{ color: "rgba(0,0,0,0.25)", fontSize: "1.1vmin" }}>{nextThreshold}</span>}
                   </div>
-                  <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.10)" }}>
+                  <div className="rounded-full overflow-hidden" style={{ height: "0.5vmin", background: "rgba(0,0,0,0.10)" }}>
                     <div className="h-full rounded-full transition-all duration-1000"
                       style={{
                         width:      `${progress}%`,
@@ -151,17 +154,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Streak */}
                 {(profile.streak_days ?? 0) > 0 && (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-orange-500/20"
-                    style={{ background: "rgba(255,107,43,0.1)" }}>
-                    <span className="text-sm">🔥</span>
-                    <span className="font-display font-black text-xs text-orange-400">
+                  <div className="flex items-center rounded-lg border border-orange-500/20"
+                    style={{ gap: "0.5vmin", padding: "0.5vmin 1vmin", background: "rgba(255,107,43,0.1)" }}>
+                    <span style={{ fontSize: "1.8vmin" }}>🔥</span>
+                    <span className="font-display font-black text-orange-400" style={{ fontSize: "1.5vmin" }}>
                       {profile.streak_days}
                     </span>
                   </div>
                 )}
               </div>
             )}
-            <UserButton afterSignOutUrl="/auth/sign-in"/>
+            <UserButton afterSignOutUrl="/auth/sign-in"
+              appearance={{ elements: { userButtonAvatarBox: { width: "4vmin", height: "4vmin" } } }}
+            />
           </div>
         </div>
       </header>

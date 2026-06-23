@@ -364,6 +364,20 @@ export function CreationsRoom({
   const taRef     = useRef<HTMLTextAreaElement>(null);
   const fileRef   = useRef<HTMLInputElement>(null);
 
+  // Single source of truth for desktop vs. mobile layout — only one of the
+  // two panels is ever mounted, so they can never both render at once. A
+  // pure CSS "hidden lg:flex" / "lg:hidden" split is vulnerable to a stray
+  // dual-render during fast-refresh (the mobile pill row showing up near
+  // the top-left at the same time as the desktop panel).
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   const activeMeta = OUTPUT_META[selected] ?? OUTPUT_META.text;
 
   // Worksheet → Whiteboard handoff. WorksheetPopup dispatches this event when
@@ -689,14 +703,14 @@ export function CreationsRoom({
   // ── Message list ─────────────────────────────────────────────────────────
   const renderMessageList = (ref: React.RefObject<HTMLDivElement | null>) => (
     <div ref={ref} className="select-text" style={{
-      flex: 1, overflowY: "auto", padding: "12px 14px 8px",
-      display: "flex", flexDirection: "column", gap: 8,
+      flex: 1, overflowY: "auto", padding: "1.4vmin 1.6vmin 1vmin",
+      display: "flex", flexDirection: "column", gap: "1vmin",
       scrollbarWidth: "none", minHeight: 0,
     }}>
       {messages.length === 0 && (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10, opacity: 0.5, pointerEvents: "none" }}>
-          <span style={{ fontSize: 28 }}>✏️</span>
-          <p style={{ fontSize: 11, color: arenaAccent, fontWeight: 600, textAlign: "center", margin: 0, lineHeight: 1.6 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "1.1vmin", opacity: 0.5, pointerEvents: "none" }}>
+          <span style={{ fontSize: "3.2vmin" }}>✏️</span>
+          <p style={{ fontSize: "1.3vmin", color: arenaAccent, fontWeight: 600, textAlign: "center", margin: 0, lineHeight: 1.6 }}>
             Click a shelf type or floor object,<br/>then write below
           </p>
         </div>
@@ -1117,25 +1131,26 @@ export function CreationsRoom({
             }
           }}
           style={{
-              display: "flex", flexDirection: "column", gap: 3,
-              background: isDragOver ? `rgba(${activeMeta.glowRgb},0.12)` : "rgba(10,5,50,0.65)",
-              border: `2px solid ${isDragOver ? activeMeta.glowColor : `rgba(${activeMeta.glowRgb},0.8)`}`,
-              borderRadius: 20,
-              padding: mobile ? "5px" : "7px",
-              boxShadow: isDragOver
-                ? `0 0 16px rgba(${activeMeta.glowRgb},0.65), inset 0 0 5px rgba(${activeMeta.glowRgb},0.08)`
-                : `0 0 8px rgba(${activeMeta.glowRgb},0.35)`,
-              backdropFilter: "blur(12px)",
-              transition: "border-color 0.12s, box-shadow 0.12s, background 0.12s",
-              position: "relative",
-            }}>
+            display: "flex", flexDirection: "column", gap: "0.5vmin",
+            background: isDragOver ? `rgba(${activeMeta.glowRgb},0.12)` : "rgba(10,5,50,0.65)",
+            border: `2px solid ${isDragOver ? activeMeta.glowColor : `rgba(${activeMeta.glowRgb},0.8)`}`,
+            borderRadius: "4vmin",
+            padding: mobile ? "0.65vmin 0.8vmin 0.65vmin 1vmin"
+                            : "0.7vmin 0.8vmin 0.7vmin 1.2vmin",
+            boxShadow: isDragOver
+              ? `0 0 32px rgba(${activeMeta.glowRgb},0.7), inset 0 0 16px rgba(${activeMeta.glowRgb},0.1)`
+              : `0 0 24px rgba(${activeMeta.glowRgb},0.45)`,
+            backdropFilter: "blur(16px)",
+            transition: "border-color 0.15s, box-shadow 0.15s, background 0.15s",
+            position: "relative",
+          }}>
           {isDragOver && (
             <div style={{
-              position: "absolute", inset: 0, borderRadius: 20,
+              position: "absolute", inset: 0, borderRadius: "4vmin",
               display: "flex", alignItems: "center", justifyContent: "center",
               pointerEvents: "none", zIndex: 2,
             }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: activeMeta.glowColor, letterSpacing: "0.04em" }}>
+              <span style={{ fontSize: "1.1vmin", fontWeight: 700, color: activeMeta.glowColor, letterSpacing: "0.04em" }}>
                 Drop to add to prompt ✦
               </span>
             </div>
@@ -1143,14 +1158,14 @@ export function CreationsRoom({
 
           {/* Image preview section — ChatGPT-style at the top */}
           {injected.filter(i => i.output_type === "image").length > 0 && (
-            <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "0.5vmin", alignItems: "flex-start", flexWrap: "wrap" }}>
               {injected.filter(i => i.output_type === "image").map(item => {
                 const isUploading = uploadingIds.has(item.id);
                 const trimmedContent = typeof item.content === "string" ? item.content.trim() : "";
                 const imgUrl = item.file_url
                   || (/^data:image\//i.test(trimmedContent) ? trimmedContent : null)
                   || (/^https?:\/\//i.test(trimmedContent) ? trimmedContent : null);
-                const size = mobile ? 48 : 56;
+                const size = mobile ? "4.4vmin" : "5vmin";
                 return (
                   <div key={item.id} style={{
                     position: "relative", flexShrink: 0,
@@ -1161,7 +1176,7 @@ export function CreationsRoom({
                       onClick={() => imgUrl && !isUploading && setPreviewImgUrl(imgUrl)}
                       style={{
                         width: "100%", height: "100%",
-                        borderRadius: 10, overflow: "hidden",
+                        borderRadius: "0.9vmin", overflow: "hidden",
                         background: `rgba(${activeMeta.glowRgb},0.15)`,
                         border: `1.5px solid rgba(${activeMeta.glowRgb},0.5)`,
                         boxShadow: `0 0 7px rgba(${activeMeta.glowRgb},0.18)`,
@@ -1171,9 +1186,9 @@ export function CreationsRoom({
                       {imgUrl && !isUploading ? (
                         <ShelfThumbnail c={item} glowColor={activeMeta.glowColor} glowRgb={activeMeta.glowRgb} />
                       ) : isUploading ? (
-                        <span style={{ fontSize: 22, animation: "spin 1.5s linear infinite" }}>⏳</span>
+                        <span style={{ fontSize: "1.9vmin", animation: "spin 1.5s linear infinite" }}>⏳</span>
                       ) : (
-                        <span style={{ fontSize: 22 }}>🖼️</span>
+                        <span style={{ fontSize: "1.9vmin" }}>🖼️</span>
                       )}
                     </div>
 
@@ -1182,11 +1197,11 @@ export function CreationsRoom({
                       onClick={e => { e.stopPropagation(); setInjected(prev => prev.filter(x => x.id !== item.id)); }}
                       title="Remove"
                       style={{
-                        position: "absolute", top: 2, right: 2,
-                        width: 16, height: 16, borderRadius: "50%",
+                        position: "absolute", top: "0.2vmin", right: "0.2vmin",
+                        width: "1.4vmin", height: "1.4vmin", borderRadius: "50%",
                         background: "rgba(0,0,0,0.65)",
                         border: "1px solid rgba(255,255,255,0.35)",
-                        color: "#fff", fontSize: 9, fontWeight: 700,
+                        color: "#fff", fontSize: "0.8vmin", fontWeight: 700,
                         lineHeight: 1, cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         zIndex: 10, padding: 0,
@@ -1201,27 +1216,25 @@ export function CreationsRoom({
           )}
 
           {/* Text input row — below image, with + button and send button */}
-          <div style={{ display: "flex", alignItems: "center", gap: 5, width: "100%" }}>
-            {/* + button */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.65vmin", width: "100%" }}>
             <button onClick={() => setPlusOpen(v => !v)} title="Add context or upload"
               style={{
-                width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                width: "3.4vmin", height: "3.4vmin", borderRadius: "50%", flexShrink: 0,
                 background: plusOpen ? `${arenaAccent}40` : "rgba(255,255,255,0.08)",
                 border: `1.5px solid ${plusOpen ? arenaAccent : "rgba(255,255,255,0.15)"}`,
                 color: plusOpen ? arenaAccent : "rgba(255,255,255,0.5)",
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18, lineHeight: 1, transition: "all 0.2s",
+                fontSize: "1.9vmin", lineHeight: 1, transition: "all 0.2s",
               }}>
               {plusOpen ? "×" : "+"}
             </button>
 
-            {/* Textarea */}
             <textarea ref={taRef} value={input}
               onChange={e => {
                 setInput(e.target.value);
                 const t = e.target;
                 t.style.height = "auto";
-                t.style.height = Math.min(t.scrollHeight, 56) + "px";
+                t.style.height = Math.min(t.scrollHeight, 80) + "px";
               }}
               onKeyDown={onKey}
               onPaste={handlePaste}
@@ -1229,28 +1242,41 @@ export function CreationsRoom({
               rows={1}
               style={{
                 flex: 1, resize: "none", border: "none", outline: "none",
-                background: "transparent", fontSize: mobile ? 14 : 13, fontWeight: 500,
+                background: "transparent",
+                fontSize: mobile ? "1.6vmin" : "1.4vmin",
+                fontWeight: 500,
                 color: "rgba(255,255,255,0.92)", fontFamily: "inherit",
-                lineHeight: 1.3, overflowY: "hidden", minHeight: 18,
+                lineHeight: 1.5, overflowY: "hidden",
                 caretColor: activeMeta.glowColor, userSelect: "text",
               }}
             />
 
-            {/* Send button */}
             <button onClick={send} disabled={!canSend}
+              title={isUploading ? "Uploading — please wait…" : undefined}
               style={{
-                width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                width: mobile ? "4.2vmin" : "3.9vmin",
+                height: mobile ? "4.2vmin" : "3.9vmin",
+                borderRadius: "50%", flexShrink: 0,
                 background: canSend ? `rgba(${activeMeta.glowRgb},0.9)` : "rgba(255,255,255,0.1)",
                 border: "none", cursor: canSend ? "pointer" : "not-allowed",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all 0.2s",
                 boxShadow: canSend ? `0 0 18px rgba(${activeMeta.glowRgb},0.7)` : "none",
               }}>
-              <svg width="13" height="13" viewBox="0 0 18 18" fill="none">
-                <path d="M2 9h14M9 2l7 7-7 7"
-                  stroke={canSend ? "#fff" : "rgba(255,255,255,0.25)"}
-                  strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              {isUploading ? (
+                <div style={{
+                  width: "1.4vmin", height: "1.4vmin", borderRadius: "50%",
+                  border: "2px solid rgba(255,255,255,0.25)",
+                  borderTopColor: "rgba(255,255,255,0.7)",
+                  animation: "spin 0.8s linear infinite",
+                }}/>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 18 18" fill="none" style={{ width: "1.4vmin", height: "1.4vmin" }}>
+                  <path d="M2 9h14M9 2l7 7-7 7"
+                    stroke={canSend ? "#fff" : "rgba(255,255,255,0.25)"}
+                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
             </button>
           </div>
         </div>
@@ -1297,7 +1323,9 @@ export function CreationsRoom({
       </div>
 
       {/* ── Bottom tray hotspot zones — traffic light indicator ── */}
-      <div className="hidden lg:block" style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none" }}>
+      {/* Always visible — was "hidden lg:block", which hid the red/green
+          status dots entirely below the 1024px breakpoint. */}
+      <div style={{ position: "absolute", inset: 0, zIndex: 12, pointerEvents: "none" }}>
         {BOTTOM_TRAY_HOTSPOTS.map(hz => {
           const isActive = selected === hz.id;
           return (
@@ -1319,10 +1347,11 @@ export function CreationsRoom({
                 paddingBottom: "0%",
               }}
             >
-              {/* Traffic light dot */}
+              {/* Traffic light dot — pure vmin, no px floor/ceiling, so it
+                  shrinks and grows continuously with the window. */}
               <span style={{
                 display: "block",
-                width: 10, height: 10,
+                width: "1.4vmin", height: "1.4vmin",
                 borderRadius: "50%",
                 background: isActive ? "#22c55e" : "#ef4444",
                 boxShadow: isActive
@@ -1434,8 +1463,10 @@ export function CreationsRoom({
 
 
       {/* ── Trash bin — drop a shelf card here to delete the creation ────── */}
+      {/* Always visible — was "hidden lg:flex", which hid it entirely below
+          the 1024px breakpoint instead of just shrinking with the room. */}
       <div
-        className="hidden lg:flex"
+        className="flex"
         onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; setBinDragOver(true); }}
         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setBinDragOver(false); }}
         onDrop={async e => {
@@ -1495,28 +1526,45 @@ export function CreationsRoom({
         )}
       </div>
 
-      {/* ── Desktop chat panel — overlaid on the large blue screen ───────── */}
-      <div className="hidden lg:flex flex-col"
-        style={{
-          position: "absolute",
-          left: "37%", top: "9%", right: "5%", bottom: "27%",
-          zIndex: 20,
-          background: "transparent",
-        }}
-      >
-        {objectiveId && (
-          <div style={{ padding: "8px 12px 0", flexShrink: 0 }}>
-            <ObjectiveCard objectiveId={objectiveId} arenaAccent={arenaAccent} arenaAccentGlow={arenaAccentGlow} />
+      {/* ── Desktop layout — each piece is its own independently positioned
+          element pinned to the background art, not children of one shared
+          flex container. They never reflow relative to each other; if the
+          Objective card expands it can overlap the message area below it
+          rather than pushing it down (fixed positions, no auto-stacking).
+          Gated on isDesktop (JS), not just the "hidden lg:" classes, so this
+          and the mobile block below can never both be mounted at once. ── */}
+      {isDesktop === true && (
+        <>
+          {objectiveId && (
+            <div style={{
+              position: "absolute", left: "37%", top: "10%", right: "5%", zIndex: 21, padding: "0 12px",
+            }}>
+              <ObjectiveCard objectiveId={objectiveId} arenaAccent={arenaAccent} arenaAccentGlow={arenaAccentGlow} />
+            </div>
+          )}
+
+          {/* Needs display:flex — renderMessageList's inner content uses flex:1
+              to fill its parent; without a flex parent here it shrinks to its
+              natural size and sits at the top instead of filling/centering. */}
+          <div className="flex flex-col" style={{
+            position: "absolute", left: "37%", right: "5%",
+            top: "27%", bottom: "34%",
+            zIndex: 20, background: "transparent",
+          }}>
+            {renderMessageList(scrollRefDesktop)}
           </div>
-        )}
-        {renderMessageList(scrollRefDesktop)}
-        <div style={{ padding: "8px 12px 12px", flexShrink: 0 }}>
-          {/* Output-type dot row */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, marginBottom: 6 }}>
+
+          {/* Output-type dot row — small, unlabeled, just above the chat bar.
+              This is the original spot/style; do not move it under the
+              Objective bar or relabel it with text pills. */}
+          <div className="flex" style={{
+            position: "absolute", left: "37%", right: "5%", bottom: "37%",
+            zIndex: 22, alignItems: "center", justifyContent: "center", gap: "0.7vmin",
+          }}>
             {OUTPUT_TYPES.map(t => (
               <button key={t.id} onClick={() => setSelected(t.id)} title={t.label}
                 style={{
-                  width: 8, height: 8, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer",
+                  width: "1.1vmin", height: "1.1vmin", borderRadius: "50%", border: "none", padding: 0, cursor: "pointer",
                   background: selected === t.id ? (OUTPUT_META[t.id]?.glowColor ?? "#fff") : "rgba(0,0,0,0.2)",
                   transition: "all 0.2s",
                   boxShadow: selected === t.id ? `0 0 6px ${OUTPUT_META[t.id]?.glowColor}` : "none",
@@ -1524,34 +1572,77 @@ export function CreationsRoom({
               />
             ))}
           </div>
-          {renderInputRow()}
-        </div>
-      </div>
 
-      {/* ── Mobile + tablet overlay ──────────────────────────────────────── */}
-      <div className="lg:hidden absolute inset-0 z-30 flex flex-col"
-        style={{ background: "rgba(8,8,20,0.97)", padding: "16px 14px 14px", gap: 10 }}>
-        <div style={{ height: 2, flexShrink: 0, borderRadius: 2, marginBottom: 2, background: `linear-gradient(90deg, transparent, ${arenaAccent}80, ${arenaAccent}, ${arenaAccent}80, transparent)` }}/>
-        {objectiveId && (
-          <ObjectiveCard objectiveId={objectiveId} arenaAccent={arenaAccent} arenaAccentGlow={arenaAccentGlow} />
-        )}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flexShrink: 0 }}>
-          {OUTPUT_TYPES.map(t => (
-            <button key={t.id} onClick={() => setSelected(t.id)}
-              style={{
-                padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                border: `1.5px solid ${selected === t.id ? (OUTPUT_META[t.id]?.glowColor ?? "#fff") : "rgba(255,255,255,0.15)"}`,
-                background: selected === t.id ? `rgba(${OUTPUT_META[t.id]?.glowRgb ?? "168,85,247"},0.25)` : "transparent",
-                color: selected === t.id ? (OUTPUT_META[t.id]?.glowColor ?? "#fff") : "rgba(255,255,255,0.4)",
-                textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s",
-              }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        {renderMessageList(scrollRefMobile)}
-        {renderInputRow(true)}
-      </div>
+          <div style={{
+            position: "absolute", left: "37%", right: "5%", bottom: "29%", zIndex: 20, padding: "0 12px",
+          }}>
+            {renderInputRow()}
+          </div>
+        </>
+      )}
+
+      {/* ── Mobile + tablet — independent fixed-position elements over the
+          room art, each with its own contained background (no full-screen
+          tint/blur layer behind all of them — that was the stray "connecting
+          div" that made every piece look like one shared panel). ── */}
+      {isDesktop === false && (
+        <>
+          {/* All positions below are pure percentages/vmin — no px floor or
+              ceiling — AND confined to the same screen-art bounding box the
+              desktop layout uses (left:37%, right:5%, top:10%, bottom:~29%).
+              The background room art is stretched proportionally at any
+              window size, so the wall screen graphic always sits at that
+              same relative spot — content needs to stay inside it, not
+              span near-full-width, or it overlaps the hexagon panels and
+              worksheet sprite on the left. */}
+          <div className="absolute" style={{
+            left: "37%", right: "5%", top: "10%",
+            height: 2, borderRadius: 2, zIndex: 31,
+            background: `linear-gradient(90deg, transparent, ${arenaAccent}80, ${arenaAccent}, ${arenaAccent}80, transparent)`,
+          }}/>
+
+          {objectiveId && (
+            <div className="absolute" style={{
+              left: "37%", right: "5%", top: "11%", zIndex: 31, padding: "0 12px",
+            }}>
+              <ObjectiveCard objectiveId={objectiveId} arenaAccent={arenaAccent} arenaAccentGlow={arenaAccentGlow} />
+            </div>
+          )}
+
+          {/* Needs display:flex — see note on the desktop equivalent above. */}
+          <div className="absolute flex flex-col" style={{
+            left: "37%", right: "5%",
+            top: "27%", bottom: "34%", zIndex: 31,
+          }}>
+            {renderMessageList(scrollRefMobile)}
+          </div>
+
+          {/* Output-type dot row — same small, unlabeled style as desktop,
+              just above the chat bar. Not a labeled pill row, and never
+              positioned under the Objective bar. */}
+          <div className="absolute flex" style={{
+            left: "37%", right: "5%", bottom: "37%",
+            zIndex: 33, alignItems: "center", justifyContent: "center", gap: "0.7vmin",
+          }}>
+            {OUTPUT_TYPES.map(t => (
+              <button key={t.id} onClick={() => setSelected(t.id)} title={t.label}
+                style={{
+                  width: "1.1vmin", height: "1.1vmin", borderRadius: "50%", border: "none", padding: 0, cursor: "pointer",
+                  background: selected === t.id ? (OUTPUT_META[t.id]?.glowColor ?? "#fff") : "rgba(0,0,0,0.2)",
+                  transition: "all 0.2s",
+                  boxShadow: selected === t.id ? `0 0 6px ${OUTPUT_META[t.id]?.glowColor}` : "none",
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="absolute" style={{
+            left: "37%", right: "5%", bottom: "29%", zIndex: 31, padding: "0 12px",
+          }}>
+            {renderInputRow(true)}
+          </div>
+        </>
+      )}
 
       {/* ── Paste warning toast ──────────────────────────────────────────────── */}
       {pasteWarning && (

@@ -53,8 +53,8 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
       `}</style>
 
       <div style={{
-        flexShrink: 0, marginBottom: 8,
-        borderRadius: expanded ? 14 : 40,
+        flexShrink: 0, marginBottom: "1.1vmin",
+        borderRadius: expanded ? "2vmin" : "5.6vmin",
         background: "rgba(255,255,255,0.92)",
         border: `1px solid rgba(${aRgb},${expanded ? "0.35" : "0.25"})`,
         boxShadow: expanded
@@ -65,22 +65,26 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
         transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
       }}>
 
-        {/* ── Header ── */}
+        {/* ── Header — pure vmin, no px floor/ceiling, so it shrinks and
+            grows continuously with the window. Values are ~1.4x the literal
+            px-to-vmin conversion since this renders on shorter windows
+            (vmin ≈ 7px there) — matches the original px size at the sizes
+            actually being tested instead of at a 1000px-tall reference. ── */}
         <button onClick={() => setExpanded(v => !v)} style={{
-          width: "100%", display: "flex", alignItems: "center", gap: 8,
-          padding: expanded ? "10px 14px" : "7px 14px",
+          width: "100%", display: "flex", alignItems: "center", gap: "1.1vmin",
+          padding: expanded ? "1.4vmin 2vmin" : "1vmin 2vmin",
           background: "none", border: "none", cursor: "pointer",
           borderBottom: expanded ? "1px solid rgba(0,0,0,0.07)" : "none",
         }}>
 
           {/* Pulsing dot + label */}
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.7vmin", flexShrink: 0 }}>
             <span className="obj-dot" style={{
-              width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+              width: "0.85vmin", height: "0.85vmin", borderRadius: "50%", flexShrink: 0,
               background: arenaAccent, boxShadow: `0 0 6px ${arenaAccent}`,
             }}/>
             <span style={{
-              fontSize: 8, fontWeight: 800, letterSpacing: "0.12em",
+              fontSize: "1.1vmin", fontWeight: 800, letterSpacing: "0.12em",
               color: arenaAccent, textTransform: "uppercase",
               fontFamily: "'Syne', sans-serif",
             }}>
@@ -88,11 +92,11 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
             </span>
           </div>
 
-          <div style={{ width: 1, height: 12, background: "rgba(0,0,0,0.12)", flexShrink: 0 }}/>
+          <div style={{ width: 1, height: "1.7vmin", background: "rgba(0,0,0,0.12)", flexShrink: 0 }}/>
 
           {/* Title */}
           <span style={{
-            flex: 1, fontSize: 11, fontWeight: 700, textAlign: "left",
+            flex: 1, fontSize: "1.5vmin", fontWeight: 700, textAlign: "left",
             color: "#0a0a2e",
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
             fontFamily: "'DM Sans', sans-serif",
@@ -102,8 +106,8 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
 
           {/* Tier pill */}
           <span style={{
-            fontSize: 8, fontWeight: 800, letterSpacing: "0.08em",
-            padding: "3px 8px", borderRadius: 20, flexShrink: 0,
+            fontSize: "1.1vmin", fontWeight: 800, letterSpacing: "0.08em",
+            padding: "0.4vmin 1.1vmin", borderRadius: 20, flexShrink: 0,
             background: `rgba(${tier.rgb},0.12)`,
             color: tier.color,
             border: `1px solid rgba(${tier.rgb},0.3)`,
@@ -113,14 +117,14 @@ export function ObjectiveCard({ objectiveId, arenaAccent = "#7C3AED" }: Props) {
           </span>
 
           {/* Stars */}
-          <span style={{ flexShrink: 0, fontSize: 10, color: arenaAccent }}>
+          <span style={{ flexShrink: 0, fontSize: "1.4vmin", color: arenaAccent }}>
             {"★".repeat(rubric.difficulty)}
             <span style={{ opacity: 0.2, color: "#000" }}>{"★".repeat(6 - rubric.difficulty)}</span>
           </span>
 
           {/* Chevron */}
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{
-            flexShrink: 0, transition: "transform 0.3s cubic-bezier(0.16,1,0.3,1)",
+          <svg viewBox="0 0 12 12" fill="none" style={{
+            width: "1.7vmin", height: "1.7vmin", flexShrink: 0, transition: "transform 0.3s cubic-bezier(0.16,1,0.3,1)",
             transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
           }}>
             <path d="M2.5 4.5l3.5 3.5 3.5-3.5"

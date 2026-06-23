@@ -388,8 +388,10 @@ function PlaygroundInner() {
       {/* ── Back to Arena button ── */}
       <button
         onClick={() => router.push(`/dashboard/world/${sourceArenaId}`)}
-        className="absolute top-4 left-4 z-50 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-display font-bold transition-all active:scale-95"
+        className="absolute z-50 flex items-center font-display font-bold transition-all active:scale-95"
         style={{
+          top: "1.5vmin", left: "1.5vmin", gap: "0.6vmin",
+          padding: "0.8vmin 1.2vmin", borderRadius: "0.9vmin", fontSize: "1.3vmin",
           background: "rgba(6,6,15,0.7)",
           border: "1px solid rgba(255,255,255,0.1)",
           backdropFilter: "blur(12px)",
@@ -398,7 +400,7 @@ function PlaygroundInner() {
         onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#fff"}
         onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.6)"}
       >
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+        <svg viewBox="0 0 16 16" fill="none" style={{ width: "1.3vmin", height: "1.3vmin" }}>
           <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
         Arena {sourceArenaId}
