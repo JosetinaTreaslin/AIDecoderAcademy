@@ -13,7 +13,7 @@ const OUTPUT_META: Record<string, { glowColor: string; glowRgb: string }> = {
   audio:  { glowColor: "#00aaff", glowRgb: "0,170,255"   },
   image:  { glowColor: "#ff4488", glowRgb: "255,68,136"  },
   video:  { glowColor: "#ff7800", glowRgb: "255,120,0"   },
-  text:   { glowColor: "#c8a0ff", glowRgb: "200,160,255" },
+  text:   { glowColor: "#a855f7", glowRgb: "168,85,247"  },
   json:   { glowColor: "#00ff64", glowRgb: "0,255,100"   },
 };
 
@@ -28,7 +28,7 @@ const SHELF_HOTSPOTS: {
   { id:"image",  label:"IMAGE",  glowColor:"#ff4488", glowRgb:"255,68,136",  top:"25%",  height:"6%", left:"11%",  width:"3%" },
   { id:"video",  label:"VIDEO",  glowColor:"#ff7800", glowRgb:"255,120,0",   top:"47%", height:"6%", left:"11%", width:"3%" },
   { id:"json",   label:"SCRIPT", glowColor:"#00ff64", glowRgb:"0,255,100",   top:"24%", height:"7%", left:"2%",  width:"3%" },
-  { id:"text",   label:"TEXT",   glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"16%", height:"7%", left:"6.4%", width:"4%" },
+  { id:"text",   label:"TEXT",   glowColor:"#a855f7", glowRgb:"168,85,247", top:"16%", height:"7%", left:"6.4%", width:"4%" },
   { id:"slides", label:"SLIDE",  glowColor:"#ffb400", glowRgb:"255,180,0",   top:"57%", height:"7%", left:"6%",  width:"4%" },
 ];
 
@@ -40,7 +40,7 @@ const BOTTOM_TRAY_HOTSPOTS: {
   top: string; height: string; left: string; width: string;
 }[] = [
   { id:"audio",  label:"Audio",  glowColor:"#00aaff", glowRgb:"0,170,255",   top:"77%", height:"15%", left:"37%", width:"8%" },
-  { id:"text",   label:"Text",   glowColor:"#c8a0ff", glowRgb:"200,160,255", top:"77%", height:"15%", left:"47%", width:"8%" },
+  { id:"text",   label:"Text",   glowColor:"#a855f7", glowRgb:"168,85,247", top:"77%", height:"15%", left:"47%", width:"8%" },
   { id:"image",  label:"Image",  glowColor:"#ff4488", glowRgb:"255,68,136",  top:"77%", height:"15%", left:"57%", width:"8%" },
   { id:"json",   label:"JSON",   glowColor:"#00ff64", glowRgb:"0,255,100",   top:"77%", height:"15%", left:"66%", width:"8%" },
   { id:"video",  label:"Video",  glowColor:"#ff7800", glowRgb:"255,120,0",   top:"77%", height:"15%", left:"75%", width:"9%" },
@@ -68,7 +68,7 @@ const FLOOR_OBJECTS: {
 }[] = [
   { key:"phones", id:"audio",  label:"Audio",  src:"/arena1/headphones.png",   blend:"screen", glowColor:"#00aaff", glowRgb:"0,170,255",   vw:"10vw"  },
   { key:"slide",  id:"slides", label:"Slides", src:"/arena1/slide.png",         blend:"normal", glowColor:"#ffb400", glowRgb:"255,180,0",   vw:"15vw" },
-  { key:"text",   id:"text",   label:"Text",   src:"/arena1/book.png",          blend:"normal", glowColor:"#c8a0ff", glowRgb:"200,160,255", vw:"8vw" },
+  { key:"text",   id:"text",   label:"Text",   src:"/arena1/book.png",          blend:"normal", glowColor:"#a855f7", glowRgb:"168,85,247", vw:"8vw" },
   { key:"camera", id:"image",  label:"Image",  src:"/arena1/camera.png",        blend:"screen", glowColor:"#ff4488", glowRgb:"255,68,136",  vw:"8vw" },
   { key:"clap",   id:"video",  label:"Video",  src:"/arena1/clapperboard.png",  blend:"screen", glowColor:"#ff7800", glowRgb:"255,120,0",   vw:"10vw" },
   { key:"js",     id:"json",   label:"JSON",   src:"/arena1/jscube.png",        blend:"screen", glowColor:"#00ff64", glowRgb:"0,255,100",   vw:"10vw" },
@@ -248,14 +248,17 @@ function ShelfThumbnail({ c, glowColor, glowRgb }: { c: Creation; glowColor: str
   );
 }
 
-// Simple list used for the output-type dot row and mobile pill selectors
+// Simple list used for the output-type dot row and mobile pill selectors.
+// Order matches the floor tray icons left-to-right (audio, text, image,
+// json, video, slides) so the dot/pill that lights up above the chat box
+// always sits in the same relative position as the selected floor button.
 const OUTPUT_TYPES: { id: OutputType; label: string }[] = [
-  { id: "image",  label: "Image"  },
   { id: "audio",  label: "Audio"  },
-  { id: "slides", label: "Slides" },
   { id: "text",   label: "Text"   },
-  { id: "video",  label: "Video"  },
+  { id: "image",  label: "Image"  },
   { id: "json",   label: "JSON"   },
+  { id: "video",  label: "Video"  },
+  { id: "slides", label: "Slides" },
 ];
 
 // ── Context formatter ────────────────────────────────────────────────────────
@@ -703,10 +706,10 @@ export function CreationsRoom({
                 borderRadius: 20,
                 background: isUploading
                   ? "rgba(255,255,255,0.07)"
-                  : `rgba(${OUTPUT_META[item.output_type]?.glowRgb ?? "200,160,255"},0.2)`,
-                border: `1px solid ${isUploading ? "rgba(255,255,255,0.2)" : `rgba(${OUTPUT_META[item.output_type]?.glowRgb ?? "200,160,255"},0.5)`}`,
+                  : `rgba(${OUTPUT_META[item.output_type]?.glowRgb ?? "168,85,247"},0.2)`,
+                border: `1px solid ${isUploading ? "rgba(255,255,255,0.2)" : `rgba(${OUTPUT_META[item.output_type]?.glowRgb ?? "168,85,247"},0.5)`}`,
                 fontSize: 10, fontWeight: 600,
-                color: isUploading ? "rgba(255,255,255,0.4)" : (OUTPUT_META[item.output_type]?.glowColor ?? "#c8a0ff"),
+                color: isUploading ? "rgba(255,255,255,0.4)" : (OUTPUT_META[item.output_type]?.glowColor ?? "#a855f7"),
                 maxWidth: 200,
                 transition: "all 0.3s ease",
               }}>
@@ -1503,7 +1506,7 @@ export function CreationsRoom({
               style={{
                 padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 700,
                 border: `1.5px solid ${selected === t.id ? (OUTPUT_META[t.id]?.glowColor ?? "#fff") : "rgba(255,255,255,0.15)"}`,
-                background: selected === t.id ? `rgba(${OUTPUT_META[t.id]?.glowRgb ?? "200,160,255"},0.25)` : "transparent",
+                background: selected === t.id ? `rgba(${OUTPUT_META[t.id]?.glowRgb ?? "168,85,247"},0.25)` : "transparent",
                 color: selected === t.id ? (OUTPUT_META[t.id]?.glowColor ?? "#fff") : "rgba(255,255,255,0.4)",
                 textTransform: "uppercase", cursor: "pointer", transition: "all 0.2s",
               }}>
