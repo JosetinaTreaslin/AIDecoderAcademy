@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { matchPersona, buildDynamicPersona } from "@/lib/podcastPersonas";
 import { synthesizeEpisode, type Turn } from "@/lib/podcastEpisode";
 
+export const dynamic     = "force-dynamic";
 export const maxDuration = 300;
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

@@ -1,7 +1,14 @@
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
-import { synthLineWithTimestamps, uploadAudio, BHAVNA_VOICE_ID } from "@/lib/classroomAudio";
+import {
+  synthLineWithTimestamps,
+  uploadAudio,
+  BHAVNA_VOICE_ID,
+  OVERVIEW_VOICE_SETTINGS,
+  OVERVIEW_MODEL_ID,
+} from "@/lib/classroomAudio";
 
+export const dynamic     = "force-dynamic";
 export const maxDuration = 120;
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -30,6 +37,7 @@ export async function POST(req: Request) {
   const sys =
     `You are Ms. Bhavna — a warm, encouraging Indian-English teacher who makes hard ideas click for students aged 11-16. ` +
     `You are giving a short SPOKEN audio overview (a real voice will read it aloud, so write for the EAR, not the eye) for the CBSE Class 10 chapter "${chapterTitle}".\n` +
+    `Be lenient with typos and slang. "over view" means "overview", "om"/"an"/"un" likely means "on", "tita"/"thita" means "theta". If the intent is clearly about this chapter or a subtopic, treat it as on-topic.\n` +
     `Decide if the student's request is INSIDE this chapter (the whole chapter or a subtopic of it).\n` +
     `Return STRICT JSON, no prose.\n` +
     `If the request is UNRELATED to "${chapterTitle}", return:\n` +
@@ -69,7 +77,11 @@ export async function POST(req: Request) {
     return new Response("Script generation failed", { status: 500 });
   }
 
-  const { mp3, words } = await synthLineWithTimestamps(gen.script, { voiceId: BHAVNA_VOICE_ID });
+  const { mp3, words } = await synthLineWithTimestamps(gen.script, {
+    voiceId: BHAVNA_VOICE_ID,
+    settings: OVERVIEW_VOICE_SETTINGS,
+    modelId: OVERVIEW_MODEL_ID,
+  });
   const audioUrl = await uploadAudio(mp3, `overview/${userId}/${Date.now()}.mp3`);
 
   return Response.json({

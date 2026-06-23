@@ -545,7 +545,13 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       setMessages(prev => prev.map(m => m.id === loadingId
         ? ({ ...m, content: data.title, isLoading: false, outputType: "audio", audioOverview: payload } as ClassroomMessage)
         : m));
-      saveAudioCreation(data.title, JSON.stringify({ url: data.audioUrl, script: data.script }), "audio");
+      // Shape must match AudioData consumed by My Creations / AudioPlayer:
+      // { url, script: { narrator_text, dialogues[] } } — not { audioUrl, script:string }.
+      saveAudioCreation(
+        data.title,
+        JSON.stringify({ url: data.audioUrl, script: { narrator_text: data.script, dialogues: [] } }),
+        "audio",
+      );
     } catch {
       setMessages(prev => prev.map(m => m.id === loadingId
         ? { ...m, content: "Couldn't make your overview — please try again.", isLoading: false } : m));
@@ -1354,6 +1360,16 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             const fcResult   = flashcardResults[msg.id];
             const blogResult = blogResults[msg.id];
             const mmResult   = mindmapResults[msg.id];
+            // Audio Overview messages carry a rich payload — render the player +
+            // infographic instead of a plain text bubble. (Loading state still
+            // falls through to MessageBubble for the "🎙️ Recording…" placeholder.)
+            if (msg.audioOverview && !msg.isLoading) {
+              return (
+                <div key={msg.id} style={{ padding: "2px 0" }}>
+                  <AudioOverviewMessage payload={msg.audioOverview} />
+                </div>
+              );
+            }
             return (
               <MessageBubble
                 key={msg.id}

@@ -308,8 +308,16 @@ function CreationPreview({ creation }: { creation: Creation }) {
   }
   if (output_type === "audio") {
     try {
-      const data = JSON.parse(content) as AudioData;
-      if (data?.url) return (
+      const raw = JSON.parse(content);
+      let data: AudioData;
+      if (raw?.url) {
+        data = raw as AudioData;
+      } else if (raw?.audioUrl) {
+        data = { url: raw.audioUrl, script: { narrator_text: raw.script ?? "", dialogues: [] } };
+      } else {
+        return null;
+      }
+      return (
         <div className="flex-1 flex items-center px-2 py-1 overflow-hidden scale-90 origin-top">
           <div className="w-full"><AudioPlayer data={data}/></div>
         </div>

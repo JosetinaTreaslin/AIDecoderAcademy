@@ -15,6 +15,7 @@ import { generateImage } from "@/lib/imageGenerator";
 import { createAdminClient } from "@/lib/supabase";
 
 export const runtime     = "nodejs";
+export const dynamic     = "force-dynamic";
 export const maxDuration = 180;
 
 // Same cartoon style used by flashcards — keeps visual language consistent.
