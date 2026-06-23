@@ -75,3 +75,20 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ profile: data });
 }
+
+export async function PATCH(req: Request) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json();
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .update(body)
+    .eq("clerk_user_id", userId)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ profile: data });
+}
