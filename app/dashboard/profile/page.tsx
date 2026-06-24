@@ -423,6 +423,7 @@ const BADGE_CATEGORIES: { id: string; label: string; icon: string; ids: string[]
 
 // ─── Trophy Room (profile dashboard) ─────────────────────────────────────────
 function TrophyRoom({ profile }: { profile: Profile }) {
+  const router = useRouter();
   const [arenaSfx, setArenaSfx] = useState(false);
   const [creationCount, setCreationCount] = useState<number | null>(null);
   const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
@@ -460,6 +461,27 @@ function TrophyRoom({ profile }: { profile: Profile }) {
 
   return (
     <div className="relative overflow-y-auto text-white" style={{ height: "100%", background: "#08080F" }}>
+
+      {/* ─── Back button — returns to wherever the student navigated from
+             (dashboard, playground, etc.) via browser history, since every
+             link into this page uses router.push (never a hard redirect). ─── */}
+      <button
+        type="button"
+        onClick={() => router.back()}
+        aria-label="Go back"
+        className="fixed top-4 left-4 z-20 flex items-center gap-1.5 rounded-full border backdrop-blur-xl transition-all hover:scale-[1.03] active:scale-95"
+        style={{
+          padding: "0.5rem 0.9rem 0.5rem 0.7rem",
+          background: "rgba(255,255,255,0.06)",
+          borderColor: "rgba(255,255,255,0.12)",
+          color: "rgba(255,255,255,0.85)",
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span className="text-xs font-display font-bold">Back</span>
+      </button>
 
       {/* ─── Arena ambient background — mirrors playground immersion ─── */}
       <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
