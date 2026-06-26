@@ -1,17 +1,14 @@
-// Best-effort TTS warm-up.
+// Best-effort TTS warm-up for ElevenLabs.
 //
-// The first ElevenLabs call per page load cold-starts (~5s). Firing a tiny "."
-// synth on mount pre-pays that cost so the first REAL utterance plays instantly.
+// /api/aida/tts-timed (ElevenLabs /with-timestamps) cold-starts on the first
+// call per page load. Firing "hello" on mount pre-pays that cost. Voices are
+// per-role so we warm each role a surface will use.
 //
-// Why both endpoints: /api/aida/tts (ElevenLabs /stream) and /api/aida/tts-timed
-// (ElevenLabs /with-timestamps, the karaoke path) are SEPARATE serverless
-// functions with their own cold start, so we warm both. Voices are per-role
-// (aida / teacher / classroom) and ElevenLabs warmth can be per-voice, so we
-// warm each role a surface will actually use.
+// /api/aida/tts now routes to Cartesia, which does not have the same cold-start
+// behaviour, so we never warm it up here.
 //
-// Everything here is fire-and-forget and swallows errors — it can never affect
-// rendering or block the UI. A module-level Set dedupes (endpoint, role) pairs
-// so it never double-spends within a page load.
+// Everything is fire-and-forget and swallows errors. A module-level Set dedupes
+// (endpoint, role) pairs so it never double-spends within a page load.
 
 export type Role = "aida" | "teacher" | "classroom";
 
@@ -19,13 +16,12 @@ const warmed = new Set<string>();
 
 export function warmVoice(
   roles: Role[],
-  opts: { stream?: boolean; timed?: boolean } = {},
+  opts: { timed?: boolean } = {},
 ): void {
-  if (typeof window === "undefined") return; // client-only; effects never run on server anyway
-  const { stream = true, timed = true } = opts;
+  if (typeof window === "undefined") return;
+  const { timed = true } = opts;
 
   const endpoints: string[] = [];
-  if (stream) endpoints.push("/api/aida/tts");
   if (timed) endpoints.push("/api/aida/tts-timed");
 
   for (const role of roles) {
@@ -36,11 +32,9 @@ export function warmVoice(
       fetch(ep, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: ".", role }),
+        body: JSON.stringify({ text: "hello", role }),
         keepalive: true,
-      }).catch(() => {
-        /* best-effort warm-up — ignore failures */
-      });
+      }).catch(() => { /* best-effort — ignore failures */ });
     }
   }
 }

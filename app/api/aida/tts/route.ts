@@ -19,6 +19,11 @@ export async function POST(req: Request) {
     const text = typeof body?.text === "string" ? body.text.trim() : "";
     const role = (body?.role as string) ?? "aida";
     if (!text) return new Response("Bad request", { status: 400 });
+    // Cartesia rejects text with no word characters — return empty stream silently.
+    if (!/\w/.test(text)) return new Response(
+      'data: {"type":"done"}\n\n',
+      { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" } },
+    );
 
     if (!process.env.CARTESIA_API_KEY) {
       console.error("[TTS] CARTESIA_API_KEY not set");

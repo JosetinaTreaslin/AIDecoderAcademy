@@ -304,26 +304,8 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     precedingText?: string;
     sentenceText?: string;
   }[]>([]);
-  const karaokeRafRef      = useRef<number | null>(null);
   const ttsAbortRef        = useRef<AbortController | null>(null);
   const ttsGenRef          = useRef(0);
-  const ttsSentenceAbortRefs    = useRef<AbortController[]>([]);
-  const spokenUpTo              = useRef(0);
-  const pendingTtsSentencesRef  = useRef(0);
-  const fullResponseRef         = useRef("");  // complete AI response text (voice mode)
-  const displayedTextRef        = useRef("");  // text currently shown in bubble (voice mode)
-  // Ordered sentence playback: tts-timed fetches resolve out of order, so we
-  // play strictly by sequence index. Each sentence gets a seq at call time;
-  // resolved audio lands in sentenceSlotsRef[seq]; we only ever play the slot
-  // at nextPlayIndexRef (skipping failed ones) so audio + text stay in order.
-  type SentenceSlot =
-    | { state: "ready"; audio: HTMLAudioElement; url: string;
-        words: { text: string; start: number; end: number }[];
-        precedingText: string; sentenceText: string }
-    | { state: "failed" };
-  const ttsSeqRef          = useRef(0);
-  const nextPlayIndexRef   = useRef(0);
-  const sentenceSlotsRef   = useRef<Map<number, SentenceSlot>>(new Map());
   const cancelledRef       = useRef(false);
   const mediaRecorderRef   = useRef<MediaRecorder | null>(null);
   const audioChunksRef     = useRef<Blob[]>([]);
@@ -618,7 +600,6 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     // Abort any in-flight requests so stale responses don't append messages later
     if (sttAbortRef.current) { sttAbortRef.current.abort(); sttAbortRef.current = null; }
     if (ttsAbortRef.current) { ttsAbortRef.current.abort(); ttsAbortRef.current = null; }
-    abortAllTtsSentences();
     ++sendIdRef.current; // invalidate any in-flight coreSend stream
     ++ttsGenRef.current;
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
@@ -626,33 +607,7 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     setVS("idle");
   }
 
-  // Live mode interruption: kill the AI's audio + LLM stream WITHOUT touching
-  // the mic — the Live session owns the mic via its VAD/worklet. This is the
-  // key difference vs cleanupVoice(), which fully tears voice down.
-  function abortAllTtsSentences() {
-    for (const ab of ttsSentenceAbortRefs.current) {
-      try { ab.abort(); } catch {}
-    }
-    ttsSentenceAbortRefs.current = [];
-    pendingTtsSentencesRef.current = 0;
-    // Drop any queued/ready sentence audio so it can't play after a barge-in.
-    for (const slot of sentenceSlotsRef.current.values()) {
-      if (slot.state === "ready") {
-        try { slot.audio.pause(); } catch {}
-        try { URL.revokeObjectURL(slot.url); } catch {}
-      }
-    }
-    sentenceSlotsRef.current.clear();
-    ttsSeqRef.current = 0;
-    nextPlayIndexRef.current = 0;
-    if (karaokeRafRef.current != null) {
-      cancelAnimationFrame(karaokeRafRef.current);
-      karaokeRafRef.current = null;
-    }
-  }
-
   function abortAiResponse() {
-    abortAllTtsSentences();
     if (ttsAbortRef.current) { ttsAbortRef.current.abort(); ttsAbortRef.current = null; }
     ++sendIdRef.current; // invalidate any in-flight coreSend stream reader
     ++ttsGenRef.current; // invalidate any in-flight playNext callbacks
@@ -667,13 +622,6 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
     if (!text.trim()) return;
 
     const myId = ++sendIdRef.current;
-    spokenUpTo.current = 0;
-    pendingTtsSentencesRef.current = 0;
-    fullResponseRef.current = "";
-    displayedTextRef.current = "";
-    ttsSeqRef.current = 0;
-    nextPlayIndexRef.current = 0;
-    sentenceSlotsRef.current.clear();
 
     // Drop inline thought-bubble nudges from the conversation history — they
     // are AIDA's observations to the kid, not turns in the back-and-forth, so
@@ -1100,158 +1048,6 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
   }
 
   // ── Sentence-level TTS (called per-sentence during SSE stream) ──────────
-  // Unlike speakText(), this does NOT clear the queue or abort prior TTS —
-  // it appends audio to the shared queue so sentences play back-to-back.
-
-  // precedingText: text already revealed from earlier sentences. This sentence
-  // is then revealed word-by-word (karaoke) as its audio plays, using real
-  // per-word timings from /api/aida/tts-timed. Undefined for non-voice calls.
-  async function speakSentence(sentence: string, precedingText?: string) {
-    if (!sentence.trim()) return;
-    const genId = ttsGenRef.current; // snapshot — barge-in increments this
-    const seq = ttsSeqRef.current++; // play order — preserved across out-of-order fetches
-    const ab = new AbortController();
-    ttsSentenceAbortRefs.current.push(ab);
-    pendingTtsSentencesRef.current++;
-
-    const setBubble = (content: string) => {
-      displayedTextRef.current = content;
-      setMessages(prev => {
-        const copy = [...prev];
-        copy[copy.length - 1] = { role: "assistant", content };
-        return copy;
-      });
-    };
-
-    const finishIfDone = () => {
-      if (
-        pendingTtsSentencesRef.current === 0 &&
-        !audioRef.current &&
-        sentenceSlotsRef.current.size === 0 &&
-        voiceStateRef.current === "speaking"
-      ) {
-        if (fullResponseRef.current) setBubble(fullResponseRef.current);
-        setVS("idle");
-        if (subModeRef.current === "live") liveSetAiSpeakingRef.current(false);
-      }
-    };
-
-    // Play strictly in sequence order. Skips failed slots, waits on pending
-    // ones — so a sentence whose audio fetch resolved early never jumps ahead.
-    function maybePlay() {
-      if (ttsGenRef.current !== genId) return;
-      if (audioRef.current) return; // something already playing
-      const i = nextPlayIndexRef.current;
-      const slot = sentenceSlotsRef.current.get(i);
-      if (!slot) { finishIfDone(); return; } // not ready yet (or all done)
-      sentenceSlotsRef.current.delete(i);
-      if (slot.state === "failed") {
-        nextPlayIndexRef.current++;
-        maybePlay();
-        return;
-      }
-      playSlot(slot);
-    }
-
-    function playSlot(slot: Extract<SentenceSlot, { state: "ready" }>) {
-      const { audio, url, words, sentenceText } = slot;
-      audioRef.current = audio;
-      if (subModeRef.current === "live") liveSetAiSpeakingRef.current(true);
-      const base = slot.precedingText
-        ? slot.precedingText.replace(/\s+$/, "") + " "
-        : "";
-
-      if (karaokeRafRef.current != null) {
-        cancelAnimationFrame(karaokeRafRef.current);
-        karaokeRafRef.current = null;
-      }
-
-      // Karaoke: reveal words as they're spoken. Falls back to the whole
-      // sentence if no word timings came back.
-      if (words.length > 0) {
-        setBubble(base); // prior text only; this sentence fills in as spoken
-        const revealLoop = () => {
-          if (ttsGenRef.current !== genId) return;
-          const a = audioRef.current;
-          if (!a) return;
-          const t = a.currentTime;
-          let active = -1;
-          for (let k = 0; k < words.length; k++) {
-            if (words[k].start <= t) active = k; else break;
-          }
-          setBubble(base + words.slice(0, active + 1).map(w => w.text).join(" "));
-          karaokeRafRef.current = requestAnimationFrame(revealLoop);
-        };
-        karaokeRafRef.current = requestAnimationFrame(revealLoop);
-      } else {
-        setBubble(base + sentenceText);
-      }
-
-      let advanced = false;
-      const advance = () => {
-        if (advanced) return;
-        advanced = true;
-        if (karaokeRafRef.current != null) {
-          cancelAnimationFrame(karaokeRafRef.current);
-          karaokeRafRef.current = null;
-        }
-        // Ensure the full sentence shows once audio ends (rAF may stop a word short).
-        setBubble(base + (sentenceText || words.map(w => w.text).join(" ")));
-        URL.revokeObjectURL(url);
-        audioRef.current = null;
-        nextPlayIndexRef.current++;
-        maybePlay();
-      };
-      audio.onended = advance;
-      audio.onerror = advance;
-      audio.play().catch(advance);
-    }
-
-    try {
-      // /api/aida/tts-timed returns the full sentence audio + per-word timings
-      // in one JSON response, enabling karaoke word-by-word reveal.
-      const res = await fetch("/api/aida/tts-timed", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ text: sentence }),
-        signal:  ab.signal,
-      });
-      if (ttsGenRef.current !== genId) return;
-      if (!res.ok) { sentenceSlotsRef.current.set(seq, { state: "failed" }); maybePlay(); return; }
-
-      const data = await res.json() as {
-        audioBase64?: string;
-        words?: { text: string; start: number; end: number }[];
-      };
-      if (ttsGenRef.current !== genId) return;
-      if (!data.audioBase64) { sentenceSlotsRef.current.set(seq, { state: "failed" }); maybePlay(); return; }
-
-      const bin   = atob(data.audioBase64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const blob  = new Blob([bytes], { type: "audio/mpeg" });
-      const url   = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-
-      sentenceSlotsRef.current.set(seq, {
-        state:         "ready",
-        audio,
-        url,
-        words:         data.words ?? [],
-        precedingText: precedingText ?? "",
-        sentenceText:  sentence,
-      });
-      maybePlay();
-    } catch (err) {
-      if ((err as Error)?.name === "AbortError") return;
-      sentenceSlotsRef.current.set(seq, { state: "failed" });
-      maybePlay();
-    } finally {
-      pendingTtsSentencesRef.current = Math.max(0, pendingTtsSentencesRef.current - 1);
-      finishIfDone();
-    }
-  }
-
   // ── MediaRecorder-based STT (audio → Deepgram via /api/aida/stt) ─────────
   // Tap mic to start recording, tap stop to send, tap cancel to discard.
 
