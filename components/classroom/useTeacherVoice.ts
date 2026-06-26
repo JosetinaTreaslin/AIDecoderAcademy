@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLiveVoice } from "@/components/aida/voice/useLiveVoice";
-import type { LiveState } from "@/components/aida/voice/LiveVoiceSession";
+import { useLiveVoiceWS } from "@/components/aida/voice/useLiveVoiceWS";
+import type { LiveState } from "@/components/aida/voice/useLiveVoiceWS";
 
 export type VoiceState   = "idle" | "listening" | "processing" | "speaking";
 export type VoiceSubMode = "tap" | "live";
@@ -10,52 +10,31 @@ export type VoiceSubMode = "tap" | "live";
 const MUTE_KEY = "bhavna:voiceMute";
 
 // ── Module-level TTS playback state ─────────────────────────────────────────
-// Only one teacher ever speaks at a time, so playback state lives at module
-// scope — NOT inside the hook. This guarantees that ANY cleanup (even from a
-// freshly remounted hook instance — HMR, or TeacherCharacter remounting as the
-// classroom switches views) reliably halts audio an earlier instance started.
-// A per-instance ref could only ever see its own audio; an orphaned instance's
-// playback would run on forever.
+// Playback state lives at module scope so any remount of the hook reliably
+// halts audio from a previous instance. Uses Web Audio API for gapless PCM
+// playback (Cartesia pcm_f32le at 22050 Hz — same pipeline as AIDA live voice).
+const TTS_SAMPLE_RATE = 22050;
 let ttsGen = 0;
-let activeAudio: HTMLAudioElement | null = null;
-let activeQueue: { audio: HTMLAudioElement; url: string }[] = [];
 let activeTtsAbort: AbortController | null = null;
-// Word timings for the line currently being spoken (karaoke reveal).
-let activeWords: { text: string; start: number; end: number }[] = [];
-let activeDone = false;
+let audioCtx: AudioContext | null = null;
+let activeSources: AudioBufferSourceNode[] = [];
+let playbackTime = 0;
 
-/** Hard-stop all teacher TTS — current chunk, queued chunks, and the fetch. */
+function getOrCreateCtx(): AudioContext {
+  if (!audioCtx || audioCtx.state === "closed") {
+    const ACtx = (window.AudioContext ?? (window as any).webkitAudioContext) as typeof AudioContext;
+    audioCtx = new ACtx({ sampleRate: TTS_SAMPLE_RATE });
+  }
+  return audioCtx;
+}
+
+/** Hard-stop all teacher TTS — active sources and the fetch. */
 function haltTeacherTts() {
   ttsGen++;
   if (activeTtsAbort) { try { activeTtsAbort.abort(); } catch { /* noop */ } activeTtsAbort = null; }
-  if (activeAudio) { try { activeAudio.pause(); } catch { /* noop */ } activeAudio = null; }
-  for (const { audio, url } of activeQueue) {
-    try { audio.pause(); } catch { /* noop */ }
-    URL.revokeObjectURL(url);
-  }
-  activeQueue = [];
-  activeWords = [];
-  activeDone = false;
-}
-
-/** Char count to reveal, snapped to the last word whose audio timestamp has
- *  passed. Returns -1 when there are no word timings (caller shows full text).
- *  Reveals nothing until currentTime > 0 so text never leads the voice. */
-function teacherSpokenChars(): number {
-  if (activeWords.length === 0) return -1;
-  const fullLen = activeWords.map(w => w.text).join(" ").length;
-  if (activeDone) return fullLen;
-  if (!activeAudio) return 0;
-  const t = activeAudio.currentTime;
-  if (t <= 0) return 0;
-  let active = -1;
-  for (let i = 0; i < activeWords.length; i++) {
-    if (activeWords[i].start <= t) active = i; else break;
-  }
-  if (active < 0) return 0;
-  let n = active; // spaces between revealed words
-  for (let i = 0; i <= active; i++) n += activeWords[i].text.length;
-  return n;
+  activeSources.forEach(s => { try { s.stop(); } catch { /* noop */ } });
+  activeSources = [];
+  playbackTime = 0;
 }
 
 interface Options {
@@ -144,59 +123,85 @@ export function useTeacherVoice(opts: Options): UseTeacherVoiceReturn {
     setMicStream(null);
   }
 
-  // ── TTS: chunked-SSE playback (Bhavna voice via role "classroom") ────────
+  // ── TTS: Cartesia pcm_f32le via Web Audio API (gapless, low-latency) ────
   const speak = useCallback(async (text: string) => {
     if (mutedRef.current || !text.trim()) return;
-    haltTeacherTts();                       // stop anything already playing
-    const myGen = ttsGen;                   // haltTeacherTts already bumped it
+    haltTeacherTts();
+    const myGen = ttsGen; // haltTeacherTts already bumped it
     activeTtsAbort = new AbortController();
     const mySignal = activeTtsAbort.signal;
 
     try {
       setVoiceState("speaking");
-      // tts-timed returns the whole line's audio + per-word timings in one JSON
-      // response — enables karaoke reveal (text tracks the voice, never leads).
-      const res = await fetch("/api/aida/tts-timed", {
+      const ctx = getOrCreateCtx();
+      await ctx.resume();
+
+      const res = await fetch("/api/aida/tts", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ text, role: "classroom" }),
         signal:  mySignal,
       });
       if (ttsGen !== myGen) return;
-      if (!res.ok) throw new Error("TTS failed");
-      const data = await res.json() as {
-        audioBase64?: string;
-        words?: { text: string; start: number; end: number }[];
-      };
-      if (ttsGen !== myGen) return;
-      if (!data.audioBase64) throw new Error("TTS empty");
+      if (!res.ok || !res.body) throw new Error("TTS failed");
 
-      activeWords = data.words ?? [];
-      activeDone = false;
-
-      const bin = atob(data.audioBase64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const blob = new Blob([bytes], { type: "audio/mpeg" });
-      const url  = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      activeAudio = audio;
+      // Signal ai-speaking so DG interim can trigger barge-in.
       if (subModeRef.current === "live") liveSetSpeakingRef.current(true);
 
-      let advanced = false;
-      const advance = () => {
-        if (advanced) return; advanced = true;
-        activeDone = true; // keeps reveal at full text after playback ends
-        URL.revokeObjectURL(url);
-        if (activeAudio === audio) activeAudio = null;
-        if (ttsGen === myGen && voiceStateRef.current === "speaking") {
-          setVoiceState("idle");
-          if (subModeRef.current === "live") liveSetSpeakingRef.current(false);
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let streamDone = false;
+
+      function scheduleChunk(ab: ArrayBuffer) {
+        if (ttsGen !== myGen) return;
+        const f32     = new Float32Array(ab);
+        const audioBuf = ctx.createBuffer(1, f32.length, TTS_SAMPLE_RATE);
+        audioBuf.copyToChannel(f32, 0);
+        const src = ctx.createBufferSource();
+        src.buffer = audioBuf;
+        src.connect(ctx.destination);
+        const startAt = Math.max(ctx.currentTime + 0.08, playbackTime);
+        src.start(startAt);
+        playbackTime = startAt + audioBuf.duration;
+        activeSources.push(src);
+        src.onended = () => {
+          activeSources = activeSources.filter(s => s !== src);
+          if (activeSources.length === 0 && streamDone && ttsGen === myGen) {
+            setVoiceState("idle");
+            if (subModeRef.current === "live") liveSetSpeakingRef.current(false);
+          }
+        };
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (ttsGen !== myGen) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const evt = JSON.parse(line.slice(6));
+            if (evt.type === "chunk" && evt.data) {
+              const bin   = atob(evt.data);
+              const bytes = new Uint8Array(bin.length);
+              for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+              scheduleChunk(bytes.buffer);
+            }
+            if (evt.type === "done") streamDone = true;
+          } catch { /* malformed SSE line */ }
         }
-      };
-      audio.onended = advance;
-      audio.onerror = advance;
-      audio.play().catch(advance);
+      }
+
+      streamDone = true;
+      if (ttsGen !== myGen) return;
+      if (activeSources.length === 0) {
+        setVoiceState("idle");
+        if (subModeRef.current === "live") liveSetSpeakingRef.current(false);
+      }
     } catch (err) {
       if ((err as Error)?.name === "AbortError") return;
       if (ttsGen === myGen) {
@@ -268,10 +273,13 @@ export function useTeacherVoice(opts: Options): UseTeacherVoiceReturn {
   }, [flashError]);
 
   // ── Live call (reuses the persona-agnostic AIDA live engine) ─────────────
-  const live = useLiveVoice({
+  const live = useLiveVoiceWS({
+    // STT-only: server does Deepgram; Bhavna classroom handles LLM + TTS client-side.
+    mode: "stt",
     onFinalTranscript: t => onTranscriptRef.current(t),
     onInterrupt: () => {
       haltTeacherTts();
+      if (voiceStateRef.current === "speaking") setVoiceState("idle");
       onInterruptRef.current?.();
     },
     onError: err => flashError(err.message || "Live voice error."),
@@ -322,6 +330,6 @@ export function useTeacherVoice(opts: Options): UseTeacherVoiceReturn {
   return {
     voiceState, subMode, setSubMode, voiceOK, voiceError, muted, toggleMute,
     micStream, liveState: live.state, toggleTap, toggleLive, speak,
-    spokenChars: teacherSpokenChars, cleanup,
+    spokenChars: () => -1, cleanup,
   };
 }

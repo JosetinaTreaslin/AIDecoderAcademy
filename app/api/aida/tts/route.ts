@@ -1,58 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
-import { sanitizeTtsText } from "@/lib/classroomAudio";
 
 export const runtime = "nodejs";
 
-// Domi (Supportive) — Strong, confident, warm female. Reads as a slightly
-// older peer / supportive mentor — pairs with the AIDA "Curious Friend"
-// persona (see lib/aidaPersona.ts → AIDA_VOICE_AND_MANNER).
-const AIDA_VOICE_ID    = process.env.ELEVENLABS_AIDA_VOICE_ID    ?? "AZnzlk1XvdvUeBnXmlld";
-// George (Supportive) — Warm, captivating storyteller. British male,
-// middle-aged. Professorial without being harsh — pairs with the Validator
-// Teacher "Skeptical Mentor" persona (see lib/teacherPersona.ts →
-// TEACHER_VOICE_AND_MANNER).
-const TEACHER_VOICE_ID = process.env.ELEVENLABS_TEACHER_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
-// Rachel (21m00Tcm4TlvDq8ikWAM) — clear articulation of maths/science terms.
-// Matches BHAVNA_VOICE_ID in lib/classroomAudio.ts so all Bhavna surfaces use the same voice.
-const CLASSROOM_VOICE_ID = process.env.ELEVENLABS_CLASSROOM_VOICE_ID ?? "21m00Tcm4TlvDq8ikWAM";
-
-const ELEVENLABS_MODEL = "eleven_turbo_v2_5"; // ~275ms first-byte latency, better voice quality
-
-// Per-role voice tuning. Lower stability + higher style = more emotional
-// range (good for AIDA's friend energy). Higher stability + lower style =
-// more measured (good for the Teacher's mentor weight).
-const VOICE_SETTINGS = {
-  aida: {
-    stability:        0.4,
-    similarity_boost: 0.7,
-    style:            0.3,
-    use_speaker_boost: true,
-  },
-  teacher: {
-    stability:        0.65,
-    similarity_boost: 0.8,
-    style:            0.15,
-    use_speaker_boost: true,
-  },
-  classroom: {
-    // Bhavna — warm, storytelling. Slightly looser stability than the
-    // skeptical-mentor validator voice to let warmth come through.
-    stability:        0.55,
-    similarity_boost: 0.85,
-    style:            0.25,
-    use_speaker_boost: true,
-  },
-} as const;
-
-// Split text into sentence-sized chunks so the first sentence's audio starts
-// playing while later sentences are still generating.
-function splitIntoChunks(text: string): string[] {
-  const parts = text
-    .trim()
-    .split(/(?<=[.!?])\s+/)
-    .filter(p => p.trim().length > 0);
-  return parts.length > 0 ? parts : [text.trim()].filter(Boolean);
-}
+// Cartesia voice IDs per persona. All fall back to CARTESIA_VOICE_ID if not set.
+const VOICE_IDS: Record<string, string> = {
+  aida:      process.env.CARTESIA_VOICE_ID           ?? "",
+  teacher:   process.env.CARTESIA_TEACHER_VOICE_ID   ?? process.env.CARTESIA_VOICE_ID ?? "",
+  classroom: process.env.CARTESIA_CLASSROOM_VOICE_ID ?? process.env.CARTESIA_VOICE_ID ?? "",
+};
 
 export async function POST(req: Request) {
   try {
@@ -60,79 +15,74 @@ export async function POST(req: Request) {
     if (!userId) return new Response("Unauthorized", { status: 401 });
 
     let body: { text?: string; role?: string } = {};
-    try { body = await req.json(); } catch { /* bad JSON — fall through to empty-check */ }
+    try { body = await req.json(); } catch { /* bad JSON */ }
     const text = typeof body?.text === "string" ? body.text.trim() : "";
-    const role = body?.role as "aida" | "teacher" | "classroom" | undefined;
+    const role = (body?.role as string) ?? "aida";
     if (!text) return new Response("Bad request", { status: 400 });
 
-    if (!process.env.ELEVENLABS_API_KEY) {
-      console.error("[AIDA TTS] ELEVENLABS_API_KEY is not set in environment");
+    if (!process.env.CARTESIA_API_KEY) {
+      console.error("[TTS] CARTESIA_API_KEY not set");
       return new Response("TTS not configured", { status: 503 });
     }
 
-    const voiceId =
-      role === "teacher"   ? TEACHER_VOICE_ID :
-      role === "classroom" ? CLASSROOM_VOICE_ID :
-                             AIDA_VOICE_ID;
-    const voiceSettings =
-      role === "teacher"   ? VOICE_SETTINGS.teacher :
-      role === "classroom" ? VOICE_SETTINGS.classroom :
-                             VOICE_SETTINGS.aida;
-    const chunks  = splitIntoChunks(text.slice(0, 4096));
-    const encoder = new TextEncoder();
+    const voiceId = VOICE_IDS[role] || VOICE_IDS.aida;
 
-    let cancelled = false;
+    const cartesiaRes = await fetch("https://api.cartesia.ai/tts/sse", {
+      method: "POST",
+      headers: {
+        "Authorization":    `Bearer ${process.env.CARTESIA_API_KEY}`,
+        "Cartesia-Version": "2024-06-10",
+        "Content-Type":     "application/json",
+      },
+      body: JSON.stringify({
+        model_id:      "sonic-2",
+        transcript:    text,
+        voice:         { mode: "id", id: voiceId },
+        output_format: { container: "raw", encoding: "pcm_f32le", sample_rate: 22050 },
+        stream:        true,
+      }),
+      signal: req.signal,
+    });
+
+    if (!cartesiaRes.ok) {
+      const err = await cartesiaRes.text().catch(() => "");
+      console.error(`[TTS] Cartesia ${cartesiaRes.status}:`, err.slice(0, 200));
+      return new Response("TTS upstream error", { status: 502 });
+    }
+
+    // Proxy the Cartesia SSE stream straight to the client.
+    // Each event: data: {"type":"chunk","data":"<base64_pcm_f32le>"}
+    // Final event: data: {"type":"done"}
+    const encoder = new TextEncoder();
+    const body2   = cartesiaRes.body!;
+
     const readable = new ReadableStream({
       async start(controller) {
+        const reader  = body2.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
         try {
-          for (const chunk of chunks) {
-            if (cancelled || req.signal.aborted) break;
-            try {
-              const res = await fetch(
-                `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
-                {
-                  method:  "POST",
-                  signal:  req.signal,
-                  headers: {
-                    "xi-api-key":   process.env.ELEVENLABS_API_KEY ?? "",
-                    "Content-Type": "application/json",
-                    "Accept":       "audio/mpeg",
-                  },
-                  body: JSON.stringify({
-                    text:           sanitizeTtsText(chunk),
-                    model_id:       ELEVENLABS_MODEL,
-                    voice_settings: voiceSettings,
-                    speed:          0.78,
-                  }),
-                }
-              );
-
-              if (!res.ok) {
-                const errBody = await res.text().catch(() => "");
-                console.error(`[AIDA TTS] ElevenLabs ${res.status}:`, errBody.slice(0, 200));
-                continue;
-              }
-
-              if (cancelled || req.signal.aborted) break;
-              const b64 = Buffer.from(await res.arrayBuffer()).toString("base64");
-              controller.enqueue(encoder.encode(`data: ${b64}\n\n`));
-            } catch (err: unknown) {
-              if ((err as { name?: string }).name === "AbortError") break;
-              console.error("[AIDA TTS] chunk fetch failed:", err);
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split("\n");
+            buf = lines.pop() ?? "";
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              controller.enqueue(encoder.encode(line + "\n\n"));
             }
           }
-          if (!cancelled) {
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-            controller.close();
-          }
+          controller.enqueue(encoder.encode('data: {"type":"done"}\n\n'));
+          controller.close();
         } catch (err: unknown) {
-          if ((err as { name?: string }).name !== "AbortError") {
-            console.error("[AIDA TTS] stream start failed:", err);
-          }
+          if ((err as { name?: string }).name !== "AbortError") console.error("[TTS]", err);
           try { controller.close(); } catch { /* already closed */ }
+        } finally {
+          reader.cancel().catch(() => {});
         }
       },
-      cancel() { cancelled = true; },
+      cancel() { body2.cancel().catch(() => {}); },
     });
 
     return new Response(readable, {
@@ -143,7 +93,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    console.error("[AIDA TTS]", err);
+    console.error("[TTS]", err);
     return new Response("Internal server error", { status: 500 });
   }
 }

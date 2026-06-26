@@ -39,6 +39,7 @@ export interface ClassroomTurn {
 }
 
 export interface ClassroomSnapshot {
+  activeChapter?: { title: string; subject?: string };
   lastLesson: {
     topic:      string;
     summary:    string;
@@ -177,6 +178,8 @@ export function useClassroomWriter() {
         lastInteraction: new Date().toISOString(),
         lastLesson: lesson,
       })),
+    setChapter: (title: string, subject?: string) =>
+      setClassroom(prev => ({ ...prev, activeChapter: { title, subject } })),
     reset: () => setClassroom(EMPTY_CLASSROOM),
   }), [setClassroom]);
 }

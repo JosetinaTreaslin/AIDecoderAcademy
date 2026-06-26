@@ -18,6 +18,7 @@ import type { Message }  from "@/components/playground/useChat";
 import ReactMarkdown from "react-markdown";
 import { AudioPlayer, type AudioData } from "@/components/playground/AudioPlayer";
 import type { Chapter, Profile, OutputType } from "@/types";
+import { useClassroomWriter } from "@/lib/chatChannels";
 
 interface Props {
   chapter: Chapter;
@@ -150,6 +151,11 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [mindmapResults,   setMindmapResults]   = useState<Record<string, MindmapResult>>({});
   const [mindmapModalData, setMindmapModalData] = useState<{ topic: string; root: MindMapNode } | null>(null);
   const [panelFilter,   setPanelFilter]   = useState<"notes" | "flashcards" | "blog" | "mindmap">("notes");
+
+  const classroomWriter = useClassroomWriter();
+  useEffect(() => {
+    classroomWriter.setChapter(chapter.chapter_title, chapter.subject);
+  }, [chapter.chapter_title, chapter.subject]);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -1735,6 +1741,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
+
 
     </div>
   );

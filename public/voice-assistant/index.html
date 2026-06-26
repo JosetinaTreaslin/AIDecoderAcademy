@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Assistant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Voice Assistant</h1>
+      <div class="status-bar">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Ready</span>
+      </div>
+    </header>
+
+    <div class="transcript" id="transcript">
+      <div class="hint">Press Start and speak — the assistant will listen continuously.</div>
+    </div>
+
+    <div class="interim-wrap">
+      <span id="interim"></span>
+    </div>
+
+    <div class="controls">
+      <button class="toggle-btn" id="toggleBtn">Start</button>
+      <button class="secondary-btn" id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
