@@ -903,6 +903,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                   return;
                 }
                 setMode("notes");
+                setFlashcardMode(false); setBlogMode(false); setMindmapMode(false);
                 setAudioOverviewMode(true);
                 setMessages(prev => [...prev, {
                   id: crypto.randomUUID(), role: "assistant", outputType: "text",
@@ -1430,32 +1431,27 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
         {/* ── Audio Overview active chip ─────────────────────────────────────── */}
         {audioOverviewMode && (
-          <div style={{ flexShrink:0, padding:"0 4px 6px" }}>
-            <motion.div
-              initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full w-fit"
-              style={{ background:"linear-gradient(180deg, rgba(200,168,75,0.22), rgba(200,168,75,0.10))",
-                border:"1px solid rgba(200,168,75,0.55)",
-                boxShadow:"0 0 16px rgba(200,168,75,0.35)" }}>
-              <motion.span style={{ width:7, height:7, borderRadius:"50%", background:"#C8A84B", display:"inline-block" }}
-                animate={{ opacity:[0.4,1,0.4] }} transition={{ duration:1.4, repeat:Infinity }} />
-              <span className="text-xs font-semibold" style={{ color:"#F4E4B8" }}>
-                🎧 Audio Overview ON — every message becomes an overview
-              </span>
-              <button
-                onClick={() => {
-                  setAudioOverviewMode(false);
-                  setMessages(prev => [...prev, {
-                    id: crypto.randomUUID(), role: "assistant", outputType: "text",
-                    content: "✅ Exited Audio Overview mode — back to normal chat.",
-                    createdAt: new Date(),
-                  } as ClassroomMessage]);
-                }}
-                className="text-xs font-bold ml-1 px-2 py-0.5 rounded-full hover:opacity-80"
-                style={{ background:"rgba(200,168,75,0.85)", color:"#1a1206" }}>
-                Exit
-              </button>
-            </motion.div>
+          <div className="flex items-center justify-between" style={{ padding:"0 4px 6px" }}>
+            <span
+              className="text-xs font-bold px-2.5 py-1 rounded-full"
+              style={{ background:"rgba(200,168,75,0.16)", border:"1px solid rgba(200,168,75,0.4)", color:"#C8A84B", fontFamily:"'DM Sans',sans-serif" }}
+            >
+              🎧 Audio Overview ON — every message becomes an overview
+            </span>
+            <button
+              onClick={() => {
+                setAudioOverviewMode(false);
+                setMessages(prev => [...prev, {
+                  id: crypto.randomUUID(), role: "assistant", outputType: "text",
+                  content: "✅ Exited Audio Overview mode — back to normal chat.",
+                  createdAt: new Date(),
+                } as ClassroomMessage]);
+              }}
+              className="text-xs font-semibold px-2.5 py-1 rounded-full transition-colors hover:bg-white/10"
+              style={{ color:"rgba(255,255,255,0.5)", fontFamily:"'DM Sans',sans-serif" }}
+            >
+              Exit
+            </button>
           </div>
         )}
 
