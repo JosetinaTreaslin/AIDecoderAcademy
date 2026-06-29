@@ -187,7 +187,13 @@ export default function SignInPage() {
           {/* ── Forgot password: step 1 — email ── */}
           {forgotMode && resetStep === "email" && (
             <form onSubmit={handleForgotEmail} className="space-y-4">
-              <button type="button" onClick={() => { setForgotMode(false); setResetStep("email"); setError(""); }}
+              <button type="button" onClick={() => {
+                  // A reset_password_email_code attempt may already be in progress for this
+                  // identifier — Clerk has no public API to discard it, and reusing the same
+                  // signIn resource for a password login afterwards fails with "Invalid
+                  // verification strategy". Hard reload forces a fresh signIn resource.
+                  window.location.href = window.location.pathname;
+                }}
                 className="text-xs font-semibold flex items-center gap-1 hover:underline"
                 style={{ color: ACCENT }}>← Back to sign in</button>
               <h2 className="font-display font-black text-lg" style={{ color: "#1a1a2e" }}>Reset your password</h2>
