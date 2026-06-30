@@ -10,12 +10,12 @@ import type { OutputType, Creation } from "@/types";
 
 // ── Output-type colour registry ──────────────────────────────────────────────
 const OUTPUT_META: Record<string, { glowColor: string; glowRgb: string }> = {
-  slides: { glowColor: "#ffb400", glowRgb: "255,180,0"   },
-  audio:  { glowColor: "#00aaff", glowRgb: "0,170,255"   },
-  image:  { glowColor: "#ff4488", glowRgb: "255,68,136"  },
-  video:  { glowColor: "#ff7800", glowRgb: "255,120,0"   },
-  text:   { glowColor: "#a855f7", glowRgb: "168,85,247"  },
-  json:   { glowColor: "#00ff64", glowRgb: "0,255,100"   },
+  slides: { glowColor: "#6366f1", glowRgb: "99,102,241"  },
+  audio:  { glowColor: "#22d3ee", glowRgb: "34,211,238"  },
+  image:  { glowColor: "#f472b6", glowRgb: "244,114,182" },
+  video:  { glowColor: "#fb923c", glowRgb: "251,146,60"  },
+  text:   { glowColor: "#a78bfa", glowRgb: "167,139,250" },
+  json:   { glowColor: "#4ade80", glowRgb: "74,222,128"  },
 };
 
 // ── Left-panel hotspot zones — visible for calibration, will be made invisible after ──
@@ -25,12 +25,12 @@ const SHELF_HOTSPOTS: {
   glowColor: string; glowRgb: string;
   top: string; height: string; left: string; width: string;
 }[] = [
-  { id:"audio",  label:"AUDIO",  glowColor:"#00aaff", glowRgb:"0,170,255",   top:"48%",  height:"7%", left:"2%", width:"3%" },
-  { id:"image",  label:"IMAGE",  glowColor:"#ff4488", glowRgb:"255,68,136",  top:"25%",  height:"6%", left:"11%",  width:"3%" },
-  { id:"video",  label:"VIDEO",  glowColor:"#ff7800", glowRgb:"255,120,0",   top:"47%", height:"6%", left:"11%", width:"3%" },
-  { id:"json",   label:"SCRIPT", glowColor:"#00ff64", glowRgb:"0,255,100",   top:"24%", height:"7%", left:"2%",  width:"3%" },
-  { id:"text",   label:"TEXT",   glowColor:"#a855f7", glowRgb:"168,85,247", top:"16%", height:"7%", left:"6.4%", width:"4%" },
-  { id:"slides", label:"SLIDE",  glowColor:"#ffb400", glowRgb:"255,180,0",   top:"57%", height:"7%", left:"6%",  width:"4%" },
+  { id:"audio",  label:"AUDIO",  glowColor:"#22d3ee", glowRgb:"34,211,238",  top:"48%",  height:"7%", left:"2%", width:"3%" },
+  { id:"image",  label:"IMAGE",  glowColor:"#f472b6", glowRgb:"244,114,182", top:"25%",  height:"6%", left:"11%",  width:"3%" },
+  { id:"video",  label:"VIDEO",  glowColor:"#fb923c", glowRgb:"251,146,60",  top:"47%", height:"6%", left:"11%", width:"3%" },
+  { id:"json",   label:"SCRIPT", glowColor:"#4ade80", glowRgb:"74,222,128",  top:"24%", height:"7%", left:"2%",  width:"3%" },
+  { id:"text",   label:"TEXT",   glowColor:"#a78bfa", glowRgb:"167,139,250", top:"16%", height:"7%", left:"6.4%", width:"4%" },
+  { id:"slides", label:"SLIDE",  glowColor:"#6366f1", glowRgb:"99,102,241",  top:"57%", height:"7%", left:"6%",  width:"4%" },
 ];
 
 // ── Bottom tray hotspot zones — visible for calibration, will be made invisible after ──
@@ -40,23 +40,12 @@ const BOTTOM_TRAY_HOTSPOTS: {
   glowColor: string; glowRgb: string;
   top: string; height: string; left: string; width: string;
 }[] = [
-  { id:"audio",  label:"Audio",  glowColor:"#00aaff", glowRgb:"0,170,255",   top:"77%", height:"15%", left:"37%", width:"8%" },
-  { id:"text",   label:"Text",   glowColor:"#a855f7", glowRgb:"168,85,247", top:"77%", height:"15%", left:"47%", width:"8%" },
-  { id:"image",  label:"Image",  glowColor:"#ff4488", glowRgb:"255,68,136",  top:"77%", height:"15%", left:"57%", width:"8%" },
-  { id:"json",   label:"JSON",   glowColor:"#00ff64", glowRgb:"0,255,100",   top:"77%", height:"15%", left:"66%", width:"8%" },
-  { id:"video",  label:"Video",  glowColor:"#ff7800", glowRgb:"255,120,0",   top:"77%", height:"15%", left:"75%", width:"9%" },
-  { id:"slides", label:"Slides", glowColor:"#ffb400", glowRgb:"255,180,0",   top:"77%", height:"15%", left:"86%", width:"9%" },
-];
-
-// ── Center shelf rows — empty shelves in the right column of the bookcase ────
-// Creations from the selected hotspot type are displayed here (2 per row × 6 rows = 12 slots)
-const CENTER_SHELF_ROWS: { top: string; height: string }[] = [
-  { top: "8%", height: "13%" },
-  { top: "20%", height: "13%" },
-  { top: "32%", height: "13%" },
-  { top: "44%", height: "13%" },
-  { top: "56%", height: "13%" },
-  
+  { id:"audio",  label:"Audio",  glowColor:"#22d3ee", glowRgb:"34,211,238",  top:"77%", height:"15%", left:"37%", width:"8%" },
+  { id:"text",   label:"Text",   glowColor:"#a78bfa", glowRgb:"167,139,250", top:"77%", height:"15%", left:"47%", width:"8%" },
+  { id:"image",  label:"Image",  glowColor:"#f472b6", glowRgb:"244,114,182", top:"77%", height:"15%", left:"57%", width:"8%" },
+  { id:"json",   label:"JSON",   glowColor:"#4ade80", glowRgb:"74,222,128",  top:"77%", height:"15%", left:"66%", width:"8%" },
+  { id:"video",  label:"Video",  glowColor:"#fb923c", glowRgb:"251,146,60",  top:"77%", height:"15%", left:"75%", width:"9%" },
+  { id:"slides", label:"Slides", glowColor:"#6366f1", glowRgb:"99,102,241",  top:"77%", height:"15%", left:"86%", width:"9%" },
 ];
 
 // ── Floor objects (left → right across the floor) ────────────────────────────
@@ -67,13 +56,50 @@ const FLOOR_OBJECTS: {
   blend: "screen" | "normal"; glowColor: string; glowRgb: string;
   vw: string; // responsive width, e.g. "9vw"
 }[] = [
-  { key:"phones", id:"audio",  label:"Audio",  src:"/arena1/headphones.png",   blend:"screen", glowColor:"#00aaff", glowRgb:"0,170,255",   vw:"10vw"  },
-  { key:"slide",  id:"slides", label:"Slides", src:"/arena1/slide.png",         blend:"normal", glowColor:"#ffb400", glowRgb:"255,180,0",   vw:"15vw" },
-  { key:"text",   id:"text",   label:"Text",   src:"/arena1/book.png",          blend:"normal", glowColor:"#a855f7", glowRgb:"168,85,247", vw:"8vw" },
-  { key:"camera", id:"image",  label:"Image",  src:"/arena1/camera.png",        blend:"screen", glowColor:"#ff4488", glowRgb:"255,68,136",  vw:"8vw" },
-  { key:"clap",   id:"video",  label:"Video",  src:"/arena1/clapperboard.png",  blend:"screen", glowColor:"#ff7800", glowRgb:"255,120,0",   vw:"10vw" },
-  { key:"js",     id:"json",   label:"JSON",   src:"/arena1/jscube.png",        blend:"screen", glowColor:"#00ff64", glowRgb:"0,255,100",   vw:"10vw" },
+  { key:"phones", id:"audio",  label:"Audio",  src:"/arena1/headphones.png",   blend:"screen", glowColor:"#22d3ee", glowRgb:"34,211,238",  vw:"10vw"  },
+  { key:"slide",  id:"slides", label:"Slides", src:"/arena1/slide.png",         blend:"normal", glowColor:"#6366f1", glowRgb:"99,102,241",  vw:"15vw" },
+  { key:"text",   id:"text",   label:"Text",   src:"/arena1/book.png",          blend:"normal", glowColor:"#a78bfa", glowRgb:"167,139,250", vw:"8vw" },
+  { key:"camera", id:"image",  label:"Image",  src:"/arena1/camera.png",        blend:"screen", glowColor:"#f472b6", glowRgb:"244,114,182", vw:"8vw" },
+  { key:"clap",   id:"video",  label:"Video",  src:"/arena1/clapperboard.png",  blend:"screen", glowColor:"#fb923c", glowRgb:"251,146,60",  vw:"10vw" },
+  { key:"js",     id:"json",   label:"JSON",   src:"/arena1/jscube.png",        blend:"screen", glowColor:"#4ade80", glowRgb:"74,222,128",  vw:"10vw" },
 ];
+
+// ── Shelf row helpers — icon + one-line summary for the left-icon/right-detail layout ──
+function shelfTypeEmoji(t: string): string {
+  switch (t) {
+    case "audio":  return "🎙️";
+    case "slides": return "📊";
+    case "json":   return "🧾";
+    case "video":  return "🎬";
+    case "image":  return "🖼️";
+    default:       return "📝";
+  }
+}
+
+function shelfPreviewText(c: Creation): string {
+  if (c.output_type === "audio") {
+    try {
+      const p = JSON.parse(c.content);
+      return (p?.script?.narrator_text ?? "").trim() || "Audio scene";
+    } catch { return "Audio scene"; }
+  }
+  if (c.output_type === "slides") {
+    try {
+      const p = JSON.parse(c.content);
+      const count = (p?.sections ?? []).length;
+      return count ? `${count} slide section${count === 1 ? "" : "s"}` : "Slide deck";
+    } catch { return "Slide deck"; }
+  }
+  if (c.output_type === "json") {
+    try {
+      const parsed = JSON.parse(c.content);
+      const keys = Object.keys(parsed).slice(0, 3);
+      return keys.length ? keys.join(", ") : "JSON data";
+    } catch { return c.content.slice(0, 60); }
+  }
+  if (c.output_type === "image") return "Tap to preview";
+  return c.content.replace(/__attach:[^_]+__/g, "").trim().slice(0, 70) || "—";
+}
 
 // ── Shelf thumbnail — rich visual preview for each output type ───────────────
 function ShelfThumbnail({ c, glowColor, glowRgb }: { c: Creation; glowColor: string; glowRgb: string }) {
@@ -1269,6 +1295,13 @@ export function CreationsRoom({
           from { opacity: 0; transform: translateX(-50%) translateY(8px); }
           to   { opacity: 1; transform: translateX(-50%) translateY(0);   }
         }
+        .shelf-scroll {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .shelf-scroll::-webkit-scrollbar {
+          display: none;
+        }
       `}</style>
 
       {/* Background room */}
@@ -1336,98 +1369,111 @@ export function CreationsRoom({
       </div>
 
       {/* ── Center shelf creations (desktop only) ────────────────────────── */}
-      {/*   Shows 2 creations per shelf row for the selected hotspot type.   */}
-      {/*   Positioned on the empty-shelf column of the bookcase (~22-37%).  */}
+      {/*   Scrollable (hidden scrollbar) list of every creation of the       */}
+      {/*   selected hotspot type — no longer capped at 5 visible slots.      */}
+      {/*   Positioned on the empty-shelf column of the bookcase (~22-37%).   */}
       {selectedShelfType && (() => {
         const meta = OUTPUT_META[selectedShelfType];
         const filtered = creations.filter(c => c.output_type === selectedShelfType);
         return (
           <div
             className="hidden lg:block"
-            style={{ position: "absolute", left: "16.5%", top: "9%", width: "17%", height: "72%", zIndex: 13 }}
+            style={{ position: "absolute", left: "16.5%", top: "9%", width: "17%", height: "72%", zIndex: 13, boxSizing: "border-box" }}
           >
-            {CENTER_SHELF_ROWS.map((row, rowIdx) => {
-              const pair = filtered.slice(rowIdx * 2, rowIdx * 2 + 2);
-              return (
-                <div key={rowIdx} style={{
-                  position: "absolute",
-                  top: row.top, height: row.height, left: "5%", right: "5%",
-                  display: "flex", alignItems: "center", gap: "6%",
-                }}>
-                  {[0, 1].map(slot => {
-                    const c = pair[slot];
-                    if (!c) {
-                      // Empty slot — subtle placeholder
-                      return (
-                        <div key={slot} style={{
-                          flex: 1, height: "75%",
-                          borderRadius: 6,
-                          border: `1px dashed rgba(${meta.glowRgb},0.18)`,
-                        }} />
-                      );
-                    }
-                    return (
-                      <button
-                        key={c.id}
-                        draggable
-                        onClick={() => {
-                          if (c.output_type === "image") {
-                            const src = c.file_url ?? (typeof c.content === "string" ? c.content.trim() : undefined);
-                            if (src) { setPreviewImgUrl(src); return; }
-                          }
-                          injectCreation(c);
-                        }}
-                        onDragStart={e => {
-                          e.dataTransfer.setData("application/creation", JSON.stringify(c));
-                          e.dataTransfer.effectAllowed = "copy";
-                        }}
-                        title={c.output_type === "image" ? `Preview "${c.title}" — drag to use in prompt` : `Use "${c.title}" — click or drag to prompt`}
-                        style={{
-                          flex: 1, height: "75%",
-                          background: "none", border: "none", padding: 0,
-                          cursor: c.output_type === "image" ? "pointer" : "grab",
-                          display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                          transition: "transform 0.2s ease",
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.1) translateY(-4px)")}
-                        onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-                      >
-                        {/* Thumbnail card */}
-                        <div style={{
-                          width: "100%", flex: 1,
-                          borderRadius: 6, overflow: "hidden",
-                          background: `rgba(${meta.glowRgb},0.15)`,
-                          border: `1.5px solid rgba(${meta.glowRgb},0.5)`,
-                          boxShadow: `0 0 10px rgba(${meta.glowRgb},0.3)`,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          position: "relative",
-                        }}>
-                          <ShelfThumbnail c={c} glowColor={meta.glowColor} glowRgb={meta.glowRgb} />
-                          {/* Drag hint overlay */}
-                          <div style={{
-                            position: "absolute", inset: 0,
-                            background: `rgba(${meta.glowRgb},0.0)`,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            opacity: 0, transition: "opacity 0.2s",
-                          }}
-                            className="drag-hint"
-                          />
-                        </div>
-                        {/* Title */}
-                        <p style={{
-                          fontSize: 7, fontWeight: 700, margin: 0,
-                          color: meta.glowColor, maxWidth: "100%",
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          textShadow: `0 0 8px rgba(${meta.glowRgb},0.8)`,
-                        }}>
-                          {c.title.slice(0, 10)}
-                        </p>
-                      </button>
-                    );
-                  })}
+            <div
+              className="shelf-scroll"
+              style={{
+                width: "100%", height: "100%", boxSizing: "border-box",
+                overflowY: "auto", overflowX: "hidden",
+                display: "flex", flexDirection: "column", gap: 10,
+                // Extra top padding keeps the list below the "AI Explorer Creations"
+                // title that's painted into the empty_room.png board art — without
+                // it the first card scrolls up under the title and hides it.
+                padding: "18% 5% 4%",
+              }}
+            >
+              {filtered.length === 0 ? (
+                <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.55)", textAlign: "center", padding: "16px 4px" }}>
+                  No {selectedShelfType} creations yet
                 </div>
-              );
-            })}
+              ) : filtered.map(c => (
+                <button
+                  key={c.id}
+                  draggable
+                  onClick={() => {
+                    if (c.output_type === "image") {
+                      const src = c.file_url ?? (typeof c.content === "string" ? c.content.trim() : undefined);
+                      if (src) { setPreviewImgUrl(src); return; }
+                    }
+                    injectCreation(c);
+                  }}
+                  onDragStart={e => {
+                    e.dataTransfer.setData("application/creation", JSON.stringify(c));
+                    e.dataTransfer.effectAllowed = "copy";
+                  }}
+                  title={c.output_type === "image" ? `Preview "${c.title}" — drag to use in prompt` : `Use "${c.title}" — click or drag to prompt`}
+                  style={{
+                    width: "100%", height: 60, flexShrink: 0, maxWidth: "100%", boxSizing: "border-box",
+                    background: `rgba(${meta.glowRgb},0.16)`,
+                    border: `1.5px solid rgba(${meta.glowRgb},0.7)`,
+                    boxShadow: `0 0 10px rgba(${meta.glowRgb},0.35)`,
+                    borderRadius: 8, padding: "4px 6px",
+                    cursor: c.output_type === "image" ? "pointer" : "grab",
+                    display: "flex", alignItems: "center", gap: 6,
+                    overflow: "hidden",
+                    transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = "scale(1.04)";
+                    e.currentTarget.style.boxShadow = `0 0 16px rgba(${meta.glowRgb},0.55)`;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = "scale(1)";
+                    e.currentTarget.style.boxShadow = `0 0 10px rgba(${meta.glowRgb},0.35)`;
+                  }}
+                >
+                  {/* Left — image preview / type icon */}
+                  <div style={{
+                    width: "34%", height: "100%", flexShrink: 0, boxSizing: "border-box",
+                    borderRadius: 6, overflow: "hidden",
+                    background: "rgba(0,0,0,0.35)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {c.output_type === "image" && (c.file_url ?? (typeof c.content === "string" ? c.content.trim() : "")) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={c.file_url ?? c.content.trim()}
+                        alt={c.title}
+                        draggable={false}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: 18 }}>{shelfTypeEmoji(c.output_type)}</span>
+                    )}
+                  </div>
+
+                  {/* Right — name then detail, dark text, no shadow */}
+                  <div style={{
+                    flex: 1, minWidth: 0, height: "100%", boxSizing: "border-box",
+                    display: "flex", flexDirection: "column", justifyContent: "center",
+                    alignItems: "flex-start", gap: 3, overflow: "hidden",
+                  }}>
+                    <span style={{
+                      fontSize: 13, fontWeight: 800, color: "#1a1a2e", maxWidth: "100%",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {c.title}
+                    </span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 500, color: "#475569", maxWidth: "100%",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {shelfPreviewText(c)}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         );
       })()}
