@@ -1292,8 +1292,9 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
       {/* Header — brushed-chrome strip with cyan rim and Syne / JetBrains Mono
           typography. Matches the playground center-panel tool-tray pattern. */}
       <div
-        className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
+        className="flex items-center flex-shrink-0"
         style={{
+          gap: "1.3vmin", padding: "1.3vmin 1.8vmin",
           borderBottom: "1px solid rgba(0,212,255,0.28)",
           background:
             "linear-gradient(180deg, " +
@@ -1305,8 +1306,9 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
         }}
       >
         <div
-          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+          className="rounded-full flex items-center justify-center flex-shrink-0"
           style={{
+            width: "4vmin", height: "4vmin",
             background:
               "linear-gradient(135deg, #7DD3FC 0%, #00D4FF 45%, #0284C7 100%)",
             boxShadow:
@@ -1316,27 +1318,29 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
               "0 0 32px rgba(125,211,252,0.35)",
           }}
         >
-          <span className="text-base" style={{ color: "#031024", textShadow: "0 0 6px rgba(255,255,255,0.6)" }}>✦</span>
+          <span style={{ color: "#031024", textShadow: "0 0 6px rgba(255,255,255,0.6)", fontSize: "1.8vmin" }}>✦</span>
         </div>
         <div className="leading-tight">
           <p
-            className="text-[9px] text-white/45"
+            className="text-white/45"
             style={{
               fontFamily: "'JetBrains Mono', monospace",
               letterSpacing: "0.22em",
               textTransform: "uppercase",
+              fontSize: "1vmin",
             }}
           >
             AI Assistant
           </p>
-          <p className="text-sm font-display font-extrabold text-white tracking-tight">AIDA</p>
+          <p className="font-display font-extrabold text-white tracking-tight" style={{ fontSize: "1.6vmin" }}>AIDA</p>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center" style={{ gap: "0.9vmin" }}>
           {voiceOK && (
             <div
-              className="flex items-center gap-0.5 rounded-lg p-0.5"
+              className="flex items-center rounded-lg"
               style={{
+                gap: "0.2vmin", padding: "0.2vmin",
                 background: "rgba(8,16,32,0.55)",
                 border:     "1px solid rgba(0,212,255,0.22)",
                 boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.08)",
@@ -1344,58 +1348,62 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
             >
               <button
                 onClick={() => switchMode("text")}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] transition-all duration-200"
-                style={mode === "text"
+                className="flex items-center rounded-md transition-all duration-200"
+                style={{ gap: "0.4vmin", padding: "0.4vmin 0.9vmin", fontSize: "1.1vmin",
+                  ...(mode === "text"
                   ? {
                       background: "linear-gradient(180deg, #7DD3FC 0%, #00D4FF 50%, #0284C7 100%)",
                       color: "#031024",
                       fontWeight: 700,
                       boxShadow: "0 0 12px rgba(0,212,255,0.55), inset 0 1px 0 rgba(255,255,255,0.35)",
                     }
-                  : { color: "rgba(255,255,255,0.45)" }}
+                  : { color: "rgba(255,255,255,0.45)" }) }}
               >
-                <MessageSquare size={9} />
+                <MessageSquare size="1vmin" />
                 Text
               </button>
               <button
                 onClick={() => switchMode("voice")}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] transition-all duration-200"
-                style={mode === "voice"
+                className="flex items-center rounded-md transition-all duration-200"
+                style={{ gap: "0.4vmin", padding: "0.4vmin 0.9vmin", fontSize: "1.1vmin",
+                  ...(mode === "voice"
                   ? {
                       background: "linear-gradient(180deg, #7DD3FC 0%, #00D4FF 50%, #0284C7 100%)",
                       color: "#031024",
                       fontWeight: 700,
                       boxShadow: "0 0 12px rgba(0,212,255,0.55), inset 0 1px 0 rgba(255,255,255,0.35)",
                     }
-                  : { color: "rgba(255,255,255,0.45)" }}
+                  : { color: "rgba(255,255,255,0.45)" }) }}
               >
-                <Mic size={9} />
+                <Mic size="1vmin" />
                 Voice
               </button>
             </div>
           )}
           {/* Status pill — emerald dot + LIVE label in JetBrains Mono */}
           <div
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md"
+            className="flex items-center rounded-md"
             style={{
+              gap: "0.4vmin", padding: "0.2vmin 0.7vmin",
               background: "rgba(16,185,129,0.10)",
               border: "1px solid rgba(16,185,129,0.28)",
             }}
           >
-            <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="rounded-full bg-emerald-400 animate-pulse" style={{ width: "0.4vmin", height: "0.4vmin" }} />
             <span
-              className="text-[8px] text-emerald-300/85"
-              style={{ fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.14em" }}
+              className="text-emerald-300/85"
+              style={{ fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.14em", fontSize: "0.9vmin" }}
             >
               LIVE
             </span>
           </div>
           <button
             onClick={() => setOpen(false)}
-            className="ml-0.5 flex items-center justify-center rounded-md w-6 h-6 text-white/40 hover:text-white hover:bg-white/[0.06] transition-all duration-150"
+            className="flex items-center justify-center rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] transition-all duration-150"
+            style={{ marginLeft: "0.2vmin", width: "2.7vmin", height: "2.7vmin" }}
             title="Close"
           >
-            <X size={14} />
+            <X size="1.6vmin" />
           </button>
         </div>
       </div>
@@ -1420,11 +1428,11 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
       )}
 
       {/* Text mode messages */}
-      {mode === "text" && <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ scrollbarWidth: "none" }}>
+      {mode === "text" && <div className="flex-1 overflow-y-auto flex flex-col" style={{ scrollbarWidth: "none", padding: "1.3vmin 1.8vmin", gap: "1.3vmin" }}>
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-3 opacity-50 pointer-events-none">
-            <span className="text-3xl">✦</span>
-            <p className="text-xs text-white/50 text-center font-medium leading-relaxed">
+          <div className="flex flex-col items-center justify-center h-full opacity-50 pointer-events-none" style={{ gap: "1.3vmin" }}>
+            <span style={{ fontSize: "3.3vmin" }}>✦</span>
+            <p className="text-white/50 text-center font-medium leading-relaxed" style={{ fontSize: "1.3vmin" }}>
               Hi {profile?.display_name?.split(" ")[0] ?? "there"}!<br />
               Ask me anything — about this page,<br />your creations, or anything at all.
             </p>
@@ -1441,17 +1449,18 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
               msg.nudgeKind === "progress" ? "rgba(0,212,255,0.55)"   :
                                              "rgba(255,255,255,0.25)";
             return (
-              <div key={i} className="flex gap-2 justify-start opacity-90">
-                <div className="max-w-[85%] px-3 py-1.5 rounded-2xl text-[11px] leading-relaxed italic relative"
+              <div key={i} className="flex justify-start opacity-90" style={{ gap: "0.9vmin" }}>
+                <div className="max-w-[85%] leading-relaxed italic relative"
                   style={{
+                    padding: "0.7vmin 1.3vmin", fontSize: "1.2vmin",
                     background:   "linear-gradient(180deg, rgba(20,34,60,0.35) 0%, rgba(8,16,32,0.30) 100%)",
                     border:       `1px dashed ${tint}`,
                     color:        "rgba(232,244,255,0.78)",
-                    borderRadius: "14px 14px 14px 4px",
-                    paddingRight: 28,
+                    borderRadius: "1.6vmin 1.6vmin 1.6vmin 0.4vmin",
+                    paddingRight: "3.1vmin",
                   }}
                 >
-                  <span className="mr-1.5">💭</span>{msg.content}
+                  <span style={{ marginRight: "0.7vmin" }}>💭</span>{msg.content}
                   {/* Audio toggle — switches future thought-bubble voicing
                       on/off. Persisted in localStorage. */}
                   <button
@@ -1461,10 +1470,10 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                     title={nudgeAudioEnabled ? "Mute thought-bubble audio" : "Enable thought-bubble audio"}
                     style={{
                       position: "absolute",
-                      right: 6,
-                      top: 6,
-                      width: 18,
-                      height: 18,
+                      right: "0.7vmin",
+                      top: "0.7vmin",
+                      width: "2vmin",
+                      height: "2vmin",
                       borderRadius: "50%",
                       display: "flex",
                       alignItems: "center",
@@ -1476,12 +1485,12 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                     }}
                   >
                     {nudgeAudioEnabled ? (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <svg width="1.1vmin" height="1.1vmin" viewBox="0 0 24 24" fill="none" aria-hidden>
                         <path d="M3 10v4h4l5 4V6L7 10H3z" stroke="rgba(232,244,255,0.85)" strokeWidth="2" strokeLinejoin="round"/>
                         <path d="M16 8a5 5 0 010 8" stroke="rgba(232,244,255,0.85)" strokeWidth="2" strokeLinecap="round"/>
                       </svg>
                     ) : (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <svg width="1.1vmin" height="1.1vmin" viewBox="0 0 24 24" fill="none" aria-hidden>
                         <path d="M3 10v4h4l5 4V6L7 10H3z" stroke="rgba(232,244,255,0.6)" strokeWidth="2" strokeLinejoin="round"/>
                         <path d="M16 9l5 5M21 9l-5 5" stroke="rgba(255,120,120,0.95)" strokeWidth="2" strokeLinecap="round"/>
                       </svg>
@@ -1507,31 +1516,34 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
             );
           }
           return (
-          <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`} style={{ gap: "0.9vmin" }}>
             {msg.role === "assistant" && (
               <div
-                className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                className="rounded-full flex items-center justify-center flex-shrink-0"
                 style={{
+                  width: "2.7vmin", height: "2.7vmin", marginTop: "0.2vmin",
                   background: "linear-gradient(135deg, #7DD3FC 0%, #00D4FF 45%, #0284C7 100%)",
                   boxShadow:  "0 0 0 1px rgba(255,255,255,0.25) inset, 0 0 10px rgba(0,212,255,0.5)",
                 }}
               >
-                <span className="text-[10px]" style={{ color: "#031024" }}>✦</span>
+                <span style={{ color: "#031024", fontSize: "1.1vmin" }}>✦</span>
               </div>
             )}
             <div
-              className="max-w-[80%] px-3 py-2 rounded-2xl text-xs leading-relaxed"
+              className="max-w-[80%] leading-relaxed"
               style={msg.role === "user" ? {
+                padding: "0.9vmin 1.3vmin", fontSize: "1.3vmin",
                 background:   "linear-gradient(180deg, #7DD3FC 0%, #00D4FF 55%, #0284C7 100%)",
                 color:        "#031024",
                 fontWeight:   600,
-                borderRadius: "18px 18px 4px 18px",
+                borderRadius: "2vmin 2vmin 0.4vmin 2vmin",
                 boxShadow:    "inset 0 1px 0 rgba(255,255,255,0.35), 0 0 12px rgba(0,212,255,0.35)",
               } : {
+                padding: "0.9vmin 1.3vmin", fontSize: "1.3vmin",
                 background:   "linear-gradient(180deg, rgba(20,34,60,0.7) 0%, rgba(8,16,32,0.65) 100%)",
                 border:       "1px solid rgba(0,212,255,0.18)",
                 color:        "rgba(232,244,255,0.92)",
-                borderRadius: "18px 18px 18px 4px",
+                borderRadius: "2vmin 2vmin 2vmin 0.4vmin",
                 boxShadow:    "inset 0 1px 0 rgba(255,255,255,0.06)",
               }}
             >
@@ -1545,7 +1557,7 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                       ul:     ({ children }) => <ul className="list-disc pl-4 space-y-0.5 my-1">{children}</ul>,
                       ol:     ({ children }) => <ol className="list-decimal pl-4 space-y-0.5 my-1">{children}</ol>,
                       li:     ({ children }) => <li className="leading-relaxed">{children}</li>,
-                      code:   ({ children }) => <code className="bg-white/10 rounded px-1 py-0.5 font-mono text-[10px]">{children}</code>,
+                      code:   ({ children }) => <code className="bg-white/10 rounded font-mono" style={{ padding: "0.2vmin 0.4vmin", fontSize: "1.1vmin" }}>{children}</code>,
                       h1:     ({ children }) => <p className="font-bold text-white/95 mb-1">{children}</p>,
                       h2:     ({ children }) => <p className="font-bold text-white/90 mb-1">{children}</p>,
                       h3:     ({ children }) => <p className="font-semibold text-white/85 mb-0.5">{children}</p>,
@@ -1557,10 +1569,10 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                   msg.content
                 )
               ) : (
-                <span className="flex gap-1">
+                <span className="flex" style={{ gap: "0.4vmin" }}>
                   {[0, 1, 2].map(j => (
-                    <span key={j} className="w-1 h-1 rounded-full bg-white/40 inline-block animate-bounce"
-                      style={{ animationDelay: `${j * 0.15}s` }} />
+                    <span key={j} className="rounded-full bg-white/40 inline-block animate-bounce"
+                      style={{ width: "0.4vmin", height: "0.4vmin", animationDelay: `${j * 0.15}s` }} />
                   ))}
                 </span>
               )}
@@ -1575,15 +1587,17 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
       {/* ── Text input ──────────────────────────────────────────────────── */}
       {mode === "text" && (
         <div
-          className="px-3 py-3 flex-shrink-0"
+          className="flex-shrink-0"
           style={{
+            padding: "1.3vmin",
             borderTop: "1px solid rgba(0,212,255,0.18)",
             background: "linear-gradient(0deg, rgba(8,16,32,0.45) 0%, rgba(8,16,32,0) 100%)",
           }}
         >
           <div
-            className="flex items-center gap-2 rounded-xl px-3 py-2"
+            className="flex items-center"
             style={{
+              gap: "0.9vmin", borderRadius: "1.3vmin", padding: "0.9vmin 1.3vmin",
               background: "linear-gradient(180deg, rgba(20,34,60,0.7) 0%, rgba(8,16,32,0.7) 100%)",
               border: "1px solid rgba(0,212,255,0.32)",
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 0 14px rgba(0,212,255,0.10)",
@@ -1608,7 +1622,7 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                 border:     "none",
                 outline:    "none",
                 background: "transparent",
-                fontSize:   12,
+                fontSize:   "1.3vmin",
                 color:      "rgba(255,255,255,0.9)",
                 fontFamily: "inherit",
                 lineHeight: 1.5,
@@ -1618,8 +1632,9 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
             <button
               onClick={() => { const t = input.trim(); if (t) { coreSend(t); setInput(""); } }}
               disabled={!input.trim() || streaming}
-              className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200 active:scale-90"
+              className="flex-shrink-0 flex items-center justify-center transition-all duration-200 active:scale-90"
               style={{
+                width: "3.1vmin", height: "3.1vmin", borderRadius: "0.9vmin",
                 background: input.trim() && !streaming
                   ? "linear-gradient(180deg, #7DD3FC 0%, #00D4FF 50%, #0284C7 100%)"
                   : "rgba(255,255,255,0.06)",
@@ -1628,7 +1643,7 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                   : "none",
               }}
             >
-              <Send size={12} style={{ color: input.trim() && !streaming ? "#031024" : "rgba(255,255,255,0.4)" }} />
+              <Send size="1.3vmin" style={{ color: input.trim() && !streaming ? "#031024" : "rgba(255,255,255,0.4)" }} />
             </button>
           </div>
         </div>
@@ -1652,8 +1667,8 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
           style={{
             right:  "62%",                          // ← horizontal position (% from right — higher = more LEFT)
             bottom: "0px",                         // ← vertical position (px from bottom)
-            width:  "clamp(173px, 14.4vw, 269px)",    // ← SIZE: matched to SAGE (was clamp(128px, 11vw, 192px))
-            height: "clamp(173px, 14.4vw, 269px)",    // ← SIZE: keep equal to width
+            width:  "14.4vw",    // ← SIZE: matched to SAGE
+            height: "14.4vw",    // ← SIZE: keep equal to width
           }}
         >
           {/* Panel — absolute above the button, centered horizontally */}
@@ -1661,17 +1676,18 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
             <div
               style={{
                 position:  "absolute",
-                bottom:    "calc(100% + 10px)",
+                bottom:    "calc(100% + 1.1vmin)",
                 left:      "50%",
                 transform: "translateX(-50%)",
-                width:     "clamp(320px, 28vw, 440px)",
+                width:     "28vw",
               }}
             >
               <div
-                className="flex flex-col rounded-2xl overflow-hidden"
+                className="flex flex-col overflow-hidden"
                 style={{
-                  height:    "clamp(420px, 60vh, 600px)",
-                  animation: "aida-slide-up 0.28s cubic-bezier(0.16,1,0.3,1) both",
+                  height:       "60vh",
+                  borderRadius: "1.8vmin",
+                  animation:    "aida-slide-up 0.28s cubic-bezier(0.16,1,0.3,1) both",
                   ...panelBaseStyle,
                 }}
               >
@@ -1726,10 +1742,10 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                 aria-label="AIDA is thinking"
                 style={{
                   position:      "absolute",
-                  bottom:        "calc(100% + 26px)",   // leave space for trailing dots
+                  bottom:        "calc(100% + 2.9vmin)",   // leave space for trailing dots
                   left:          "50%",
                   transform:     "translateX(-50%)",
-                  width:         "clamp(220px, 24vw, 320px)",
+                  width:         "24vw",
                   pointerEvents: "auto",
                   animation:     "aida-slide-up 0.32s cubic-bezier(0.16,1,0.3,1) both",
                   filter:        `drop-shadow(0 0 18px ${glow}) drop-shadow(0 8px 18px rgba(0,0,0,0.35))`,
@@ -1742,11 +1758,11 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                   style={{
                     position:     "relative",
                     background:   `linear-gradient(180deg, ${fillTop} 0%, ${fillBot} 100%)`,
-                    border:       `2.5px solid ${stroke}`,
-                    borderRadius: "36px 36px 36px 36px / 30px 30px 28px 28px",
-                    padding:      "14px 28px 14px 18px",
+                    border:       `0.3vmin solid ${stroke}`,
+                    borderRadius: "4vmin 4vmin 4vmin 4vmin / 3.3vmin 3.3vmin 3.1vmin 3.1vmin",
+                    padding:      "1.6vmin 3.1vmin 1.6vmin 2vmin",
                     color:        text,
-                    fontSize:     13,
+                    fontSize:     "1.4vmin",
                     lineHeight:   1.45,
                     fontFamily:   "'DM Sans', system-ui, sans-serif",
                   }}
@@ -1757,13 +1773,13 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                     aria-hidden
                     style={{
                       position:   "absolute",
-                      left:       18,
-                      bottom:     -10,
-                      width:      26,
-                      height:     20,
+                      left:       "2vmin",
+                      bottom:     "-1.1vmin",
+                      width:      "2.9vmin",
+                      height:     "2.2vmin",
                       borderRadius: "50%",
                       background: fillBot,
-                      border:     `2.5px solid ${stroke}`,
+                      border:     `0.3vmin solid ${stroke}`,
                       zIndex:     -1,
                     }}
                   />
@@ -1771,13 +1787,13 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                     aria-hidden
                     style={{
                       position:   "absolute",
-                      right:      32,
-                      bottom:     -8,
-                      width:      22,
-                      height:     16,
+                      right:      "3.6vmin",
+                      bottom:     "-0.9vmin",
+                      width:      "2.4vmin",
+                      height:     "1.8vmin",
                       borderRadius: "50%",
                       background: fillBot,
-                      border:     `2.5px solid ${stroke}`,
+                      border:     `0.3vmin solid ${stroke}`,
                       zIndex:     -1,
                     }}
                   />
@@ -1793,15 +1809,15 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                     aria-label="Dismiss"
                     style={{
                       position:    "absolute",
-                      top:         -8,
-                      right:       -8,
-                      width:       22,
-                      height:      22,
+                      top:         "-0.9vmin",
+                      right:       "-0.9vmin",
+                      width:       "2.4vmin",
+                      height:      "2.4vmin",
                       borderRadius: "50%",
                       background:  "#FFFFFF",
-                      border:      `2px solid ${stroke}`,
+                      border:      `0.2vmin solid ${stroke}`,
                       color:       text,
-                      fontSize:    13,
+                      fontSize:    "1.4vmin",
                       fontWeight:  700,
                       lineHeight:  1,
                       cursor:      "pointer",
@@ -1820,13 +1836,13 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                   aria-hidden
                   style={{
                     position:  "absolute",
-                    top:       "calc(100% + 4px)",
-                    left:      "calc(50% - 16px)",
-                    width:     14,
-                    height:    14,
+                    top:       "calc(100% + 0.4vmin)",
+                    left:      "calc(50% - 1.8vmin)",
+                    width:     "1.6vmin",
+                    height:    "1.6vmin",
                     borderRadius: "50%",
                     background: fillBot,
-                    border:    `2.5px solid ${stroke}`,
+                    border:    `0.3vmin solid ${stroke}`,
                     boxShadow: `0 0 10px ${glow}`,
                   }}
                 />
@@ -1834,13 +1850,13 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
                   aria-hidden
                   style={{
                     position:  "absolute",
-                    top:       "calc(100% + 22px)",
-                    left:      "calc(50% - 7px)",
-                    width:     8,
-                    height:    8,
+                    top:       "calc(100% + 2.4vmin)",
+                    left:      "calc(50% - 0.8vmin)",
+                    width:     "0.9vmin",
+                    height:    "0.9vmin",
                     borderRadius: "50%",
                     background: fillBot,
-                    border:    `2px solid ${stroke}`,
+                    border:    `0.2vmin solid ${stroke}`,
                     boxShadow: `0 0 8px ${glow}`,
                   }}
                 />
@@ -1857,28 +1873,29 @@ export function AidaAssistant({ profile }: { profile: Profile | null }) {
             onClick={() => { if (voiceState === "listening") return; setOpen(o => !o); }}
             className="fixed z-50 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95"
             style={{
-              right:        "clamp(16px, 1.5vw, 32px)",
-              bottom:       "clamp(16px, 2vh, 32px)",
-              width:        "clamp(48px, 3.6vw, 64px)",
-              height:       "clamp(48px, 3.6vw, 64px)",
+              right:        "1.5vw",
+              bottom:       "2vh",
+              width:        "3.6vw",
+              height:       "3.6vw",
               borderRadius: 9999,
               background:   "linear-gradient(135deg, #7C3AED, #FF2D78)",
               boxShadow:    "0 0 32px rgba(124,58,237,0.5), 0 4px 20px rgba(0,0,0,0.4)",
             }}
             title="Ask AIDA"
           >
-            {open ? <X size={22} className="text-white" /> : <span className="text-2xl select-none">✦</span>}
+            {open ? <X size="2.4vmin" className="text-white" /> : <span className="select-none" style={{ fontSize: "2.7vmin" }}>✦</span>}
           </button>
 
           {open && (
             <div
-              className="fixed z-50 flex flex-col rounded-2xl overflow-hidden"
+              className="fixed z-50 flex flex-col overflow-hidden"
               style={{
-                right:     "clamp(16px, 1.5vw, 32px)",
-                bottom:    "clamp(96px, 12vh, 140px)",
-                width:     "clamp(320px, 28vw, 460px)",
-                height:    "clamp(440px, 62vh, 640px)",
-                animation: "aida-slide-up 0.28s cubic-bezier(0.16,1,0.3,1) both",
+                right:        "1.5vw",
+                bottom:       "12vh",
+                width:        "28vw",
+                height:       "62vh",
+                borderRadius: "1.8vmin",
+                animation:    "aida-slide-up 0.28s cubic-bezier(0.16,1,0.3,1) both",
                 ...panelBaseStyle,
               }}
             >

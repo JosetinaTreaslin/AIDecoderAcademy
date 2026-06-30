@@ -169,14 +169,14 @@ function ActionFooter({ onSave, onOpen, content, outputType, accent, accentGlow 
   });
 
   return (
-    <div className="flex items-center justify-end gap-1.5 mt-2">
+    <div className="flex items-center justify-end" style={{ gap: "0.7vmin", marginTop: "0.9vmin" }}>
       {/* Open (replaces Copy when onOpen is provided) */}
       {onOpen ? (
         <button
           onClick={onOpen}
           title="Open"
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-display font-extrabold border transition-all duration-200 active:scale-95"
-          style={{ background: "rgba(245,166,35,0.15)", borderColor: "rgba(245,166,35,0.5)", color: "#F5A623" }}
+          className="flex items-center rounded-full font-display font-extrabold border transition-all duration-200 active:scale-95"
+          style={{ gap: "0.4vmin", padding: "0.7vmin 1.1vmin", fontSize: "1.3vmin", background: "rgba(245,166,35,0.15)", borderColor: "rgba(245,166,35,0.5)", color: "#F5A623" }}
           onMouseEnter={e => {
             (e.currentTarget as HTMLElement).style.background   = "rgba(245,166,35,0.28)";
             (e.currentTarget as HTMLElement).style.borderColor  = "rgba(245,166,35,0.8)";
@@ -186,7 +186,7 @@ function ActionFooter({ onSave, onOpen, content, outputType, accent, accentGlow 
             (e.currentTarget as HTMLElement).style.borderColor  = "rgba(245,166,35,0.5)";
           }}
         >
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+          <svg width="1.2vmin" height="1.2vmin" viewBox="0 0 12 12" fill="none">
             <rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
             <path d="M4 6h4M6 4l2 2-2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
@@ -197,14 +197,14 @@ function ActionFooter({ onSave, onOpen, content, outputType, accent, accentGlow 
         <button
           onClick={handleCopy}
           title="Copy to clipboard"
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-display font-semibold border transition-all duration-200 active:scale-95 hover:border-[#94A8C8]/70 hover:text-[#C8DBF0]"
-          style={ghostBtn(copied)}
+          className="flex items-center rounded-full font-display font-semibold border transition-all duration-200 active:scale-95 hover:border-[#94A8C8]/70 hover:text-[#C8DBF0]"
+          style={{ gap: "0.4vmin", padding: "0.7vmin 1.1vmin", fontSize: "1.3vmin", ...ghostBtn(copied) }}
         >
           {copied ? (
-            <><span className="text-[10px]">✓</span> Copied!</>
+            <><span style={{ fontSize: "1.1vmin" }}>✓</span> Copied!</>
           ) : (
             <>
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <svg width="1.2vmin" height="1.2vmin" viewBox="0 0 12 12" fill="none">
                 <rect x="4" y="4" width="7" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.3"/>
                 <path d="M8 4V2.5A1.5 1.5 0 006.5 1h-4A1.5 1.5 0 001 2.5v4A1.5 1.5 0 002.5 8H4" stroke="currentColor" strokeWidth="1.3"/>
               </svg>
@@ -219,10 +219,10 @@ function ActionFooter({ onSave, onOpen, content, outputType, accent, accentGlow 
         <button
           onClick={handleDownload}
           title={outputType === "image" ? "Download image" : `Download .${outputType}`}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-display font-semibold border transition-all duration-200 active:scale-95 hover:border-[#94A8C8]/70 hover:text-[#C8DBF0]"
-          style={ghostBtn(false)}
+          className="flex items-center rounded-full font-display font-semibold border transition-all duration-200 active:scale-95 hover:border-[#94A8C8]/70 hover:text-[#C8DBF0]"
+          style={{ gap: "0.4vmin", padding: "0.7vmin 1.1vmin", fontSize: "1.3vmin", ...ghostBtn(false) }}
         >
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+          <svg width="1.2vmin" height="1.2vmin" viewBox="0 0 12 12" fill="none">
             <path d="M6 1v7M3.5 5.5L6 8l2.5-2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M1 9.5v1A1.5 1.5 0 002.5 12h7a1.5 1.5 0 001.5-1.5v-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
           </svg>
@@ -234,12 +234,13 @@ function ActionFooter({ onSave, onOpen, content, outputType, accent, accentGlow 
       <button
         onClick={handleSave}
         title="Save to My Creations"
-        className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-display font-extrabold tracking-tight border transition-all duration-200 active:scale-95"
-        style={saved ? ghostBtn(true) : {
+        className="flex items-center rounded-full font-display font-extrabold tracking-tight border transition-all duration-200 active:scale-95"
+        style={{ gap: "0.4vmin", padding: "0.7vmin 1.1vmin", fontSize: "1.3vmin",
+          ...(saved ? ghostBtn(true) : {
           background: "rgba(255,255,255,0.06)",
           borderColor: "rgba(255,255,255,0.12)",
           color: accent,
-        }}
+        }) }}
         onMouseEnter={e => {
           if (!saved) {
             (e.currentTarget as HTMLElement).style.background   = accent;
@@ -258,10 +259,10 @@ function ActionFooter({ onSave, onOpen, content, outputType, accent, accentGlow 
         }}
       >
         {saved ? (
-          <><span className="text-[10px]">✓</span> Saved!</>
+          <><span style={{ fontSize: "1.1vmin" }}>✓</span> Saved!</>
         ) : (
           <>
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+            <svg width="1.2vmin" height="1.2vmin" viewBox="0 0 12 12" fill="none">
               <path d="M9 1H3a1 1 0 00-1 1v9l4-2 4 2V2a1 1 0 00-1-1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
             </svg>
             Save
@@ -410,26 +411,29 @@ export function MessageBubble({
         {/* Bubble */}
         <div className={cn(
           !audioData && !slideData && !videoData && !isImage && !isLoading && (
-            isUser
-              ? "px-3 py-2 sm:px-4 sm:py-2.5 rounded-[16px] rounded-br-[4px] text-xs leading-relaxed"
-              : "px-3 py-2 sm:px-4 sm:py-2.5 rounded-[16px] rounded-bl-[4px] text-white text-xs leading-relaxed backdrop-blur-xl"
+            isUser ? "leading-relaxed" : "text-white leading-relaxed backdrop-blur-xl"
           )
         )}
-          style={!audioData && !slideData && !videoData && !isImage && !isLoading ? (isUser ? {
-            background: `linear-gradient(135deg, ${arenaAccent}, ${arenaAccent}cc)`,
-            color:      userTextColor,
-            boxShadow:  `0 12px 40px -12px ${arenaAccentGlow}`,
-          } : {
-            background:  "linear-gradient(135deg, rgba(10,5,30,0.82) 0%, rgba(18,10,45,0.78) 100%)",
-            border:      `1px solid ${arenaAccent}35`,
-            boxShadow:   `0 8px 32px rgba(0,0,0,0.35), 0 0 20px ${arenaAccent}12`,
-            backdropFilter: "blur(16px)",
-          }) : {}}
+          style={!audioData && !slideData && !videoData && !isImage && !isLoading ? {
+            padding: "1.1vmin 1.8vmin", fontSize: "1.3vmin",
+            borderRadius: isUser ? "1.8vmin 1.8vmin 0.4vmin 1.8vmin" : "1.8vmin 1.8vmin 1.8vmin 0.4vmin",
+            ...(isUser ? {
+              background: `linear-gradient(135deg, ${arenaAccent}, ${arenaAccent}cc)`,
+              color:      userTextColor,
+              boxShadow:  `0 12px 40px -12px ${arenaAccentGlow}`,
+            } : {
+              background:  "linear-gradient(135deg, rgba(10,5,30,0.82) 0%, rgba(18,10,45,0.78) 100%)",
+              border:      `1px solid ${arenaAccent}35`,
+              boxShadow:   `0 8px 32px rgba(0,0,0,0.35), 0 0 20px ${arenaAccent}12`,
+              backdropFilter: "blur(16px)",
+            }),
+          } : {}}
         >
 
           {/* Typing dots */}
           {isEmpty && (
-            <div className="px-5 py-3.5 rounded-[20px] rounded-bl-[4px] bg-white/[0.05] border border-white/[0.09] backdrop-blur-xl">
+            <div className="bg-white/[0.05] border border-white/[0.09] backdrop-blur-xl"
+              style={{ padding: "1.6vmin 2.2vmin", borderRadius: "2.2vmin 2.2vmin 2.2vmin 0.4vmin" }}>
               <div className="flex gap-1.5 py-1">
                 {[0,1,2].map(i => (
                   <span key={i} className="dot w-2 h-2 rounded-full bg-white/35"

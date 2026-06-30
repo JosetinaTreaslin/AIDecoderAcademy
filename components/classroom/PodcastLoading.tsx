@@ -98,8 +98,9 @@ export function PodcastLoading({
 
   return (
     <div
-      className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 p-8 text-center"
+      className="absolute inset-0 z-30 flex flex-col items-center justify-center text-center"
       style={{
+        gap: "2.2vmin", padding: "3.6vmin",
         background: `radial-gradient(ellipse at 50% 32%, ${NAVY_TOP} 0%, ${NAVY_BOT} 72%)`,
       }}
     >
@@ -116,28 +117,29 @@ export function PodcastLoading({
           type="button"
           onClick={onCancel}
           aria-label="Cancel podcast recording"
-          className="group absolute top-4 right-4 z-10 grid place-items-center w-9 h-9 rounded-full border border-[rgba(255,255,255,0.14)] text-white/70 transition-all duration-200 hover:text-[#E0B14C] hover:border-[#E0B14C] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3fc]"
-          style={{ background: "rgba(0,0,0,0.5)" }}
+          className="group absolute z-10 grid place-items-center rounded-full border border-[rgba(255,255,255,0.14)] text-white/70 transition-all duration-200 hover:text-[#E0B14C] hover:border-[#E0B14C] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3fc]"
+          style={{ top: "1.8vmin", right: "1.8vmin", width: "4vmin", height: "4vmin", background: "rgba(0,0,0,0.5)" }}
         >
-          <X size={18} />
+          <X size="2vmin" />
         </button>
       )}
 
       {/* ON AIR chip */}
       <div
-        className="relative flex items-center gap-2 px-4 py-1.5 rounded-full"
+        className="relative flex items-center rounded-full"
         style={{
+          gap: "0.9vmin", padding: "0.7vmin 1.8vmin",
           background: "rgba(0,0,0,0.5)",
           border: "1px solid rgba(255,255,255,0.14)",
         }}
       >
         <motion.span
-          className="inline-block w-2 h-2 rounded-full"
-          style={{ background: "#ff4d4d", boxShadow: "0 0 10px #ff4d4d" }}
+          className="inline-block rounded-full"
+          style={{ width: "0.9vmin", height: "0.9vmin", background: "#ff4d4d", boxShadow: "0 0 10px #ff4d4d" }}
           animate={reduced ? undefined : { opacity: [1, 0.25, 1] }}
           transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
         />
-        <span className="text-[11px] font-mono tracking-[0.22em] text-white/80">
+        <span className="font-mono tracking-[0.22em] text-white/80" style={{ fontSize: "1.2vmin" }}>
           ON AIR
         </span>
       </div>
@@ -145,7 +147,7 @@ export function PodcastLoading({
       {/* Stage: pulsing rings + guest portrait (or mic before casting) */}
       <div
         className="relative flex items-center justify-center"
-        style={{ width: 260, height: 196 }}
+        style={{ width: "28.9vmin", height: "21.8vmin" }}
       >
         {!reduced &&
           recording &&
@@ -154,7 +156,7 @@ export function PodcastLoading({
               key={r}
               aria-hidden
               className="absolute rounded-full"
-              style={{ border: `1px solid ${GOLD}`, width: 96, height: 96 }}
+              style={{ border: `1px solid ${GOLD}`, width: "10.7vmin", height: "10.7vmin" }}
               initial={{ opacity: 0.5, scale: 1 }}
               animate={{ opacity: 0, scale: 2.4 }}
               transition={{
@@ -177,7 +179,7 @@ export function PodcastLoading({
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="relative object-contain"
             style={{
-              height: 188,
+              height: "20.9vmin",
               width: "auto",
               filter: `drop-shadow(0 10px 30px ${GOLD_GLOW})`,
             }}
@@ -186,19 +188,19 @@ export function PodcastLoading({
           <motion.div
             className="relative grid place-items-center rounded-full"
             style={{
-              width: 92,
-              height: 92,
+              width: "10.2vmin",
+              height: "10.2vmin",
               background: `radial-gradient(circle at 50% 38%, ${GOLD_SOFT}, ${GOLD})`,
               boxShadow: `0 0 42px ${GOLD_GLOW}`,
             }}
             animate={reduced ? undefined : { scale: [1, 1.06, 1] }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
           >
-            <div className="flex items-end gap-[3px]" style={{ height: 34 }}>
+            <div className="flex items-end" style={{ gap: "0.3vmin", height: "3.8vmin" }}>
               {[0, 1, 2, 3, 4].map((i) => (
                 <motion.span
                   key={i}
-                  style={{ width: 5, borderRadius: 3, background: "#231803" }}
+                  style={{ width: "0.6vmin", borderRadius: "0.3vmin", background: "#231803" }}
                   animate={reduced ? { height: 16 } : { height: [9, 30, 13, 26, 9] }}
                   transition={
                     reduced
@@ -220,9 +222,9 @@ export function PodcastLoading({
           aria-hidden
           className="absolute"
           style={{
-            bottom: -4,
-            width: 150,
-            height: 22,
+            bottom: "-0.4vmin",
+            width: "16.7vmin",
+            height: "2.4vmin",
             borderRadius: "50%",
             background: `radial-gradient(ellipse, ${GOLD_GLOW}, transparent 70%)`,
             filter: "blur(3px)",
@@ -234,42 +236,42 @@ export function PodcastLoading({
       {progress.persona ? (
         <motion.div initial={{ y: 8, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
           <div
-            className="text-[11px] font-mono uppercase tracking-[0.18em]"
-            style={{ color: CYAN }}
+            className="font-mono uppercase tracking-[0.18em]"
+            style={{ color: CYAN, fontSize: "1.2vmin" }}
           >
             Tonight&apos;s guest
           </div>
-          <div className="font-display text-white text-xl leading-tight">
+          <div className="font-display text-white leading-tight" style={{ fontSize: "2.2vmin" }}>
             {progress.persona.name}
           </div>
-          <div className="text-white/55 text-sm">
+          <div className="text-white/55" style={{ fontSize: "1.6vmin" }}>
             the {progress.persona.archetype}
           </div>
         </motion.div>
       ) : (
-        <div className="text-white/70 text-sm">
+        <div className="text-white/70" style={{ fontSize: "1.6vmin" }}>
           Casting the perfect expert guest…
         </div>
       )}
 
       {/* Current stage + progress */}
-      <div className="w-[min(420px,86vw)]">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-white/90 text-sm font-medium">
+      <div style={{ width: "min(46.7vmin, 86vw)" }}>
+        <div className="flex items-center justify-between" style={{ marginBottom: "0.7vmin" }}>
+          <span className="text-white/90 font-medium" style={{ fontSize: "1.6vmin" }}>
             {recording
               ? "Recording the conversation…"
               : `${STAGES[Math.max(0, curIdx)]?.label ?? "Warming up"}…`}
           </span>
           {recording && (
-            <span className="text-[11px] font-mono" style={{ color: GOLD_SOFT }}>
+            <span className="font-mono" style={{ color: GOLD_SOFT, fontSize: "1.2vmin" }}>
               line {progress.done}/{progress.total}
             </span>
           )}
         </div>
 
         <div
-          className="h-2 rounded-full overflow-hidden"
-          style={{ background: "rgba(255,255,255,0.08)" }}
+          className="rounded-full overflow-hidden"
+          style={{ height: "0.9vmin", background: "rgba(255,255,255,0.08)" }}
         >
           {recording ? (
             <motion.div
@@ -290,13 +292,14 @@ export function PodcastLoading({
           )}
         </div>
 
-        <div className="flex items-center justify-center gap-1.5 mt-3">
+        <div className="flex items-center justify-center" style={{ gap: "0.7vmin", marginTop: "1.3vmin" }}>
           {STAGES.map((s, i) => (
             <span
               key={s.key}
-              className="h-1.5 rounded-full transition-all duration-300"
+              className="rounded-full transition-all duration-300"
               style={{
-                width: i === curIdx ? 26 : 14,
+                height: "0.7vmin",
+                width: i === curIdx ? "2.9vmin" : "1.6vmin",
                 background: i <= curIdx ? GOLD : "rgba(255,255,255,0.15)",
               }}
             />
@@ -311,14 +314,14 @@ export function PodcastLoading({
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="max-w-[460px] rounded-xl px-4 py-2.5"
           style={{
+            maxWidth: "51.1vmin", borderRadius: "1.3vmin", padding: "1.1vmin 1.8vmin",
             background: "rgba(255,255,255,0.05)",
             border: "1px solid rgba(255,255,255,0.09)",
           }}
         >
-          <span className="mr-1.5">💡</span>
-          <span className="text-white/70 text-[13px]">
+          <span style={{ marginRight: "0.7vmin" }}>💡</span>
+          <span className="text-white/70" style={{ fontSize: "1.4vmin" }}>
             <span style={{ color: GOLD_SOFT }}>Did you know? </span>
             {FACTS[factIdx]}
           </span>
@@ -326,17 +329,18 @@ export function PodcastLoading({
       )}
 
       {isError && (
-        <div className="flex flex-col items-center gap-3">
-          <div className="text-white/80 text-sm">
+        <div className="flex flex-col items-center" style={{ gap: "1.3vmin" }}>
+          <div className="text-white/80" style={{ fontSize: "1.6vmin" }}>
             {progress.message ?? "Something went wrong."}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center" style={{ gap: "1.3vmin" }}>
             {onRetry && (
               <button
                 type="button"
                 onClick={onRetry}
-                className="px-5 py-2 rounded-full text-sm font-semibold text-[#231803] transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3fc]"
+                className="rounded-full font-semibold text-[#231803] transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3fc]"
                 style={{
+                  padding: "0.9vmin 2.2vmin", fontSize: "1.6vmin",
                   background: `linear-gradient(90deg, ${GOLD}, ${GOLD_SOFT})`,
                   boxShadow: `0 4px 18px ${GOLD_GLOW}`,
                 }}
@@ -348,8 +352,8 @@ export function PodcastLoading({
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-5 py-2 rounded-full text-sm font-medium text-white/80 border border-[rgba(255,255,255,0.16)] transition-all duration-200 hover:text-white hover:border-[rgba(255,255,255,0.32)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3fc]"
-                style={{ background: "rgba(255,255,255,0.05)" }}
+                className="rounded-full font-medium text-white/80 border border-[rgba(255,255,255,0.16)] transition-all duration-200 hover:text-white hover:border-[rgba(255,255,255,0.32)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd3fc]"
+                style={{ padding: "0.9vmin 2.2vmin", fontSize: "1.6vmin", background: "rgba(255,255,255,0.05)" }}
               >
                 Close
               </button>

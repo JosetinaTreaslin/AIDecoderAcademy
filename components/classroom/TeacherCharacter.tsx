@@ -254,20 +254,20 @@ export function TeacherCharacter({ profile, chapterTitle, hidden, variant = "ful
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="fixed z-30 pointer-events-none"
         style={variant === "avatar"
-          ? { left: "1.5%", bottom: "3%", height: "clamp(72px, 9vh, 112px)", width: "auto" }
-          : { left: "13%", bottom: "0px", height: "clamp(280px, 38vh, 460px)", width: "auto" }}
+          ? { left: "1.5%", bottom: "3%", height: "9vmin", width: "auto" }
+          : { left: "13%", bottom: "0px", height: "38vh", width: "auto" }}
       >
         {/* Floor / avatar glow — wider pulse range when speaking */}
         <motion.div
           className="absolute pointer-events-none"
           style={variant === "avatar"
-            ? { inset: -6, borderRadius: "50%",
+            ? { inset: "-0.7vmin", borderRadius: "50%",
                 background: `radial-gradient(circle at center, ${GOLD_GLOW} 0%, transparent 72%)`,
-                filter: "blur(8px)" }
+                filter: "blur(0.9vmin)" }
             : { bottom: 0, left: "50%", transform: "translateX(-50%)",
                 width: "130%", height: "36%",
                 background: `radial-gradient(ellipse at center bottom, ${GOLD_GLOW} 0%, transparent 70%)`,
-                filter: "blur(10px)" }}
+                filter: "blur(1.1vmin)" }}
           animate={{ opacity: speaking ? [0.2, 1.0, 0.2] : 0.45, scale: speaking ? [0.95, 1.05, 0.95] : 1 }}
           transition={speaking
             ? { duration: 1.0, repeat: Infinity, ease: "easeInOut" }
@@ -291,10 +291,10 @@ export function TeacherCharacter({ profile, chapterTitle, hidden, variant = "ful
             className="select-none h-full w-auto block"
             style={variant === "avatar"
               ? { objectFit: "cover", aspectRatio: "1 / 1", height: "100%", width: "auto",
-                  borderRadius: "50%", border: `2px solid ${GOLD}`,
-                  boxShadow: `0 6px 18px rgba(0,0,0,0.45), 0 0 16px ${GOLD_GLOW}` }
+                  borderRadius: "50%", border: `0.2vmin solid ${GOLD}`,
+                  boxShadow: `0 0.7vmin 2vmin rgba(0,0,0,0.45), 0 0 1.8vmin ${GOLD_GLOW}` }
               : { objectFit: "contain",
-                  filter: "drop-shadow(0 12px 22px rgba(0,0,0,0.45))" }}
+                  filter: "drop-shadow(0 1.3vmin 2.4vmin rgba(0,0,0,0.45))" }}
           />
         </motion.button>
 
@@ -311,18 +311,18 @@ export function TeacherCharacter({ profile, chapterTitle, hidden, variant = "ful
               style={{
                 top: "16%",
                 left: "100%",
-                marginLeft: 10,
-                maxWidth: 230,
+                marginLeft: "1.1vmin",
+                maxWidth: "25.6vmin",
                 background: "linear-gradient(180deg, rgba(21,34,78,0.97), rgba(10,18,48,0.97))",
                 color: "#F4ECD7",
                 border: `1px solid ${GOLD}66`,
-                borderRadius: 14,
-                padding: "10px 12px",
-                fontSize: 12.5,
+                borderRadius: "1.6vmin",
+                padding: "1.1vmin 1.3vmin",
+                fontSize: "1.4vmin",
                 lineHeight: 1.5,
                 fontFamily: "var(--font-dm-sans,'DM Sans',sans-serif)",
                 fontWeight: 500,
-                boxShadow: `0 10px 28px rgba(0,0,0,0.45), 0 0 18px ${GOLD_GLOW}`,
+                boxShadow: `0 1.1vmin 3.1vmin rgba(0,0,0,0.45), 0 0 2vmin ${GOLD_GLOW}`,
               }}
             >
               <span style={{ flex: 1 }}>{hintText}</span>
@@ -334,15 +334,15 @@ export function TeacherCharacter({ profile, chapterTitle, hidden, variant = "ful
                 onClick={(e) => { e.stopPropagation(); toggleAudio(); }}
                 className="shrink-0 rounded-md transition-colors"
                 style={{
-                  padding: 3,
-                  marginTop: -1,
+                  padding: "0.3vmin",
+                  marginTop: "-0.1vmin",
                   color: audioOn ? GOLD : "rgba(244,236,215,0.45)",
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
                 }}
               >
-                {audioOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                {audioOn ? <Volume2 size="1.6vmin" /> : <VolumeX size="1.6vmin" />}
               </button>
             </motion.div>
           )}

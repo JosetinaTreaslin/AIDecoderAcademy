@@ -42,16 +42,16 @@ interface Msg {
 const TC_MD_CSS = `
 .tc-md > :first-child { margin-top: 0; }
 .tc-md > :last-child  { margin-bottom: 0; }
-.tc-md p              { margin: 0 0 6px; }
-.tc-md ul, .tc-md ol  { margin: 0 0 6px; padding-left: 18px; }
-.tc-md li             { margin: 2px 0; }
-.tc-md h1, .tc-md h2, .tc-md h3 { font-weight: 700; margin: 9px 0 4px; line-height: 1.3; font-family: inherit; letter-spacing: normal; }
-.tc-md h1 { font-size: 14.5px; }
-.tc-md h2 { font-size: 14px; }
-.tc-md h3 { font-size: 13.5px; }
+.tc-md p              { margin: 0 0 0.7vmin; }
+.tc-md ul, .tc-md ol  { margin: 0 0 0.7vmin; padding-left: 2vmin; }
+.tc-md li             { margin: 0.2vmin 0; }
+.tc-md h1, .tc-md h2, .tc-md h3 { font-weight: 700; margin: 1vmin 0 0.4vmin; line-height: 1.3; font-family: inherit; letter-spacing: normal; }
+.tc-md h1 { font-size: 1.6vmin; }
+.tc-md h2 { font-size: 1.6vmin; }
+.tc-md h3 { font-size: 1.5vmin; }
 .tc-md strong { font-weight: 800; }
-.tc-md code   { background: rgba(255,255,255,0.12); border-radius: 4px; padding: 1px 4px; font-size: 12px; }
-.tc-md pre    { background: rgba(0,0,0,0.4); border-radius: 8px; padding: 8px 10px; overflow-x: auto; margin: 0 0 6px; }
+.tc-md code   { background: rgba(255,255,255,0.12); border-radius: 0.4vmin; padding: 0.1vmin 0.4vmin; font-size: 1.3vmin; }
+.tc-md pre    { background: rgba(0,0,0,0.4); border-radius: 0.9vmin; padding: 0.9vmin 1.1vmin; overflow-x: auto; margin: 0 0 0.7vmin; }
 .tc-md pre code { background: transparent; padding: 0; }
 .tc-md a { color: #E0B14C; text-decoration: underline; }
 `;
@@ -314,12 +314,12 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       className="fixed z-50 flex flex-col"
       style={{
-        left:   "calc(clamp(280px, 38vh, 460px) - 24px)",
-        bottom: "20px",
-        width:  "min(440px, calc(100vw - 32px))",
-        height: "min(620px, calc(100vh - 40px))",
+        left:   "calc(38vh - 2.7vmin)",
+        bottom: "2.2vmin",
+        width:  "min(48.9vmin, calc(100vw - 3.6vmin))",
+        height: "min(68.9vmin, calc(100vh - 4.4vmin))",
         fontFamily:   "var(--font-dm-sans,'DM Sans',sans-serif)",
-        borderRadius: 20,
+        borderRadius: "2.2vmin",
         overflow:     "hidden",
         background: `
           radial-gradient(120% 80% at 0% 0%, ${VIOLET_DEEP}22 0%, transparent 60%),
@@ -340,10 +340,11 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
       />
 
       {/* ── Header ── */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.08] flex-shrink-0">
+      <div className="flex items-center border-b border-white/[0.08] flex-shrink-0"
+        style={{ gap: "0.9vmin", padding: "1.3vmin 1.8vmin" }}>
         {/* Avatar */}
-        <div className="relative w-9 h-9 rounded-full overflow-hidden flex-shrink-0"
-          style={{ border: `1.5px solid ${GOLD}aa`, boxShadow: `0 0 12px ${GOLD_GLOW}` }}>
+        <div className="relative rounded-full overflow-hidden flex-shrink-0"
+          style={{ width: "4vmin", height: "4vmin", border: `0.2vmin solid ${GOLD}aa`, boxShadow: `0 0 1.3vmin ${GOLD_GLOW}` }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/classroom/teacher-bhavna.png" alt="" className="w-full h-full"
             style={{ objectFit: "cover", objectPosition: "center 18%" }} />
@@ -352,27 +353,28 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
         {/* Name */}
         <div className="flex-1 min-w-0">
           <div className="uppercase tracking-[0.18em] font-bold"
-            style={{ color: GOLD, fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)", fontSize: 9 }}>
+            style={{ color: GOLD, fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)", fontSize: "1vmin" }}>
             Classroom · In Session
           </div>
           <div className="font-black leading-tight"
-            style={{ color: TEXT_HI, fontFamily: "var(--font-syne,'Syne',sans-serif)", fontSize: 15 }}>
+            style={{ color: TEXT_HI, fontFamily: "var(--font-syne,'Syne',sans-serif)", fontSize: "1.7vmin" }}>
             Ms. Bhavna
           </div>
         </div>
 
         {/* Text / Voice toggle — shows current state highlighted */}
         {voice.voiceOK && (
-          <div className="flex items-center gap-0.5 rounded-full p-0.5"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+          <div className="flex items-center rounded-full"
+            style={{ gap: "0.2vmin", padding: "0.2vmin", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
             {(["text", "voice"] as const).map(opt => (
               <button key={opt}
                 onClick={() => switchIo(opt)}
-                className="px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 transition-colors"
-                style={io === opt
+                className="rounded-full font-bold flex items-center transition-colors"
+                style={{ padding: "0.4vmin 1.1vmin", fontSize: "1.1vmin", gap: "0.4vmin",
+                  ...(io === opt
                   ? { background: `linear-gradient(135deg, ${GOLD}, ${VIOLET})`, color: TEXT_HI }
-                  : { color: TEXT_LO }}>
-                {opt === "text" ? <MessageSquare size={11} /> : <Mic size={11} />}
+                  : { color: TEXT_LO }) }}>
+                {opt === "text" ? <MessageSquare size="1.2vmin" /> : <Mic size="1.2vmin" />}
                 {opt === "text" ? "Text" : "Voice"}
               </button>
             ))}
@@ -384,42 +386,45 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
           onClick={onOpenLecture}
           disabled={streaming}
           title="Start a guided lesson"
-          className="px-2.5 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition-colors flex-shrink-0"
+          className="rounded-full font-bold flex items-center transition-colors flex-shrink-0"
           style={{
+            padding: "0.7vmin 1.1vmin", fontSize: "1.2vmin", gap: "0.4vmin",
             background: "rgba(255,255,255,0.06)",
             border: `1px solid rgba(255,255,255,0.12)`,
             color:   TEXT_HI,
             opacity: streaming ? 0.5 : 1,
           }}
         >
-          <BookOpen size={12} /> Lesson
+          <BookOpen size="1.3vmin" /> Lesson
         </button>
 
         {/* Close — separated with extra left margin so it's not misclick-able */}
         <button
           onClick={handleClose}
           aria-label="Close"
-          className="ml-2 w-8 h-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0"
-          style={{ background: "rgba(255,255,255,0.04)", color: TEXT_MID }}
+          className="rounded-full flex items-center justify-center transition-colors flex-shrink-0"
+          style={{ marginLeft: "0.9vmin", width: "3.6vmin", height: "3.6vmin", background: "rgba(255,255,255,0.04)", color: TEXT_MID }}
         >
-          <X size={16} />
+          <X size="1.8vmin" />
         </button>
       </div>
 
       {/* ── Messages ── */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{ scrollbarWidth: "thin" }}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto flex flex-col"
+        style={{ scrollbarWidth: "thin", padding: "1.3vmin 1.8vmin", gap: "1.3vmin" }}>
         <style>{TC_MD_CSS}</style>
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className="rounded-2xl px-3.5 py-2.5 max-w-[85%]"
+              className="max-w-[85%]"
               style={{
+                borderRadius: "1.8vmin", padding: "1.1vmin 1.6vmin",
                 background: m.role === "user"
                   ? `linear-gradient(135deg, ${VIOLET_DEEP}, ${VIOLET})`
                   : `linear-gradient(180deg, ${TEXT_HI}10, ${TEXT_HI}05)`,
                 border:     `1px solid ${m.role === "user" ? `${VIOLET}aa` : `${TEXT_HI}1a`}`,
                 color:      TEXT_HI,
-                fontSize:   13.5,
+                fontSize:   "1.5vmin",
                 lineHeight: 1.55,
                 whiteSpace: m.role === "user" ? "pre-wrap" : "normal",
                 wordBreak:  "break-word",
@@ -429,8 +434,8 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
                 ? <div className="tc-md"><ReactMarkdown>{normalizeMd(m.content || (m.streaming ? "…" : ""))}</ReactMarkdown></div>
                 : (m.content || (m.streaming ? "…" : ""))}
               {m.streaming && m.content && (
-                <span className="inline-block w-1 h-3 ml-0.5 align-middle"
-                  style={{ background: GOLD, animation: "tcblink 1s steps(2) infinite" }} />
+                <span className="inline-block align-middle"
+                  style={{ width: "0.4vmin", height: "1.3vmin", marginLeft: "0.2vmin", background: GOLD, animation: "tcblink 1s steps(2) infinite" }} />
               )}
             </div>
           </div>
@@ -439,31 +444,32 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
 
       {/* Voice error chip */}
       {voice.voiceError && (
-        <div className="mx-4 mb-2 text-[11px] rounded-lg px-3 py-1.5"
-          style={{ color: "#FFC7CC", background: "rgba(255,87,108,0.12)", border: "1px solid rgba(255,87,108,0.35)" }}>
+        <div style={{ margin: "0 1.8vmin 0.9vmin", fontSize: "1.2vmin", borderRadius: "0.9vmin", padding: "0.7vmin 1.3vmin",
+          color: "#FFC7CC", background: "rgba(255,87,108,0.12)", border: "1px solid rgba(255,87,108,0.35)" }}>
           {voice.voiceError}
         </div>
       )}
 
       {/* ── Text input row ── */}
       {io === "text" && (
-        <div className="flex items-center gap-2 px-3 py-3 border-t border-white/[0.08] flex-shrink-0"
-          style={{ background: "rgba(0,0,0,0.18)" }}>
+        <div className="flex items-center border-t border-white/[0.08] flex-shrink-0"
+          style={{ gap: "0.9vmin", padding: "1.3vmin", background: "rgba(0,0,0,0.18)" }}>
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
             placeholder={streaming ? "Bhavna is typing…" : "Ask Ms. Bhavna anything…"}
             disabled={streaming}
-            className="flex-1 bg-transparent outline-none text-[13.5px] px-2"
-            style={{ color: TEXT_HI }}
+            className="flex-1 bg-transparent outline-none"
+            style={{ color: TEXT_HI, fontSize: "1.5vmin", padding: "0 0.9vmin" }}
           />
           <button
             onClick={() => void send()}
             disabled={streaming || !input.trim()}
             aria-label="Send"
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+            className="rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
             style={{
+              width: "4vmin", height: "4vmin",
               background: input.trim() && !streaming
                 ? `linear-gradient(135deg, ${GOLD}, ${VIOLET})`
                 : "rgba(255,255,255,0.06)",
@@ -473,7 +479,7 @@ export function TeacherChat({ profile, chapterTitle, onClose, onSpeakingChange, 
               cursor:  streaming || !input.trim() ? "not-allowed" : "pointer",
             }}
           >
-            <Send size={15} />
+            <Send size="1.7vmin" />
           </button>
         </div>
       )}
@@ -572,57 +578,59 @@ function VoicePanel({
   const TEXT_LO  = "rgba(244,236,215,0.50)";
 
   return (
-    <div className="px-3 py-3 flex flex-col items-center gap-2 border-t border-white/[0.08] flex-shrink-0"
-      style={{ background: "rgba(0,0,0,0.18)" }}>
+    <div className="flex flex-col items-center border-t border-white/[0.08] flex-shrink-0"
+      style={{ padding: "1.3vmin", gap: "0.9vmin", background: "rgba(0,0,0,0.18)" }}>
 
       {/* Tap / Live sub-mode toggle */}
-      <div className="flex gap-0.5 rounded-full p-0.5" style={{ background: "rgba(255,255,255,0.06)" }}>
+      <div className="flex rounded-full" style={{ gap: "0.2vmin", padding: "0.2vmin", background: "rgba(255,255,255,0.06)" }}>
         {(["tap", "live"] as const).map(s => (
           <button key={s}
             onClick={() => { if (s !== subMode) { cleanup(); setSubMode(s); } }}
             disabled={streaming}
-            className="px-3 py-1 rounded-full text-[10px] font-bold transition-colors"
-            style={subMode === s
+            className="rounded-full font-bold transition-colors"
+            style={{ padding: "0.4vmin 1.3vmin", fontSize: "1.1vmin",
+              ...(subMode === s
               ? { background: `linear-gradient(135deg, ${GOLD}, ${VIOLET})`, color: TEXT_HI }
-              : { color: TEXT_LO, opacity: streaming ? 0.5 : 1 }}>
+              : { color: TEXT_LO, opacity: streaming ? 0.5 : 1 }) }}>
             {s === "tap" ? "Tap to talk" : "Live call"}
           </button>
         ))}
       </div>
 
-      <canvas ref={canvasRef} width={120} height={28} />
-      <p className="text-[11px]" style={{ color: TEXT_MID }}>{label}</p>
+      <canvas ref={canvasRef} width={120} height={28} style={{ width: "13.3vmin", height: "3.1vmin" }} />
+      <p style={{ color: TEXT_MID, fontSize: "1.2vmin" }}>{label}</p>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center" style={{ gap: "1.3vmin" }}>
         <button
           onClick={subMode === "tap" ? toggleTap : toggleLive}
           aria-label={active ? "Stop" : "Start"}
-          className="w-14 h-14 rounded-full flex items-center justify-center transition-transform active:scale-95"
+          className="rounded-full flex items-center justify-center transition-transform active:scale-95"
           style={{
+            width: "6.2vmin", height: "6.2vmin",
             background: `linear-gradient(135deg, ${GOLD}, ${VIOLET})`,
-            boxShadow:  `0 0 18px ${GOLD_GLOW}`,
+            boxShadow:  `0 0 2vmin ${GOLD_GLOW}`,
           }}>
-          {active ? <Square size={20} color="#fff" /> : <Mic size={22} color="#fff" />}
+          {active ? <Square size="2.2vmin" color="#fff" /> : <Mic size="2.4vmin" color="#fff" />}
         </button>
         <button
           onClick={toggleMute}
           title={muted ? "Unmute Bhavna" : "Mute Bhavna"}
           aria-label={muted ? "Unmute Bhavna" : "Mute Bhavna"}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-          style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${muted ? GOLD : "rgba(255,255,255,0.12)"}` }}>
-          {muted ? <VolumeX size={15} color={TEXT_HI} /> : <Volume2 size={15} color={TEXT_HI} />}
+          className="rounded-full flex items-center justify-center transition-colors"
+          style={{ width: "4vmin", height: "4vmin", background: "rgba(255,255,255,0.06)", border: `1px solid ${muted ? GOLD : "rgba(255,255,255,0.12)"}` }}>
+          {muted ? <VolumeX size="1.7vmin" color={TEXT_HI} /> : <Volume2 size="1.7vmin" color={TEXT_HI} />}
         </button>
       </div>
 
       {/* "or type" fallback — expands a textarea so STT failures don't brick input */}
       <button
         onClick={() => setTypeOpen(v => !v)}
-        className="text-[10px] underline underline-offset-2 transition-colors"
-        style={{ color: TEXT_LO }}>
+        className="underline underline-offset-2 transition-colors"
+        style={{ color: TEXT_LO, fontSize: "1.1vmin" }}>
         {typeOpen ? "hide keyboard" : "or type instead"}
       </button>
       {typeOpen && (
-        <div className="w-full flex gap-2 items-center">
+        <div className="w-full flex items-center" style={{ gap: "0.9vmin" }}>
           <input
             value={typeInput}
             onChange={e => setTypeInput(e.target.value)}
@@ -634,18 +642,20 @@ function VoicePanel({
             }}
             placeholder="Type your message…"
             disabled={streaming}
-            className="flex-1 bg-transparent outline-none text-[12.5px] px-3 py-1.5 rounded-lg"
-            style={{ border: `1px solid rgba(255,255,255,0.12)`, color: TEXT_HI, background: "rgba(255,255,255,0.04)" }}
+            className="flex-1 bg-transparent outline-none"
+            style={{ border: `1px solid rgba(255,255,255,0.12)`, color: TEXT_HI, background: "rgba(255,255,255,0.04)",
+              fontSize: "1.4vmin", padding: "0.7vmin 1.3vmin", borderRadius: "0.9vmin" }}
           />
           <button
             onClick={() => { if (typeInput.trim()) { onSend(typeInput.trim()); setTypeInput(""); } }}
             disabled={streaming || !typeInput.trim()}
-            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+            className="rounded-full flex items-center justify-center flex-shrink-0"
             style={{
+              width: "3.6vmin", height: "3.6vmin",
               background: typeInput.trim() && !streaming ? `linear-gradient(135deg, ${GOLD}, ${VIOLET})` : "rgba(255,255,255,0.06)",
               opacity: (streaming || !typeInput.trim()) ? 0.5 : 1,
             }}>
-            <Send size={13} color={TEXT_HI} />
+            <Send size="1.4vmin" color={TEXT_HI} />
           </button>
         </div>
       )}

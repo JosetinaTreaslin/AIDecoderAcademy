@@ -135,7 +135,7 @@ export function BhavnaWelcomePanel({ profile, onClose, onOpenChat }: Props) {
           style={{
             bottom: "-3vh",
             left:   "1vw",
-            height: "clamp(340px, 56vh, 660px)",
+            height: "56vh",
             width:  "auto",
             filter: `drop-shadow(0 0 34px ${GOLD_GLOW})`,
           }}
@@ -148,59 +148,61 @@ export function BhavnaWelcomePanel({ profile, onClose, onOpenChat }: Props) {
           animate={{ y: 0,  opacity: 1 }}
           exit={{    y: 40, opacity: 0 }}
           transition={{ duration: 0.28, delay: 0.06, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute flex flex-col gap-2"
+          className="absolute flex flex-col"
           style={{
-            left:      "clamp(260px, 22vw, 360px)",
-            right:     "clamp(16px, 3vw, 48px)",
-            bottom:    "clamp(16px, 3vh, 40px)",
-            maxWidth:  880,
+            left:      "22vw",
+            right:     "3vw",
+            bottom:    "3vh",
+            maxWidth:  "97.8vmin",
+            gap:       "0.9vmin",
             fontFamily: "var(--font-dm-sans,'DM Sans',sans-serif)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Name plate + controls row */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center flex-wrap" style={{ gap: "0.9vmin" }}>
             <div
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md"
+              className="inline-flex items-center"
               style={{
+                gap: "0.7vmin", padding: "0.4vmin 1.3vmin", borderRadius: "0.7vmin",
                 background: `linear-gradient(135deg, ${VIOLET_DEEP}, ${GOLD})`,
                 boxShadow:  `0 4px 18px ${GOLD_GLOW}`,
               }}
             >
               <span style={{
                 fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)",
-                fontSize: 9, fontWeight: 700, color: TEXT_HI,
+                fontSize: "1vmin", fontWeight: 700, color: TEXT_HI,
                 letterSpacing: "0.18em", textTransform: "uppercase",
               }}>
                 Ms. Bhavna · Welcome
               </span>
             </div>
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center" style={{ gap: "0.9vmin" }}>
               <button
                 onClick={toggleAudio}
                 title={audioOn ? "Mute Bhavna" : "Unmute Bhavna"}
                 aria-label={audioOn ? "Mute Bhavna" : "Unmute Bhavna"}
-                className="w-7 h-7 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${audioOn ? GOLD : "rgba(255,255,255,0.12)"}` }}
+                className="rounded-full flex items-center justify-center"
+                style={{ width: "3.1vmin", height: "3.1vmin", background: "rgba(255,255,255,0.06)", border: `1px solid ${audioOn ? GOLD : "rgba(255,255,255,0.12)"}` }}
               >
-                {audioOn ? <Volume2 size={12} color={TEXT_HI} /> : <VolumeX size={12} color={TEXT_HI} />}
+                {audioOn ? <Volume2 size="1.3vmin" color={TEXT_HI} /> : <VolumeX size="1.3vmin" color={TEXT_HI} />}
               </button>
               <button
                 onClick={close}
                 aria-label="Close welcome"
-                className="w-7 h-7 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(255,255,255,0.04)", color: TEXT_MID }}
+                className="rounded-full flex items-center justify-center"
+                style={{ width: "3.1vmin", height: "3.1vmin", background: "rgba(255,255,255,0.04)", color: TEXT_MID }}
               >
-                <X size={14} />
+                <X size="1.6vmin" />
               </button>
             </div>
           </div>
 
           {/* Main dialogue box */}
           <div
-            className="rounded-2xl px-5 py-4"
             style={{
+              borderRadius: "1.8vmin", padding: "1.8vmin 2.2vmin",
               background: `
                 radial-gradient(120% 80% at 0% 0%, ${VIOLET_DEEP}22 0%, transparent 60%),
                 radial-gradient(120% 80% at 100% 100%, ${GOLD}1a 0%, transparent 55%),
@@ -210,37 +212,39 @@ export function BhavnaWelcomePanel({ profile, onClose, onOpenChat }: Props) {
               boxShadow: `0 1px 0 ${TEXT_HI}1a inset, 0 0 40px rgba(0,0,0,0.5), 0 0 36px -10px ${GOLD_GLOW}`,
             }}
           >
-            <div className="space-y-4 py-1">
+            <div className="flex flex-col" style={{ gap: "1.8vmin", paddingTop: "0.4vmin", paddingBottom: "0.4vmin" }}>
               <p style={{
-                color: GOLD, fontSize: 10,
+                color: GOLD, fontSize: "1.1vmin",
                 fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)",
                 fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
               }}>
                 👩‍🏫 YOUR CLASSROOM TEACHER
               </p>
-              <p style={{ color: TEXT_HI, fontSize: 14, lineHeight: 1.65 }}>
+              <p style={{ color: TEXT_HI, fontSize: "1.6vmin", lineHeight: 1.65 }}>
                 {greeting.text.slice(0, revealed)}
               </p>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex flex-wrap" style={{ gap: "0.9vmin" }}>
                 <button
                   onClick={close}
-                  className="px-4 py-2 rounded-full text-[12px] font-bold flex items-center gap-1.5"
+                  className="rounded-full font-bold flex items-center"
                   style={{
+                    gap: "0.7vmin", padding: "0.9vmin 1.8vmin", fontSize: "1.3vmin",
                     background: `linear-gradient(135deg, ${GOLD}, ${VIOLET})`,
                     color: TEXT_HI, boxShadow: `0 4px 14px ${GOLD_GLOW}`,
                   }}
                 >
-                  Let&rsquo;s begin <ArrowRight size={13} />
+                  Let&rsquo;s begin <ArrowRight size="1.4vmin" />
                 </button>
                 <button
                   onClick={() => { speakRef.current?.cancel(); speakRef.current = null; onOpenChat(); }}
-                  className="px-4 py-2 rounded-full text-[12px] font-semibold flex items-center gap-1.5"
+                  className="rounded-full font-semibold flex items-center"
                   style={{
+                    gap: "0.7vmin", padding: "0.9vmin 1.8vmin", fontSize: "1.3vmin",
                     background: "rgba(255,255,255,0.06)",
                     border: "1px solid rgba(255,255,255,0.12)", color: TEXT_MID,
                   }}
                 >
-                  <MessageSquare size={13} /> Ask Ms. Bhavna a question
+                  <MessageSquare size="1.4vmin" /> Ask Ms. Bhavna a question
                 </button>
               </div>
             </div>

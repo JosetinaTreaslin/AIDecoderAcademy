@@ -824,15 +824,18 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
       {/* ── Chapter title — bigger, centered top ─────────────────────────────── */}
       <div className="absolute flex flex-col items-center"
-        style={{ top:10, left:"50%", transform:"translateX(-50%)", zIndex:25 }}>
-        <div className="px-5 py-2 rounded-2xl"
-          style={{ background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
+        style={{ top:"1.1vmin", left:"50%", transform:"translateX(-50%)", zIndex:25 }}>
+        <div className="flex flex-col items-center"
+          style={{ padding:"0.9vmin 2.2vmin",
+            borderRadius:"1.8vmin",
+            background:"rgba(0,0,0,0.55)", backdropFilter:"blur(12px)",
             border:"1px solid rgba(255,255,255,0.15)" }}>
-          <p className="font-display font-black text-base whitespace-nowrap"
-            style={{ color:"#fff", letterSpacing:"0.01em" }}>
+          <p className="font-display font-black whitespace-nowrap"
+            style={{ color:"#fff", letterSpacing:"0.01em", fontSize:"1.8vmin" }}>
             {chapter.chapter_title}
           </p>
-          <p className="text-[11px] font-mono text-center mt-0.5" style={{ color:"rgba(255,255,255,0.45)" }}>
+          <p className="font-mono text-center"
+            style={{ color:"rgba(255,255,255,0.45)", fontSize:"1.2vmin", marginTop:"0.2vmin" }}>
             CBSE Class 10 · Science
           </p>
         </div>
@@ -998,7 +1001,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               transition={{ duration:0.18 }}>
               {/* ── Flashcard grid: 2 columns ── */}
               {panelFilter === "flashcards" ? (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, paddingRight:4, paddingBottom:8 }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.7vmin", paddingRight:"0.4vmin", paddingBottom:"0.9vmin" }}>
                   {savedItems.filter(item => item.tags.includes("flashcards")).slice(0, 10).map(item => {
                     let firstImageUrl: string | undefined;
                     let cardCount = 0;
@@ -1022,24 +1025,24 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                         }}
                         whileHover={{ scale:1.04, boxShadow:"0 6px 18px rgba(245,166,35,0.3)" }}
                         className="cursor-pointer rounded-xl overflow-hidden"
-                        style={{ background:"rgba(255,255,255,0.92)", border:"2px solid rgba(245,166,35,0.4)", boxShadow:"0 2px 10px rgba(15,28,77,0.08)" }}
+                        style={{ background:"rgba(255,255,255,0.92)", border:"0.2vmin solid rgba(245,166,35,0.4)", boxShadow:"0 2px 10px rgba(15,28,77,0.08)" }}
                       >
                         {/* Image or placeholder */}
                         <div style={{ width:"100%", aspectRatio:"6/2", overflow:"hidden", background:"#FFF8EC" }}>
                           {firstImageUrl
                             // eslint-disable-next-line @next/next/no-img-element
                             ? <img src={firstImageUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                            : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>🗂️</div>
+                            : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"2.2vmin" }}>🗂️</div>
                           }
                         </div>
-                        
-                        <div style={{ padding:"4px 5px 5px" }}>
-                          <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:9, color:"#0f1c4d",
+
+                        <div style={{ padding:"0.4vmin 0.6vmin 0.6vmin" }}>
+                          <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:"1vmin", color:"#0f1c4d",
                             display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.3 }}>
                             {topic}
                           </p>
                           {cardCount > 0 && (
-                            <p style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:8, color:"rgba(245,166,35,0.9)", marginTop:2, fontWeight:700 }}>
+                            <p style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:"0.9vmin", color:"rgba(245,166,35,0.9)", marginTop:"0.2vmin", fontWeight:700 }}>
                               {cardCount} cards
                             </p>
                           )}
@@ -1150,13 +1153,14 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                         animate={{ opacity:1, y:0, scale:1 }}
                         transition={{ duration:0.25 }}
                         onClick={() => openSavedItem(item)}
-                        className="rounded-xl p-3 mb-2 cursor-grab"
+                        className="cursor-grab"
                         whileHover={{ scale:1.02, boxShadow:"0 4px 16px rgba(37,99,235,0.2)" }}
-                        style={{ background:"rgba(255,255,255,0.88)", border:"1px solid rgba(37,99,235,0.2)", boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
-                        <div className="w-full h-1 rounded-full mb-2"
-                          style={{ background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
-                        <p className="text-xs font-bold leading-snug"
-                          style={{ color:"#0f1c4d", display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+                        style={{ borderRadius:"1.3vmin", padding:"1.3vmin", marginBottom:"0.9vmin",
+                          background:"rgba(255,255,255,0.88)", border:"1px solid rgba(37,99,235,0.2)", boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
+                        <div className="w-full rounded-full"
+                          style={{ height:"0.4vmin", marginBottom:"0.9vmin", background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
+                        <p className="font-bold leading-snug"
+                          style={{ color:"#0f1c4d", fontSize:"1.3vmin", display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
                           {item.title}
                         </p>
                       </motion.div>
@@ -1191,13 +1195,13 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                   animate={{ opacity:1, y:0,  scale:1 }}
                   transition={{ duration:0.25 }}
                   onClick={() => setPlayingVideo(vid)}
-                  className="rounded-xl mb-2 overflow-hidden cursor-pointer"
+                  className="overflow-hidden cursor-pointer"
                   whileHover={{ scale:1.03, boxShadow:"0 6px 20px rgba(37,99,235,0.28)" }}
-                  style={{ background:"rgba(255,255,255,0.92)",
+                  style={{ borderRadius:"1.3vmin", marginBottom:"0.9vmin", background:"rgba(255,255,255,0.92)",
                     border:"1px solid rgba(37,99,235,0.2)",
                     boxShadow:"0 2px 12px rgba(15,28,77,0.1)" }}>
                   {/* Video thumbnail */}
-                  <div className="relative w-full" style={{ aspectRatio:"16/9", background:"#0a0f1e", maxHeight:72, overflow:"hidden" }}>
+                  <div className="relative w-full" style={{ aspectRatio:"16/9", background:"#0a0f1e", maxHeight:"8vmin", overflow:"hidden" }}>
                     {vid.thumbUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={vid.thumbUrl} alt={vid.title}
@@ -1208,18 +1212,18 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                     {/* Play button overlay */}
                     <div className="absolute inset-0 flex items-center justify-center"
                       style={{ background:"rgba(10,15,40,0.38)" }}>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center"
-                        style={{ background:"rgba(37,99,235,0.9)",
+                      <div className="rounded-full flex items-center justify-center"
+                        style={{ width:"3.6vmin", height:"3.6vmin", background:"rgba(37,99,235,0.9)",
                           boxShadow:"0 0 16px rgba(37,99,235,0.7)" }}>
-                        <Play className="w-4 h-4 text-white" style={{ marginLeft:2 }} />
+                        <Play className="text-white" style={{ width:"1.8vmin", height:"1.8vmin", marginLeft:"0.2vmin" }} />
                       </div>
                     </div>
                   </div>
                   {/* Title */}
-                  <div className="px-2.5 py-2">
-                    <div className="w-full h-0.5 rounded-full mb-1.5"
-                      style={{ background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
-                    <p className="text-[11px] font-bold leading-snug" style={{ color:"#0f1c4d" }}>
+                  <div style={{ padding:"0.9vmin 1.1vmin" }}>
+                    <div className="w-full rounded-full" style={{ height:"0.2vmin", marginBottom:"0.7vmin",
+                      background:"linear-gradient(90deg,#2563eb,#7c3aed)" }} />
+                    <p className="font-bold leading-snug" style={{ color:"#0f1c4d", fontSize:"1.2vmin" }}>
                       {vid.title}
                     </p>
                   </div>
@@ -1363,9 +1367,9 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             gap:8, scrollbarWidth:"none" }}>
 
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full gap-3 opacity-35 pointer-events-none">
-              <span style={{ fontSize:32 }}>✏️</span>
-              <p className="text-sm text-center font-medium" style={{ color:"#1e3a8a", lineHeight:1.7 }}>
+            <div className="flex flex-col items-center justify-center h-full opacity-35 pointer-events-none" style={{ gap:"1.3vmin" }}>
+              <span style={{ fontSize:"3.6vmin" }}>✏️</span>
+              <p className="text-center font-medium" style={{ color:"#1e3a8a", lineHeight:1.7, fontSize:"1.6vmin" }}>
                 Click <strong>Notes</strong> or <strong>Flashcards</strong> on the left,<br/>
                 or type a question below
               </p>
@@ -1430,16 +1434,17 @@ export function ClassroomArena({ chapter, onBack }: Props) {
 
         {/* ── Audio Overview active chip ─────────────────────────────────────── */}
         {audioOverviewMode && (
-          <div style={{ flexShrink:0, padding:"0 4px 6px" }}>
+          <div style={{ flexShrink:0, padding:"0 0.4vmin 0.7vmin" }}>
             <motion.div
               initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full w-fit"
-              style={{ background:"linear-gradient(180deg, rgba(200,168,75,0.22), rgba(200,168,75,0.10))",
+              className="flex items-center rounded-full w-fit"
+              style={{ gap:"0.9vmin", padding:"0.7vmin 1.3vmin",
+                background:"linear-gradient(180deg, rgba(200,168,75,0.22), rgba(200,168,75,0.10))",
                 border:"1px solid rgba(200,168,75,0.55)",
                 boxShadow:"0 0 16px rgba(200,168,75,0.35)" }}>
-              <motion.span style={{ width:7, height:7, borderRadius:"50%", background:"#C8A84B", display:"inline-block" }}
+              <motion.span style={{ width:"0.8vmin", height:"0.8vmin", borderRadius:"50%", background:"#C8A84B", display:"inline-block" }}
                 animate={{ opacity:[0.4,1,0.4] }} transition={{ duration:1.4, repeat:Infinity }} />
-              <span className="text-xs font-semibold" style={{ color:"#F4E4B8" }}>
+              <span className="font-semibold" style={{ color:"#F4E4B8", fontSize:"1.3vmin" }}>
                 🎧 Audio Overview ON — every message becomes an overview
               </span>
               <button
@@ -1451,8 +1456,8 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                     createdAt: new Date(),
                   } as ClassroomMessage]);
                 }}
-                className="text-xs font-bold ml-1 px-2 py-0.5 rounded-full hover:opacity-80"
-                style={{ background:"rgba(200,168,75,0.85)", color:"#1a1206" }}>
+                className="font-bold rounded-full hover:opacity-80"
+                style={{ fontSize:"1.3vmin", marginLeft:"0.2vmin", padding:"0.2vmin 0.9vmin", background:"rgba(200,168,75,0.85)", color:"#1a1206" }}>
                 Exit
               </button>
             </motion.div>
@@ -1460,19 +1465,19 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         )}
 
         {/* ── Input bar — dark pill, Creator's Room style ────────────────────── */}
-        <div style={{ flexShrink:0, padding:"0 4px 8px" }}>
+        <div style={{ flexShrink:0, padding:"0 0.4vmin 0.9vmin" }}>
           {flashcardMode && (
-            <div className="flex items-center justify-between" style={{ padding:"0 4px 6px" }}>
+            <div className="flex items-center justify-between" style={{ padding:"0 0.4vmin 0.7vmin" }}>
               <span
-                className="text-xs font-bold px-2.5 py-1 rounded-full"
-                style={{ background:"rgba(245,166,35,0.16)", border:"1px solid rgba(245,166,35,0.4)", color:"#F5A623", fontFamily:"'DM Sans',sans-serif" }}
+                className="font-bold rounded-full"
+                style={{ fontSize:"1.3vmin", padding:"0.4vmin 1.1vmin", background:"rgba(245,166,35,0.16)", border:"1px solid rgba(245,166,35,0.4)", color:"#F5A623", fontFamily:"'DM Sans',sans-serif" }}
               >
                 🗂️ Flashcard mode — type a topic from this chapter
               </span>
               <button
                 onClick={() => setFlashcardMode(false)}
-                className="text-xs font-semibold px-2.5 py-1 rounded-full transition-colors hover:bg-white/10"
-                style={{ color:"rgba(255,255,255,0.5)", fontFamily:"'DM Sans',sans-serif" }}
+                className="font-semibold rounded-full transition-colors hover:bg-white/10"
+                style={{ fontSize:"1.3vmin", padding:"0.4vmin 1.1vmin", color:"rgba(255,255,255,0.5)", fontFamily:"'DM Sans',sans-serif" }}
               >
                 Exit
               </button>
@@ -1512,10 +1517,10 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               </button>
             </div>
           )}
-          <div style={{ display:"flex", alignItems:"center", gap:8,
+          <div style={{ display:"flex", alignItems:"center", gap:"0.9vmin",
             background:"linear-gradient(180deg, rgba(18,28,72,0.92) 0%, rgba(10,16,52,0.95) 100%)",
             backdropFilter:"blur(24px)",
-            borderRadius:16, padding:"10px 12px",
+            borderRadius:"1.8vmin", padding:"1.1vmin 1.3vmin",
             border: flashcardMode ? "1px solid rgba(245,166,35,0.45)" : blogMode ? "1px solid rgba(37,99,235,0.55)" : mindmapMode ? "1px solid rgba(139,92,246,0.55)" : "1px solid rgba(100,140,255,0.25)",
             boxShadow: flashcardMode
               ? "0 0 0 1px rgba(245,166,35,0.12), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"
@@ -1544,20 +1549,20 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               rows={1}
               disabled={!profile}
               style={{ flex:1, resize:"none", border:"none", outline:"none",
-                background:"transparent", fontSize:15, fontWeight:500,
+                background:"transparent", fontSize:"1.7vmin", fontWeight:500,
                 color:"rgba(255,255,255,0.92)", fontFamily:"inherit",
                 lineHeight:1.5, overflowY:"hidden",
                 caretColor: flashcardMode ? "#F5A623" : blogMode ? "#60a5fa" : mindmapMode ? "#a78bfa" : ACCENT, userSelect:"text" }}
             />
 
             <button onClick={() => send(input)} disabled={!canSend}
-              style={{ width:34, height:34, borderRadius:"50%", flexShrink:0,
+              style={{ width:"3.8vmin", height:"3.8vmin", borderRadius:"50%", flexShrink:0,
                 background: canSend ? `rgba(37,99,235,0.9)` : "rgba(255,255,255,0.08)",
                 border:"none", cursor: canSend ? "pointer" : "not-allowed",
                 display:"flex", alignItems:"center", justifyContent:"center",
                 transition:"all 0.2s",
                 boxShadow: canSend ? `0 0 16px rgba(37,99,235,0.6)` : "none" }}>
-              <svg width="13" height="13" viewBox="0 0 18 18" fill="none">
+              <svg width="1.4vmin" height="1.4vmin" viewBox="0 0 18 18" fill="none">
                 <path d="M2 9h14M9 2l7 7-7 7"
                   stroke={canSend ? "#fff" : "rgba(255,255,255,0.2)"}
                   strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
