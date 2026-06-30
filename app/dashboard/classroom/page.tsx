@@ -232,89 +232,106 @@ function SubjectTile({ src, name, hasData, onClick }: {
 function ClassroomLanding({ profile, onEnter }: { profile: Profile|null; onEnter: (subjectId: string) => void }) {
   const firstName = (profile?.display_name ?? "Explorer").split(" ")[0];
   return (
-    <div className="relative w-full flex flex-col overflow-hidden"
+    <div className="relative w-full overflow-hidden"
       style={{ height:"100dvh", fontFamily:"var(--font-dm-sans,'DM Sans',sans-serif)" }}>
 
       <style>{`
-        .cl-grid { grid-template-columns: 23fr 34fr 23fr 20fr; }
+        /* Single scaled unit — expands inversely so after scale it fills the viewport exactly */
+        .cl-page {
+          position: absolute; top: 0; left: 0;
+          width: 100vw; height: 100dvh;
+          display: flex; flex-direction: column;
+          transform-origin: top left;
+        }
+        .cl-grid   { grid-template-columns: 23fr 34fr 23fr 20fr; }
         .cl-spacer { height: 18%; }
-        .cl-col-left  { padding-left:12px; padding-top:60px; transform:translateX(120px); overflow:hidden; }
-        .cl-col-right { padding-right:12px; padding-top:60px; transform:translateX(0px); overflow:hidden; }
-        .cl-img { display:block; width:100%; height:calc((100dvh - 38dvh - 68px) / 4); margin:0; padding:0; }
-        .cl-leaderboard {}
-        @media (max-width:1280px) { .cl-grid { grid-template-columns:25fr 30fr 25fr 20fr; } }
-        @media (max-width:1100px) { .cl-grid { grid-template-columns:26fr 48fr 26fr 0fr; } .cl-leaderboard { display:none; } }
-        @media (max-height:760px) { .cl-spacer{height:14%;} .cl-col-left{padding-top:32px;} .cl-col-right{padding-top:32px;} .cl-img{height:calc((100dvh - 20dvh - 60px) / 4);} }
-        @media (max-height:600px) { .cl-spacer{height:10%;} .cl-col-left{padding-top:16px;} .cl-col-right{padding-top:16px;} .cl-img{height:calc((100dvh - 20dvh - 60px) / 4);} }
+        .cl-col-left, .cl-col-right {
+          padding-top: 95px; overflow: hidden;
+          display: flex; flex-direction: column; gap: 0;
+        }
+        .cl-col-left  { padding-left:  12px; transform: translateX(150px); }
+        .cl-col-right { padding-right: 12px; transform: translateX(-20px); }
+        .cl-img { display: block; width: 100%; flex: 1; min-height: 0; margin: 0; padding: 0; margin-bottom: -6px; }
+
+        /* scale + inverse dimensions = fills viewport with no black borders */
+        @media (max-width:1400px) { .cl-page { transform:scale(0.88); width:calc(100vw/0.88); height:calc(100dvh/0.88); } }
+        @media (max-width:1200px) { .cl-page { transform:scale(0.76); width:calc(100vw/0.76); height:calc(100dvh/0.76); } }
+        @media (max-width:1000px) { .cl-page { transform:scale(0.64); width:calc(100vw/0.64); height:calc(100dvh/0.64); } }
+        @media (max-width:800px)  { .cl-page { transform:scale(0.52); width:calc(100vw/0.52); height:calc(100dvh/0.52); } }
+        @media (max-width:600px)  { .cl-page { transform:scale(0.42); width:calc(100vw/0.42); height:calc(100dvh/0.42); } }
+        @media (max-height:750px) and (min-width:601px) { .cl-page { transform:scale(0.82); width:calc(100vw/0.82); height:calc(100dvh/0.82); } }
+        @media (max-height:600px) { .cl-page { transform:scale(0.66); width:calc(100vw/0.66); height:calc(100dvh/0.66); } }
       `}</style>
 
-      {/* Hub background image */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/panels/background.png" alt="" aria-hidden draggable={false}
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-        style={{ zIndex:0 }} />
+      <div className="cl-page">
+        {/* Background */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/panels/background.png" alt="" aria-hidden draggable={false}
+          className="absolute inset-0 w-full h-full object-cover object-top pointer-events-none select-none"
+          style={{ zIndex:0 }} />
 
-      {/* Stats bar */}
-      <div className="cl-spacer relative flex-shrink-0" style={{ zIndex:10 }}>
-        <div className="absolute bottom-[-24px]" style={{ left:"44%", transform:"translateX(-50%)" }}>
-          <div className="flex items-center px-4 py-2 rounded-2xl"
-            style={{ background:"rgba(255,255,255,0.92)", backdropFilter:"blur(16px)",
-              boxShadow:"0 4px 24px rgba(0,0,0,0.08)", border:"1px solid rgba(255,255,255,0.7)",
-              whiteSpace:"nowrap" }}>
-            {[
-              { icon:"📚", label:"Subjects",   value:"8"  },
-              { icon:"📝", label:"Chapters",   value:"2"  },
-              { icon:"🧪", label:"Questions",  value:"80" },
-              { icon:"🎯", label:"Tests",      value:"2"  },
-            ].map((s, i) => (
-              <div key={s.label} className="flex items-center">
-                {i > 0 && <div className="w-px h-6 mx-3" style={{ background:"rgba(0,0,0,0.08)" }} />}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm">{s.icon}</span>
-                  <div>
-                    <div className="font-black text-[13px] leading-none" style={{ color:"#1a1a2e" }}>{s.value}</div>
-                    <div className="text-[10px] leading-none mt-0.5" style={{ color:"#aaa" }}>{s.label}</div>
+        {/* Stats bar */}
+        <div className="cl-spacer relative flex-shrink-0" style={{ zIndex:10 }}>
+          <div className="absolute bottom-[-60px]" style={{ left:"46%", transform:"translateX(-50%)" }}>
+            <div className="flex items-center px-4 py-2 rounded-2xl"
+              style={{ background:"rgba(255,255,255,0.92)", backdropFilter:"blur(16px)",
+                boxShadow:"0 4px 24px rgba(0,0,0,0.08)", border:"1px solid rgba(255,255,255,0.7)",
+                whiteSpace:"nowrap" }}>
+              {[
+                { icon:"📚", label:"Subjects",   value:"8"  },
+                { icon:"📝", label:"Chapters",   value:"2"  },
+                { icon:"🧪", label:"Questions",  value:"80" },
+                { icon:"🎯", label:"Tests",      value:"2"  },
+              ].map((s, i) => (
+                <div key={s.label} className="flex items-center">
+                  {i > 0 && <div className="w-px h-6 mx-3" style={{ background:"rgba(0,0,0,0.08)" }} />}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">{s.icon}</span>
+                    <div>
+                      <div className="font-black text-[13px] leading-none" style={{ color:"#1a1a2e" }}>{s.value}</div>
+                      <div className="text-[10px] leading-none mt-0.5" style={{ color:"#aaa" }}>{s.label}</div>
+                    </div>
                   </div>
                 </div>
+              ))}
+              <div className="w-px h-6 mx-3" style={{ background:"rgba(0,0,0,0.08)" }} />
+              <div className="text-[12px] font-medium" style={{ color:"#666" }}>
+                Ready to learn, <span className="font-black" style={{ color:"#7C3AED" }}>{firstName}!</span> 🎓
               </div>
-            ))}
-            <div className="w-px h-6 mx-3" style={{ background:"rgba(0,0,0,0.08)" }} />
-            <div className="text-[12px] font-medium" style={{ color:"#666" }}>
-              Ready to learn, <span className="font-black" style={{ color:"#7C3AED" }}>{firstName}!</span> 🎓
-            </div>
-            <div className="ml-3 w-8 h-8 rounded-full flex items-center justify-center text-base flex-shrink-0"
-              style={{ background:"linear-gradient(135deg,rgba(124,58,237,0.15),rgba(124,58,237,0.3))",
-                border:"2px solid rgba(124,58,237,0.3)" }}>
-              {profile?.avatar_emoji ?? "🧑‍💻"}
+              <div className="ml-3 w-8 h-8 rounded-full flex items-center justify-center text-base flex-shrink-0"
+                style={{ background:"linear-gradient(135deg,rgba(124,58,237,0.15),rgba(124,58,237,0.3))",
+                  border:"2px solid rgba(124,58,237,0.3)" }}>
+                {profile?.avatar_emoji ?? "🧑‍💻"}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* 4-column grid */}
-      <div className="cl-grid relative flex-1 min-h-0"
-        style={{ display:"grid", gridTemplateRows:"100%", gap:"0", overflow:"hidden", zIndex:10 }}>
+        {/* 4-column grid */}
+        <div className="cl-grid relative flex-1 min-h-0"
+          style={{ display:"grid", gridTemplateRows:"100%", gap:"0", overflow:"hidden", zIndex:10 }}>
 
-        {/* Left — 4 subject tiles */}
-        <div className="cl-col-left">
-          {LEFT_SUBJECTS.map(s => (
-            <SubjectTile key={s.id} src={s.src} name={s.name} hasData={s.hasData} onClick={() => onEnter(s.id)} />
-          ))}
-        </div>
+          {/* Left — 4 subject tiles */}
+          <div className="cl-col-left">
+            {LEFT_SUBJECTS.map(s => (
+              <SubjectTile key={s.id} src={s.src} name={s.name} hasData={s.hasData} onClick={() => onEnter(s.id)} />
+            ))}
+          </div>
 
-        {/* Center — transparent (shows background character) */}
-        <div />
+          {/* Center — transparent */}
+          <div />
 
-        {/* Right — 4 subject tiles */}
-        <div className="cl-col-right">
-          {RIGHT_SUBJECTS.map(s => (
-            <SubjectTile key={s.id} src={s.src} name={s.name} hasData={s.hasData} onClick={() => onEnter(s.id)} />
-          ))}
-        </div>
+          {/* Right — 4 subject tiles */}
+          <div className="cl-col-right">
+            {RIGHT_SUBJECTS.map(s => (
+              <SubjectTile key={s.id} src={s.src} name={s.name} hasData={s.hasData} onClick={() => onEnter(s.id)} />
+            ))}
+          </div>
 
-        {/* Far right — leaderboard */}
-        <div className="cl-leaderboard">
-          <LeaderboardPanel />
+          {/* Far right — leaderboard */}
+          <div className="cl-leaderboard">
+            <LeaderboardPanel />
+          </div>
         </div>
       </div>
     </div>
