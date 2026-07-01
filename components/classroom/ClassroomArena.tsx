@@ -68,7 +68,7 @@ const TILES = [
   { key:"explainer",   label:"Explainer Videos", active:true,  top:"38.0%", debug:"#38bdf8" },
   { key:"comic",       label:"Comic Creations",  active:false, top:"46.5%", debug:"#fb7185" },
   { key:"audio",       label:"Audio Overview",   active:true,  top:"55.5%", debug:"#fb923c" },
-  { key:"infographic", label:"Infographic",      active:false, top:"63.5%", debug:"#34d399" },
+  { key:"infographic", label:"Infographic",      active:true,  top:"63.5%", debug:"#34d399" },
   { key:"podcast",     label:"Audio Podcast",    active:true,  top:"72.0%", debug:"#e879f9" },
   { key:"notes",       label:"Notes",            active:true,  top:"80.0%", debug:"#22c55e" },
 ] as const;
@@ -97,6 +97,12 @@ interface MindmapResult {
   topic:  string;
   root:   MindMapNode;
   saved:  boolean;
+}
+
+interface InfographicResult {
+  topic:    string;
+  imageUrl: string;
+  saved:    boolean;
 }
 
 const ACCENT     = "#2563eb";
@@ -150,7 +156,10 @@ export function ClassroomArena({ chapter, onBack }: Props) {
   const [blogModalData, setBlogModalData] = useState<{ topic: string; title: string; subject?: string; panels: BlogPanel[]; keyTakeaways?: string[] } | null>(null);
   const [mindmapResults,   setMindmapResults]   = useState<Record<string, MindmapResult>>({});
   const [mindmapModalData, setMindmapModalData] = useState<{ topic: string; root: MindMapNode } | null>(null);
-  const [panelFilter,   setPanelFilter]   = useState<"notes" | "flashcards" | "blog" | "mindmap">("notes");
+  const [panelFilter,   setPanelFilter]   = useState<"notes" | "flashcards" | "blog" | "mindmap" | "infographic">("notes");
+  const [infographicMode,    setInfographicMode]    = useState(false);
+  const [infographicResults, setInfographicResults] = useState<Record<string, InfographicResult>>({});
+  const [infographicViewerData, setInfographicViewerData] = useState<{ topic: string; imageUrl: string } | null>(null);
 
   const classroomWriter = useClassroomWriter();
   useEffect(() => {
@@ -175,8 +184,9 @@ export function ClassroomArena({ chapter, onBack }: Props) {
         setSavedItems(
           filtered.map((c: any) => {
             const tags = Array.isArray(c.tags) ? c.tags as string[] : [];
-            const isFC   = tags.includes("flashcards");
-            const isBlog = tags.includes("blog");
+            const isFC     = tags.includes("flashcards");
+            const isBlog   = tags.includes("blog");
+            const isIFG    = tags.includes("infographic");
             let preview = (c.content as string).replace(/^#{1,3}\s+.+$/m, "").replace(/[#*`_]/g, "").trim().slice(0, 60);
             if (isFC) {
               try {
@@ -188,6 +198,8 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                 const j = JSON.parse(c.content);
                 preview = `${Array.isArray(j.panels) ? j.panels.length : "?"} panels`;
               } catch { preview = "blog"; }
+            } else if (isIFG) {
+              preview = "infographic";
             }
             return { id: c.id, title: c.title, preview, content: c.content, tags, createdAt: new Date(c.created_at).getTime() };
           })
@@ -452,6 +464,86 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       .catch(() => {});
   }, [chapter.chapter_title, mindmapResults]);
 
+  // Generates an infographic image for a student-typed topic
+  const handleInfographicTopic = useCallback(async (topic: string) => {
+    if (!profile || isStreaming) return;
+
+    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: topic, outputType: "text", createdAt: new Date() };
+    const asstId = crypto.randomUUID();
+    const loadingMsg: Message = {
+      id: asstId, role: "assistant",
+      content: `🗺️ Creating an infographic for "${topic}"… this takes about 30 seconds.`,
+      outputType: "text", isLoading: true, createdAt: new Date(),
+    };
+    setMessages(prev => [...prev, userMsg, loadingMsg]);
+    setIsStreaming(true);
+
+    try {
+      const res = await fetch("/api/classroom/infographic/generate", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ topic, chapterTitle: chapter.chapter_title, subject: chapter.subject }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      const data = await res.json() as { valid: boolean; reason?: string; topic?: string; imageUrl?: string };
+
+      if (!data.valid) {
+        setMessages(prev => prev.map(m =>
+          m.id === asstId
+            ? { ...m, content: data.reason || `That doesn't seem to be part of "${chapter.chapter_title}" — try a topic from this chapter.`, isLoading: false }
+            : m
+        ));
+        return;
+      }
+
+      const resolvedTopic = data.topic ?? topic;
+      setMessages(prev => prev.map(m =>
+        m.id === asstId ? { ...m, content: `Infographic: ${resolvedTopic}`, isLoading: false } : m
+      ));
+      setInfographicResults(prev => ({ ...prev, [asstId]: { topic: resolvedTopic, imageUrl: data.imageUrl!, saved: false } }));
+    } catch (e) {
+      console.error("[infographic/generate]", e);
+      setMessages(prev => prev.map(m =>
+        m.id === asstId ? { ...m, content: "Sorry, couldn't generate the infographic. Please try again.", isLoading: false } : m
+      ));
+    } finally {
+      setIsStreaming(false);
+    }
+  }, [profile, isStreaming, chapter.chapter_title, chapter.subject]);
+
+  // Persists a generated infographic to My Creations
+  const handleInfographicSave = useCallback((messageId: string) => {
+    const result = infographicResults[messageId];
+    if (!result || result.saved) return;
+
+    const { topic, imageUrl } = result;
+    const title   = `Infographic: ${topic}`;
+    const content = JSON.stringify({ topic, imageUrl });
+    const tempId  = crypto.randomUUID();
+
+    setInfographicResults(prev => ({ ...prev, [messageId]: { ...prev[messageId], saved: true } }));
+    setSavedItems(prev => [
+      { id: tempId, title, preview: "infographic", content, tags: ["classroom", chapter.chapter_title, "infographic"], createdAt: Date.now() },
+      ...prev,
+    ].slice(0, 10));
+    fetch("/api/creations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title, type: "chat", output_type: "text", content,
+        tags: ["classroom", chapter.chapter_title, "infographic"],
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.creation?.id) {
+          setSavedItems(prev => prev.map(item => item.id === tempId ? { ...item, id: data.creation.id } : item));
+        }
+      })
+      .catch(() => {});
+  }, [chapter.chapter_title, infographicResults]);
+
   // Persists a generated blog to My Creations
   const handleBlogSave = useCallback((messageId: string) => {
     const result = blogResults[messageId];
@@ -584,11 +676,12 @@ export function ClassroomArena({ chapter, onBack }: Props) {
       await runOverview(t);
       return;
     }
-    if (flashcardMode)  await handleFlashcardTopic(t);
-    else if (blogMode)  await handleBlogTopic(t);
+    if (flashcardMode)    await handleFlashcardTopic(t);
+    else if (blogMode)    await handleBlogTopic(t);
     else if (mindmapMode) await handleMindmapTopic(t);
+    else if (infographicMode) await handleInfographicTopic(t);
     else await sendMessage(t);
-  }, [profile, isStreaming, sendMessage, audioOverviewMode, runOverview, flashcardMode, handleFlashcardTopic, blogMode, handleBlogTopic, mindmapMode, handleMindmapTopic]);
+  }, [profile, isStreaming, sendMessage, audioOverviewMode, runOverview, flashcardMode, handleFlashcardTopic, blogMode, handleBlogTopic, mindmapMode, handleMindmapTopic, infographicMode, handleInfographicTopic]);
 
   const runPodcast = useCallback(async (topic: string) => {
     lastPodcastTopic.current = topic;
@@ -848,14 +941,14 @@ export function ClassroomArena({ chapter, onBack }: Props) {
           onClick={() => {
             switch (key) {
               case "notes": {
-                if (!flashcardMode && !blogMode && !mindmapMode && panelFilter === "notes" && mode === "notes") return;
-                setMode("notes"); setPanelFilter("notes"); setFlashcardMode(false); setBlogMode(false); setMindmapMode(false); setAudioOverviewMode(false); setMessages([]);
+                if (!flashcardMode && !blogMode && !mindmapMode && !infographicMode && panelFilter === "notes" && mode === "notes") return;
+                setMode("notes"); setPanelFilter("notes"); setFlashcardMode(false); setBlogMode(false); setMindmapMode(false); setAudioOverviewMode(false); setInfographicMode(false); setMessages([]);
                 break;
               }
               case "flashcards": {
                 if (flashcardMode) return;
                 setMode("notes"); setPanelFilter("flashcards");
-                setBlogMode(false); setMindmapMode(false); setAudioOverviewMode(false); setFlashcardMode(true);
+                setBlogMode(false); setMindmapMode(false); setAudioOverviewMode(false); setInfographicMode(false); setFlashcardMode(true);
                 setMessages([{
                   id: crypto.randomUUID(), role: "assistant",
                   content: `✏️ Flashcard mode is on — type a topic from "${chapter.chapter_title}" below and I'll build a flashcard deck for it.`,
@@ -866,7 +959,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               case "mindmap": {
                 if (mindmapMode) return;
                 setMode("notes"); setPanelFilter("mindmap");
-                setFlashcardMode(false); setBlogMode(false); setAudioOverviewMode(false); setMindmapMode(true);
+                setFlashcardMode(false); setBlogMode(false); setAudioOverviewMode(false); setInfographicMode(false); setMindmapMode(true);
                 setMessages([{
                   id: crypto.randomUUID(), role: "assistant",
                   content: `🧠 Mind Map mode is on — type a topic from "${chapter.chapter_title}" below and I'll build an interactive mind map for it.`,
@@ -877,7 +970,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               case "blogs": {
                 if (blogMode) return;
                 setMode("notes"); setPanelFilter("blog");
-                setFlashcardMode(false); setMindmapMode(false); setAudioOverviewMode(false); setBlogMode(true);
+                setFlashcardMode(false); setMindmapMode(false); setAudioOverviewMode(false); setInfographicMode(false); setBlogMode(true);
                 setMessages([{
                   id: crypto.randomUUID(), role: "assistant",
                   content: `🎨 Blog mode is on — type a topic from "${chapter.chapter_title}" below and I'll create an illustrated comic blog for it.`,
@@ -887,7 +980,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               }
               case "explainer": {
                 if (mode === "videos") return;
-                setFlashcardMode(false); setBlogMode(false); setMindmapMode(false); setAudioOverviewMode(false);
+                setFlashcardMode(false); setBlogMode(false); setMindmapMode(false); setAudioOverviewMode(false); setInfographicMode(false);
                 setMode("videos");
                 break;
               }
@@ -927,12 +1020,14 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                 break;
               }
               case "infographic": {
-                // Coming soon teaser
-                setMessages(prev => [...prev, {
-                  id: crypto.randomUUID(), role: "assistant", outputType: "text",
-                  content: `📊 **Infographics are coming soon!** Soon you'll snap any topic into one colourful, scroll-stopping cheat-sheet you'll actually want on your wall. Stay tuned! ✨`,
-                  createdAt: new Date(),
-                } as ClassroomMessage]);
+                if (infographicMode) return;
+                setMode("notes"); setPanelFilter("infographic");
+                setFlashcardMode(false); setBlogMode(false); setMindmapMode(false); setAudioOverviewMode(false); setInfographicMode(true);
+                setMessages([{
+                  id: crypto.randomUUID(), role: "assistant",
+                  content: `🗺️ Infographic mode is on — type a topic from "${chapter.chapter_title}" below and I'll generate a premium visual cheat-sheet for it.`,
+                  outputType: "text", createdAt: new Date(),
+                }]);
                 break;
               }
             }
@@ -959,12 +1054,13 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               persistent selected state. ──────────────────────────────────────── */}
       {(() => {
         const selectedKey =
-          audioOverviewMode                              ? "audio" :
-          mode === "videos"                              ? "explainer" :
-          flashcardMode                                  ? "flashcards" :
-          mindmapMode                                    ? "mindmap" :
-          blogMode                                       ? "blogs" :
-          (mode === "notes" && panelFilter === "notes")  ? "notes" :
+          audioOverviewMode                                   ? "audio" :
+          mode === "videos"                                   ? "explainer" :
+          flashcardMode                                       ? "flashcards" :
+          mindmapMode                                         ? "mindmap" :
+          blogMode                                            ? "blogs" :
+          infographicMode                                     ? "infographic" :
+          (mode === "notes" && panelFilter === "notes")       ? "notes" :
           null;
         if (!selectedKey) return null;
         const tile = TILES.find(t => t.key === selectedKey);
@@ -1136,10 +1232,48 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                     );
                   })}
                 </div>
+              ) : panelFilter === "infographic" ? (
+                /* ── Infographic grid: 2 columns, compact rows to fit 10 ── */
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, paddingRight:4, paddingBottom:4 }}>
+                  {savedItems.filter(item => item.tags.includes("infographic")).slice(0, 10).map(item => {
+                    let imgUrl: string | undefined;
+                    try { const j = JSON.parse(item.content); imgUrl = j.imageUrl; } catch {}
+                    const topic = item.title.replace(/^Infographic:\s*/, "");
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity:0, scale:0.92 }}
+                        animate={{ opacity:1, scale:1 }}
+                        transition={{ duration:0.2 }}
+                        onClick={() => { if (imgUrl) setInfographicViewerData({ topic, imageUrl: imgUrl }); }}
+                        whileHover={{ scale:1.04, boxShadow:"0 4px 12px rgba(52,211,153,0.3)" }}
+                        className="cursor-pointer rounded-lg overflow-hidden"
+                        style={{ background:"rgba(255,255,255,0.92)", border:"1.5px solid rgba(52,211,153,0.35)", boxShadow:"0 1px 6px rgba(15,28,77,0.08)" }}
+                      >
+                        <div style={{ width:"100%", height:58, overflow:"hidden", background:"linear-gradient(135deg,#ecfdf5,#d1fae5)" }}>
+                          {imgUrl
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={imgUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top" }} />
+                            : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🗺️</div>
+                          }
+                        </div>
+                        <div style={{ padding:"3px 4px 4px" }}>
+                          <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:8, color:"#0f1c4d",
+                            display:"-webkit-box", WebkitLineClamp:1, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.3, margin:0 }}>
+                            {topic}
+                          </p>
+                          <p style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:7, color:"rgba(52,211,153,0.9)", marginTop:1, fontWeight:700 }}>
+                            infographic
+                          </p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
               ) : (
                 /* ── Notes list: full-width vertical ── */
                 <AnimatePresence>
-                  {savedItems.filter(item => !item.tags.includes("flashcards") && !item.tags.includes("blog") && !item.tags.includes("mindmap")).map(item => (
+                  {savedItems.filter(item => !item.tags.includes("flashcards") && !item.tags.includes("blog") && !item.tags.includes("mindmap") && !item.tags.includes("infographic")).map(item => (
                     <div key={item.id} draggable
                       onDragStart={(e: React.DragEvent<HTMLDivElement>) => {
                         e.dataTransfer.setData("application/classroom-item", item.id);
@@ -1165,15 +1299,17 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                 </AnimatePresence>
               )}
               {savedItems.filter(item =>
-                panelFilter === "flashcards" ? item.tags.includes("flashcards") :
-                panelFilter === "blog"       ? item.tags.includes("blog") :
-                panelFilter === "mindmap"    ? item.tags.includes("mindmap") :
-                !item.tags.includes("flashcards") && !item.tags.includes("blog") && !item.tags.includes("mindmap")
+                panelFilter === "flashcards"  ? item.tags.includes("flashcards") :
+                panelFilter === "blog"        ? item.tags.includes("blog") :
+                panelFilter === "mindmap"     ? item.tags.includes("mindmap") :
+                panelFilter === "infographic" ? item.tags.includes("infographic") :
+                !item.tags.includes("flashcards") && !item.tags.includes("blog") && !item.tags.includes("mindmap") && !item.tags.includes("infographic")
               ).length === 0 && (
                 <p className="text-[10px] text-center pt-3 opacity-30" style={{ color:"#0f1c4d" }}>
-                  {panelFilter === "flashcards" ? "Saved flashcard\ndecks appear here" :
-                   panelFilter === "blog"       ? "Saved blogs\nappear here" :
-                   panelFilter === "mindmap"    ? "Saved mind maps\nappear here" :
+                  {panelFilter === "flashcards"  ? "Saved flashcard\ndecks appear here" :
+                   panelFilter === "blog"        ? "Saved blogs\nappear here" :
+                   panelFilter === "mindmap"     ? "Saved mind maps\nappear here" :
+                   panelFilter === "infographic" ? "Saved infographics\nappear here" :
                    "Saved notes\nappear here"}
                 </p>
               )}
@@ -1376,6 +1512,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             const fcResult   = flashcardResults[msg.id];
             const blogResult = blogResults[msg.id];
             const mmResult   = mindmapResults[msg.id];
+            const ifResult   = infographicResults[msg.id];
             // Audio Overview messages carry a rich payload — render the player +
             // infographic instead of a plain text bubble. (Loading state still
             // falls through to MessageBubble for the "🎙️ Recording…" placeholder.)
@@ -1383,6 +1520,65 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               return (
                 <div key={msg.id} style={{ padding: "2px 0" }}>
                   <AudioOverviewMessage payload={msg.audioOverview} />
+                </div>
+              );
+            }
+            // Infographic result — compact thumbnail card, full image opens in modal
+            if (ifResult && !msg.isLoading) {
+              return (
+                <div key={msg.id}
+                  style={{ alignSelf:"flex-start", maxWidth:"72%", display:"flex", alignItems:"center",
+                    gap:10, padding:"10px 12px", borderRadius:14, background:"rgba(10,20,40,0.82)",
+                    backdropFilter:"blur(12px)", border:"1px solid rgba(52,211,153,0.28)",
+                    boxShadow:"0 4px 16px rgba(0,0,0,0.22)" }}
+                >
+                  {/* Thumbnail — click opens fullscreen */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={ifResult.imageUrl}
+                    alt={ifResult.topic}
+                    onClick={() => setInfographicViewerData({ topic: ifResult.topic, imageUrl: ifResult.imageUrl })}
+                    style={{ width:64, height:86, objectFit:"cover", borderRadius:8, flexShrink:0,
+                      cursor:"zoom-in", border:"1px solid rgba(52,211,153,0.25)" }}
+                  />
+                  {/* Info + actions */}
+                  <div style={{ minWidth:0, display:"flex", flexDirection:"column", gap:6 }}>
+                    <div>
+                      <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:9, fontWeight:700,
+                        color:"#34d399", textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                        Infographic
+                      </span>
+                      <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:12,
+                        color:"rgba(255,255,255,0.9)", margin:"2px 0 0",
+                        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        {ifResult.topic}
+                      </p>
+                    </div>
+                    <div style={{ display:"flex", gap:5 }}>
+                      <a
+                        href={ifResult.imageUrl}
+                        download={`${ifResult.topic}-infographic.png`}
+                        onClick={e => e.stopPropagation()}
+                        style={{ padding:"4px 10px", borderRadius:7, fontSize:11, fontWeight:700,
+                          background:"rgba(52,211,153,0.1)", border:"1px solid rgba(52,211,153,0.35)",
+                          color:"#34d399", cursor:"pointer", textDecoration:"none",
+                          fontFamily:"'DM Sans',sans-serif" }}
+                      >
+                        ⬇ Download
+                      </a>
+                      <button
+                        onClick={() => handleInfographicSave(msg.id)}
+                        disabled={ifResult.saved}
+                        style={{ padding:"4px 10px", borderRadius:7, fontSize:11, fontWeight:700,
+                          background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.15)",
+                          color: ifResult.saved ? "rgba(52,211,153,0.7)" : "rgba(255,255,255,0.7)",
+                          cursor: ifResult.saved ? "default" : "pointer",
+                          fontFamily:"'DM Sans',sans-serif" }}
+                      >
+                        {ifResult.saved ? "✓ Saved" : "Save"}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             }
@@ -1512,18 +1708,37 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               </button>
             </div>
           )}
+          {infographicMode && (
+            <div className="flex items-center justify-between" style={{ padding:"0 4px 6px" }}>
+              <span
+                className="text-xs font-bold px-2.5 py-1 rounded-full"
+                style={{ background:"rgba(52,211,153,0.12)", border:"1px solid rgba(52,211,153,0.4)", color:"#34d399", fontFamily:"'DM Sans',sans-serif" }}
+              >
+                🗺️ Infographic mode — type a topic from this chapter
+              </span>
+              <button
+                onClick={() => setInfographicMode(false)}
+                className="text-xs font-semibold px-2.5 py-1 rounded-full transition-colors hover:bg-white/10"
+                style={{ color:"rgba(255,255,255,0.5)", fontFamily:"'DM Sans',sans-serif" }}
+              >
+                Exit
+              </button>
+            </div>
+          )}
           <div style={{ display:"flex", alignItems:"center", gap:8,
             background:"linear-gradient(180deg, rgba(18,28,72,0.92) 0%, rgba(10,16,52,0.95) 100%)",
             backdropFilter:"blur(24px)",
             borderRadius:16, padding:"10px 12px",
-            border: flashcardMode ? "1px solid rgba(245,166,35,0.45)" : blogMode ? "1px solid rgba(37,99,235,0.55)" : mindmapMode ? "1px solid rgba(139,92,246,0.55)" : "1px solid rgba(100,140,255,0.25)",
+            border: flashcardMode ? "1px solid rgba(245,166,35,0.45)" : blogMode ? "1px solid rgba(37,99,235,0.55)" : mindmapMode ? "1px solid rgba(139,92,246,0.55)" : infographicMode ? "1px solid rgba(52,211,153,0.5)" : "1px solid rgba(100,140,255,0.25)",
             boxShadow: flashcardMode
               ? "0 0 0 1px rgba(245,166,35,0.12), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"
               : blogMode
                 ? "0 0 0 1px rgba(37,99,235,0.15), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"
                 : mindmapMode
                   ? "0 0 0 1px rgba(139,92,246,0.15), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"
-                  : "0 0 0 1px rgba(100,140,255,0.08), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
+                  : infographicMode
+                    ? "0 0 0 1px rgba(52,211,153,0.12), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)"
+                    : "0 0 0 1px rgba(100,140,255,0.08), 0 4px 24px rgba(0,0,50,0.4), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
 
             <textarea
               ref={taRef}
@@ -1536,9 +1751,10 @@ export function ClassroomArena({ chapter, onBack }: Props) {
               }}
               onKeyDown={handleKey}
               placeholder={
-                flashcardMode ? `Type a topic from "${chapter.chapter_title}" for flashcards…` :
-                blogMode      ? `Type a topic from "${chapter.chapter_title}" for the illustrated blog…` :
-                mindmapMode   ? `Type a topic from "${chapter.chapter_title}" for the mind map…` :
+                flashcardMode    ? `Type a topic from "${chapter.chapter_title}" for flashcards…` :
+                blogMode         ? `Type a topic from "${chapter.chapter_title}" for the illustrated blog…` :
+                mindmapMode      ? `Type a topic from "${chapter.chapter_title}" for the mind map…` :
+                infographicMode  ? `Type a topic from "${chapter.chapter_title}" for the infographic…` :
                 "Ask anything about this chapter…"
               }
               rows={1}
@@ -1547,7 +1763,7 @@ export function ClassroomArena({ chapter, onBack }: Props) {
                 background:"transparent", fontSize:15, fontWeight:500,
                 color:"rgba(255,255,255,0.92)", fontFamily:"inherit",
                 lineHeight:1.5, overflowY:"hidden",
-                caretColor: flashcardMode ? "#F5A623" : blogMode ? "#60a5fa" : mindmapMode ? "#a78bfa" : ACCENT, userSelect:"text" }}
+                caretColor: flashcardMode ? "#F5A623" : blogMode ? "#60a5fa" : mindmapMode ? "#a78bfa" : infographicMode ? "#34d399" : ACCENT, userSelect:"text" }}
             />
 
             <button onClick={() => send(input)} disabled={!canSend}
@@ -1657,6 +1873,68 @@ export function ClassroomArena({ chapter, onBack }: Props) {
             root={mindmapModalData.root}
             onClose={() => setMindmapModalData(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Infographic fullscreen viewer ──────────────────────────────────────── */}
+      <AnimatePresence>
+        {infographicViewerData && (
+          <motion.div
+            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ zIndex:65, background:"rgba(0,0,0,0.92)", backdropFilter:"blur(10px)" }}
+            onClick={() => setInfographicViewerData(null)}
+          >
+            <motion.div
+              initial={{ opacity:0, scale:0.93, y:16 }}
+              animate={{ opacity:1, scale:1,    y:0 }}
+              exit={{    opacity:0, scale:0.93, y:16 }}
+              transition={{ duration:0.22 }}
+              onClick={e => e.stopPropagation()}
+              style={{ display:"flex", flexDirection:"column", maxWidth:"52%", maxHeight:"92vh",
+                borderRadius:18, overflow:"hidden",
+                boxShadow:"0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(52,211,153,0.2)" }}
+            >
+              {/* Header */}
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                padding:"10px 16px", background:"rgba(10,20,40,0.97)", flexShrink:0,
+                borderBottom:"1px solid rgba(52,211,153,0.18)" }}>
+                <p style={{ fontFamily:"'DM Sans',sans-serif", fontWeight:700, fontSize:13,
+                  color:"rgba(255,255,255,0.9)" }}>
+                  🗺️ {infographicViewerData.topic}
+                </p>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <a
+                    href={infographicViewerData.imageUrl}
+                    download={`${infographicViewerData.topic}-infographic.png`}
+                    onClick={e => e.stopPropagation()}
+                    style={{ padding:"5px 12px", borderRadius:8, fontSize:12, fontWeight:700,
+                      background:"rgba(52,211,153,0.85)", color:"#031f14",
+                      cursor:"pointer", textDecoration:"none", fontFamily:"'DM Sans',sans-serif" }}
+                  >
+                    ⬇ Download
+                  </a>
+                  <button
+                    onClick={() => setInfographicViewerData(null)}
+                    style={{ width:30, height:30, borderRadius:"50%", display:"flex", alignItems:"center",
+                      justifyContent:"center", background:"rgba(255,255,255,0.08)",
+                      border:"none", cursor:"pointer", color:"rgba(255,255,255,0.6)" }}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              {/* Image */}
+              <div style={{ overflowY:"auto", background:"#F5F0E8" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={infographicViewerData.imageUrl}
+                  alt={infographicViewerData.topic}
+                  style={{ width:"100%", display:"block" }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
