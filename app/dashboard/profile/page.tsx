@@ -119,15 +119,24 @@ function OnboardingFlow() {
     }
   };
 
+  const ACCENT = "#7C3AED";
+  const ACCENT_GLOW = "rgba(124,58,237,0.4)";
+
   return (
-    <div className="studio-bg min-h-full flex items-center justify-center p-8 text-white">
-      <div className="w-full max-w-lg">
+    <div className="relative w-full flex items-center justify-center p-8"
+      style={{ minHeight: "100%", fontFamily: "var(--font-dm-sans,'DM Sans',sans-serif)" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/panels/background.png" alt="" aria-hidden draggable={false}
+        style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", objectFit: "fill", zIndex: 0, pointerEvents: "none", userSelect: "none" }} />
+
+      <div className="relative z-10 w-full max-w-lg">
         <div className="flex gap-2 justify-center mb-8">
           {[0,1].map(i => (
             <div key={i} className={cn(
               "h-1.5 rounded-full transition-all duration-300",
-              i === step ? "w-8 bg-[#C8FF00]" : i < step ? "w-2 bg-[#C8FF00]/40" : "w-2 bg-white/10"
-            )}/>
+              i === step ? "w-8" : "w-2"
+            )}
+              style={{ background: i === step ? ACCENT : i < step ? `${ACCENT}66` : "rgba(0,0,0,0.1)" }}/>
           ))}
         </div>
 
@@ -136,16 +145,20 @@ function OnboardingFlow() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.25 }}
             className="rounded-3xl overflow-hidden"
-            style={{ background: "rgba(15,15,26,0.95)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            style={{
+              background: "rgba(255,255,255,0.92)", backdropFilter: "blur(20px)",
+              border: "1px solid rgba(255,255,255,0.75)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
+            }}>
 
-            <div className="px-8 pt-7 pb-5 border-b border-white/[0.07]">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#C8FF00]">
+            <div className="px-8 pt-7 pb-5" style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: ACCENT }}>
                 Step {step + 1} of 2
               </span>
-              <h1 className="text-2xl font-display font-black text-white mb-1 mt-3">
+              <h1 className="text-2xl font-black mb-1 mt-3" style={{ color: "#1a1a2e", fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)" }}>
                 {step === 0 ? `Welcome, ${displayName}! 👋` : "Your learning profile"}
               </h1>
-              <p className="text-sm text-white/50">
+              <p className="text-sm" style={{ color: "#888" }}>
                 {step === 0 ? "Add a profile photo, or we'll pick one for you." : "Help us personalise your AI experience."}
               </p>
             </div>
@@ -155,20 +168,20 @@ function OnboardingFlow() {
                 <div className="flex flex-col items-center gap-6">
                   <div className="relative">
                     <div className="w-28 h-28 rounded-full overflow-hidden flex items-center justify-center"
-                      style={{ background: "rgba(200,255,0,0.1)", border: "3px solid rgba(200,255,0,0.3)" }}>
+                      style={{ background: "rgba(124,58,237,0.08)", border: `3px solid ${ACCENT}40` }}>
                       {displayPhoto
                         ? <img src={displayPhoto} alt="Profile" className="w-full h-full object-cover"/>
                         : <span className="text-5xl">{defaultAvatar}</span>}
                     </div>
                     <label className="absolute bottom-0 right-0 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110"
-                      style={{ background: "#C8FF00" }}>
+                      style={{ background: ACCENT, boxShadow: `0 4px 16px ${ACCENT_GLOW}` }}>
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path d="M8 3v10M3 8l5-5 5 5" stroke="#08080F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M8 3v10M3 8l5-5 5 5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange}/>
                     </label>
                   </div>
-                  <p className="text-sm text-white/60 text-center">
+                  <p className="text-sm text-center" style={{ color: "#888" }}>
                     {displayPhoto ? "Looking great! 🎉" : `We'll use ${defaultAvatar} for now`}
                   </p>
                 </div>
@@ -177,65 +190,68 @@ function OnboardingFlow() {
               {step === 1 && (
                 <div className="space-y-5">
                   <div>
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 block">Education Board</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest mb-2 block" style={{ color: "#999" }}>Education Board</label>
                     <div className="flex gap-2 flex-wrap">
                       {BOARDS.map(b => (
                         <button key={b} onClick={() => setBoard(b)}
-                          className={cn("px-4 py-2 rounded-xl text-sm font-bold border transition-all",
-                            board === b ? "text-[#08080F] border-transparent" : "border-white/10 text-white/50 hover:border-white/20")}
-                          style={board === b ? { background: "#C8FF00", boxShadow: "0 0 20px rgba(200,255,0,0.3)" } : {}}>
+                          className="px-4 py-2 rounded-xl text-sm font-bold border transition-all"
+                          style={board === b
+                            ? { background: ACCENT, color: "#fff", borderColor: "transparent", boxShadow: `0 0 20px ${ACCENT_GLOW}` }
+                            : { background: "rgba(0,0,0,0.03)", borderColor: "rgba(0,0,0,0.08)", color: "#888" }}>
                           {b}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 block">Grade / Class</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest mb-2 block" style={{ color: "#999" }}>Grade / Class</label>
                     <div className="flex gap-2 flex-wrap">
                       {GRADES.map(g => (
                         <button key={g} onClick={() => setGrade(g)}
-                          className={cn("w-12 h-12 rounded-xl text-sm font-bold border transition-all",
-                            grade === g ? "text-[#08080F] border-transparent" : "border-white/10 text-white/50 hover:border-white/20")}
-                          style={grade === g ? { background: "#C8FF00" } : {}}>
+                          className="w-12 h-12 rounded-xl text-sm font-bold border transition-all"
+                          style={grade === g
+                            ? { background: ACCENT, color: "#fff", borderColor: "transparent" }
+                            : { background: "rgba(0,0,0,0.03)", borderColor: "rgba(0,0,0,0.08)", color: "#888" }}>
                           {g}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 block">
-                      Interests <span className="normal-case font-normal text-white/25">(pick up to 8)</span>
+                    <label className="text-[10px] font-bold uppercase tracking-widest mb-2 block" style={{ color: "#999" }}>
+                      Interests <span className="normal-case font-normal" style={{ color: "#bbb" }}>(pick up to 8)</span>
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {INTEREST_OPTIONS.map(interest => (
                         <button key={interest} onClick={() => toggleInterest(interest)}
-                          className={cn("px-3 py-1.5 rounded-full text-xs font-bold border transition-all",
-                            interests.includes(interest) ? "text-[#08080F] border-transparent" : "border-white/10 text-white/40 hover:border-white/20")}
-                          style={interests.includes(interest) ? { background: "#C8FF00" } : {}}>
+                          className="px-3 py-1.5 rounded-full text-xs font-bold border transition-all"
+                          style={interests.includes(interest)
+                            ? { background: ACCENT, color: "#fff", borderColor: "transparent" }
+                            : { background: "rgba(0,0,0,0.03)", borderColor: "rgba(0,0,0,0.08)", color: "#999" }}>
                           {interest}
                         </button>
                       ))}
                     </div>
-                    <p className="text-[10px] text-white/30 mt-2">{interests.length}/8 selected</p>
+                    <p className="text-[10px] mt-2" style={{ color: "#bbb" }}>{interests.length}/8 selected</p>
                   </div>
                 </div>
               )}
 
               {saveError && (
                 <div className="mt-4 px-3 py-2 rounded-lg text-xs relative"
-                     style={{ background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.35)", color: "#FF9999" }}>
+                     style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)", color: "#DC2626" }}>
                   <button
                     onClick={() => setSaveError(null)}
-                    className="absolute top-1.5 right-2 text-[#FF9999] hover:text-white transition-colors leading-none"
+                    className="absolute top-1.5 right-2 hover:opacity-70 transition-opacity leading-none"
                     aria-label="Dismiss error"
-                    style={{ fontSize: 16, fontWeight: 700 }}
+                    style={{ fontSize: 16, fontWeight: 700, color: "#DC2626" }}
                   >
                     ×
                   </button>
                   <span className="pr-5 block">{saveError}</span>
                   <button
                     onClick={() => router.push("/dashboard/playground")}
-                    className="mt-2 text-[10px] font-bold underline underline-offset-2 hover:text-white transition-colors"
+                    className="mt-2 text-[10px] font-bold underline underline-offset-2 hover:opacity-70 transition-opacity"
                   >
                     Continue to playground anyway →
                   </button>
@@ -244,31 +260,32 @@ function OnboardingFlow() {
               <div className="flex gap-3 mt-8">
                 {step > 0 && (
                   <button onClick={() => setStep(s => s - 1)}
-                    className="flex-1 py-3.5 rounded-xl font-display font-bold text-sm border border-white/10 text-white/50 hover:text-white hover:border-white/20 transition-all">
+                    className="flex-1 py-3.5 rounded-xl font-bold text-sm border transition-all hover:opacity-80"
+                    style={{ borderColor: "rgba(0,0,0,0.08)", color: "#999", background: "rgba(0,0,0,0.02)" }}>
                     ← Back
                   </button>
                 )}
                 {step === 0 ? (
                   <button onClick={() => setStep(1)}
-                    className="flex-1 py-3.5 rounded-xl font-display font-black text-sm transition-all hover:scale-[1.02] active:scale-95"
-                    style={{ background: "#C8FF00", color: "#08080F", boxShadow: "0 0 24px rgba(200,255,0,0.35)" }}>
+                    className="flex-1 py-3.5 rounded-xl font-black text-sm transition-all hover:scale-[1.02] active:scale-95"
+                    style={{ background: ACCENT, color: "#fff", boxShadow: `0 0 24px ${ACCENT_GLOW}` }}>
                     Next →
                   </button>
                 ) : (
                   <button onClick={handleSave} disabled={saving}
-                    className="flex-1 py-3.5 rounded-xl font-display font-black text-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
-                    style={{ background: "#C8FF00", color: "#08080F", boxShadow: "0 0 24px rgba(200,255,0,0.35)" }}>
+                    className="flex-1 py-3.5 rounded-xl font-black text-sm transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                    style={{ background: ACCENT, color: "#fff", boxShadow: `0 0 24px ${ACCENT_GLOW}` }}>
                     {saving ? "Setting up…" : "Let's go! 🚀"}
                   </button>
                 )}
               </div>
               {step === 0 && (
-                <button onClick={() => setStep(1)} className="w-full text-center text-xs text-white/30 hover:text-white/50 mt-4 transition-colors">
+                <button onClick={() => setStep(1)} className="w-full text-center text-xs mt-4 transition-colors hover:opacity-70" style={{ color: "#bbb" }}>
                   Skip photo →
                 </button>
               )}
               {step === 1 && (
-                <button onClick={() => router.push("/dashboard/playground")} className="w-full text-center text-xs text-white/30 hover:text-white/50 mt-4 transition-colors">
+                <button onClick={() => router.push("/dashboard/playground")} className="w-full text-center text-xs mt-4 transition-colors hover:opacity-70" style={{ color: "#bbb" }}>
                   Skip for now →
                 </button>
               )}
@@ -459,349 +476,335 @@ function TrophyRoom({ profile }: { profile: Profile }) {
   };
 
   return (
-    <div className="relative overflow-y-auto text-white" style={{ height: "100%", background: "#08080F" }}>
+    <div className="relative overflow-y-auto" style={{ height: "100%", fontFamily: "var(--font-dm-sans,'DM Sans',sans-serif)" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/panels/background.png" alt="" aria-hidden draggable={false}
+        style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", objectFit: "fill", zIndex: 0, pointerEvents: "none", userSelect: "none" }} />
 
-      {/* ─── Arena ambient background — mirrors playground immersion ─── */}
-      <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-        <div className="absolute inset-0" style={{ background: arena.gradient }}/>
-        <motion.div
-          className="absolute rounded-full"
-          style={{
-            top: "-15%", left: "-10%", width: "60vw", height: "60vw",
-            background: `radial-gradient(circle, ${arena.accent}15 0%, transparent 60%)`,
-            filter: "blur(60px)",
-          }}
-          animate={{ x: [0, 40, 0], y: [0, 30, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute rounded-full"
-          style={{
-            bottom: "-20%", right: "-15%", width: "55vw", height: "55vw",
-            background: `radial-gradient(circle, ${arena.accent}10 0%, transparent 60%)`,
-            filter: "blur(80px)",
-          }}
-          animate={{ x: [0, -30, 0], y: [0, -20, 0] }}
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}
-        />
-      </div>
+      <div className="relative z-10 pt-32 pb-7" style={{ marginLeft: "22%", marginRight: "26%" }}>
 
-      <div className="relative z-10 mx-auto max-w-5xl space-y-7 px-6 py-10">
-
-        {/* ─── Hero ─── */}
+        {/* ─── Overall box — wraps every section ─── */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-3xl overflow-hidden border backdrop-blur-xl"
+          className="relative rounded-3xl overflow-hidden p-4 md:p-5 space-y-4"
           style={{
-            borderColor: `${arena.accent}30`,
-            background: `linear-gradient(135deg, ${arena.accentDim} 0%, rgba(15,15,26,0.85) 60%)`,
-            boxShadow: `0 30px 80px -20px ${arena.accentGlow}, inset 0 1px 0 rgba(255,255,255,0.05)`,
+            background: "rgba(255,255,255,0.94)", backdropFilter: "blur(24px)",
+            border: "1px solid rgba(255,255,255,0.8)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.18), 0 1px 0 rgba(255,255,255,0.9) inset",
+            fontSize: "clamp(10px, 1vw, 16px)",
           }}
         >
           {/* Decorative accent stripe */}
-          <div className="absolute top-0 left-0 right-0 h-px"
+          <div className="absolute top-0 left-0 right-0 h-1"
             style={{ background: `linear-gradient(90deg, transparent, ${arena.accent}, transparent)` }}/>
 
-          <div className="relative p-7 md:p-9 flex flex-col md:flex-row items-start gap-6">
-            {/* Avatar with animated arena ring */}
-            <div className="relative flex-shrink-0 mx-auto md:mx-0">
-              <motion.div
-                className="absolute inset-0 rounded-3xl"
-                style={{ border: `2px solid ${arena.accent}80`, boxShadow: `0 0 30px ${arena.accentGlow}` }}
-                animate={{ scale: [1, 1.06, 1], opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              />
-              <div className="relative w-24 h-24 rounded-3xl flex items-center justify-center text-5xl"
-                style={{ background: `linear-gradient(135deg, ${arena.accentDim}, rgba(15,15,26,0.9))`, border: `2px solid ${arena.accent}50` }}>
-                {(profile as { avatar_url?: string | null }).avatar_url ? (
-                  <img src={(profile as { avatar_url?: string | null }).avatar_url ?? ""} alt="" className="w-full h-full object-cover rounded-3xl"/>
-                ) : (
-                  <span>{profile.avatar_emoji}</span>
-                )}
-              </div>
-              <div className="absolute -bottom-2 -right-2 w-9 h-9 rounded-2xl flex items-center justify-center font-display font-black text-sm"
-                style={{ background: arena.accent, color: "#08080F", boxShadow: `0 4px 16px ${arena.accentGlow}` }}>
-                {level}
-              </div>
-            </div>
+          {/* ─── Hero ─── */}
+          <div className="grid grid-cols-1 sm:grid-cols-[3fr_2fr] gap-3 pb-4 items-stretch"
+            style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
 
-            {/* Identity + XP */}
-            <div className="flex-1 min-w-0 w-full text-center md:text-left">
-              <div className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-white/35 mb-1">
-                {arena.weekLabel} · Active Arena
+            {/* Left — identity card */}
+            <div className="rounded-2xl p-4 flex flex-col gap-2.5"
+              style={{ background: `linear-gradient(135deg, ${arena.accent}18, rgba(255,255,255,0.75))`, border: `1px solid ${arena.accent}28` }}>
+
+              {/* Top row: avatar | name info | streak box */}
+              <div className="flex items-center gap-3">
+
+                {/* Avatar with level badge */}
+                <div className="relative shrink-0">
+                  <div className="rounded-xl flex items-center justify-center overflow-hidden"
+                    style={{ width: "3.5em", height: "3.5em", fontSize: "inherit", background: `${arena.accent}22`, border: `2px solid ${arena.accent}44` }}>
+                    {profile.avatar_url
+                      ? /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                      : <span style={{ fontSize: "1.5em" }}>{(profile as Profile & { avatar_emoji?: string }).avatar_emoji || getDefaultAvatar(profile.display_name ?? "")}</span>
+                    }
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 rounded-md flex items-center justify-center font-black"
+                    style={{ width: "1.4em", height: "1.4em", fontSize: "0.75em", background: arena.accent, color: ["#7C3AED","#FF6B2B","#FF2D78"].includes(arena.accent) ? "#fff" : "#08080F" }}>
+                    {level}
+                  </div>
+                </div>
+
+                {/* Name + labels */}
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold uppercase mb-0.5" style={{ fontSize: "0.6em", letterSpacing: "0.14em", color: "#888" }}>
+                    {arena.weekLabel} · Active Arena
+                  </div>
+                  <div className="font-black leading-none truncate"
+                    style={{ fontSize: "1.1em", fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)", color: "#1a1a2e" }}>
+                    {profile.display_name}
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5 font-bold" style={{ fontSize: "0.85em", color: arena.accent }}>
+                    <span>{arena.emoji}</span>
+                    <span>{arena.role}</span>
+                  </div>
+                </div>
+
+                {/* Day Streak — inline, right of name */}
+                <div className="shrink-0 rounded-xl flex flex-col items-center gap-0.5 text-center"
+                  style={{
+                    padding: "0.6em 0.8em",
+                    background: "rgba(255,246,237,0.98)",
+                    border: "1px solid rgba(255,160,80,0.28)",
+                    minWidth: "4.5em",
+                    boxShadow: "0 2px 8px rgba(255,140,60,0.12)",
+                  }}>
+                  <span style={{ fontSize: "1em", lineHeight: 1 }}>🔥</span>
+                  <div className="font-black leading-tight"
+                    style={{ fontSize: "1.4em", color: "#1a1a2e", fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)" }}>
+                    {streak}
+                  </div>
+                  <div className="font-bold uppercase" style={{ fontSize: "0.52em", letterSpacing: "0.12em", color: "#999" }}>
+                    Day Streak
+                  </div>
+                </div>
               </div>
-              <h1 className="font-display font-black text-3xl md:text-4xl leading-[1.05] text-white">
-                {profile.display_name}
-              </h1>
-              <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
-                <span className="text-xl">{arena.emoji}</span>
-                <span className="font-display font-bold text-base" style={{ color: arena.accent }}>
-                  {arena.role}
+
+              {/* Level / XP row */}
+              <div className="flex justify-between items-center mt-1">
+                <span className="font-bold uppercase" style={{ fontSize: "0.68em", letterSpacing: "0.1em", color: "#999" }}>
+                  {isMaxLevel ? "Max Level" : `Level ${level} → ${level + 1}`}
+                </span>
+                <span className="font-bold" style={{ fontSize: "0.75em", color: arena.accent }}>
+                  {xp} XP{!isMaxLevel && <span style={{ color: "#aaa" }}> / {nextXPThreshold}</span>}
                 </span>
               </div>
 
-              <div className="mt-5">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-white/45">
-                    {isMaxLevel ? "★ Max Level Reached ★" : `Level ${level} → ${level + 1}`}
-                  </span>
-                  <span className="text-[11px] font-mono font-bold" style={{ color: arena.accent }}>
-                    {xp} XP {!isMaxLevel && <span className="text-white/30">/ {nextXPThreshold}</span>}
-                  </span>
-                </div>
-                <div className="h-2.5 rounded-full bg-white/[0.06] overflow-hidden border border-white/[0.04]">
+              {/* XP bar */}
+              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.08)" }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${isMaxLevel ? 100 : progress}%` }}
+                  transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+                  className="h-full rounded-full relative overflow-hidden"
+                  style={{ background: `linear-gradient(90deg, ${arena.accent}, ${arena.accent}cc)` }}>
                   <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${isMaxLevel ? 100 : progress}%` }}
-                    transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
-                    className="h-full rounded-full relative overflow-hidden"
-                    style={{
-                      background: `linear-gradient(90deg, ${arena.accent}, ${arena.accent}cc)`,
-                      boxShadow: `0 0 16px ${arena.accentGlow}`,
-                    }}>
-                    <motion.div
-                      className="absolute inset-0"
-                      style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)" }}
-                      animate={{ x: ["-100%", "200%"] }}
-                      transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-                    />
-                  </motion.div>
-                </div>
-                {!isMaxLevel && (
-                  <p className="text-[10px] text-white/35 mt-2">
-                    <span className="font-mono font-bold" style={{ color: arena.accent }}>{nextXPThreshold - xp} XP</span>
-                    {" "}until you unlock <span className="text-white/65 font-bold">{ARENAS[level]?.name}</span>
-                  </p>
-                )}
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)" }}
+                    animate={{ x: ["-100%", "200%"] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                  />
+                </motion.div>
               </div>
+
+              {/* Unlock text */}
+              {!isMaxLevel && (
+                <div className="font-bold" style={{ fontSize: "0.68em", color: arena.accent }}>
+                  {nextXPThreshold - xp} XP until you unlock <strong>{ARENAS[level]?.name}</strong>
+                </div>
+              )}
             </div>
 
-            {/* Streak medallion */}
-            <div className="flex-shrink-0 text-center px-5 py-4 rounded-2xl border self-stretch md:self-auto flex flex-col justify-center"
+            {/* Right — 4 stat boxes in 2×2 grid */}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Total XP",  value: xp,                                      icon: "⚡" },
+                { label: "Creations", value: creationCount ?? "—",                    icon: "💎" },
+                { label: "Badges",    value: `${earnedBadges.size}/${BADGES.length}`,  icon: "🏅" },
+                { label: "Arenas",    value: `${getUnlockedArenas(level).length}/6`,   icon: "🌌" },
+              ].map((s, i) => (
+                <motion.div key={s.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 + i * 0.05 }}
+                  className="rounded-2xl px-3 py-3 flex flex-col gap-1.5"
+                  style={{ background: "rgba(255,255,255,0.92)", border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+                  <div className="flex items-center gap-1.5">
+                    <span style={{ fontSize: "0.9em" }}>{s.icon}</span>
+                    <span className="font-bold uppercase" style={{ fontSize: "0.6em", letterSpacing: "0.1em", color: "#aaa" }}>{s.label}</span>
+                  </div>
+                  <div className="font-black leading-none"
+                    style={{ fontSize: "1.5em", color: "#1a1a2e", fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)" }}>
+                    {s.value}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* ─── Learner Stats + Teacher View — same light card style as the rest ─── */}
+          <div className="space-y-4">
+            <LearnerStats profile={profile} outputCounts={typeCounts} />
+            <TeacherViewCard
+              profile={profile}
+              learner_model={(profile as Profile & { learner_model?: Record<string, unknown> | null }).learner_model ?? null}
+            />
+          </div>
+
+          {/* ─── Trophy Hall — categorized badges ─── */}
+          <div className="relative rounded-3xl overflow-hidden"
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              border: "1px solid rgba(255,255,255,0.75)",
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
+            }}>
+            {/* Top hairline */}
+            <div className="absolute top-0 left-0 right-0 h-1 pointer-events-none"
+              style={{ background: "linear-gradient(90deg, transparent, #C8A84B 30%, #FF6B2B 70%, transparent)" }} />
+            <div className="p-5 md:p-6">
+            <div className="flex items-baseline justify-between mb-2.5">
+              <h2 className="font-black text-base flex items-center gap-1.5" style={{ color: "#1a1a2e", fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)" }}>
+                <span className="text-lg">🏆</span> Trophy Hall
+              </h2>
+              <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: "#bbb" }}>
+                {earnedBadges.size} of {BADGES.length} earned
+              </span>
+            </div>
+
+            <div className="space-y-3.5">
+              {BADGE_CATEGORIES.map(cat => {
+                const catBadges = BADGES.filter(b => cat.ids.includes(b.id));
+                const catEarned = catBadges.filter(b => earnedBadges.has(b.id)).length;
+                return (
+                  <div key={cat.id}>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-sm">{cat.icon}</span>
+                      <span className="font-bold text-[10px] uppercase tracking-[0.13em]" style={{ color: "#777" }}>
+                        {cat.label}
+                      </span>
+                      <span className="text-[9px]" style={{ color: "#bbb" }}>
+                        {catEarned}/{catBadges.length}
+                      </span>
+                      <div className="flex-1 h-px ml-1.5" style={{ background: "rgba(0,0,0,0.06)" }}/>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                      {catBadges.map((badge, i) => {
+                        const earned = earnedBadges.has(badge.id);
+                        return (
+                          <motion.div key={badge.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.04 * i }}
+                            whileHover={earned ? { y: -2, scale: 1.02 } : {}}
+                            className="relative rounded-xl p-2.5 overflow-hidden text-center group cursor-default"
+                            style={{
+                              background: earned
+                                ? "linear-gradient(180deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.02) 100%)"
+                                : "rgba(0,0,0,0.07)",
+                              border: `1px solid ${earned ? `${arena.accent}55` : "rgba(0,0,0,0.13)"}`,
+                              boxShadow: earned ? `0 6px 18px -8px ${arena.accent}40` : "none",
+                            }}>
+
+                            {earned && (
+                              <div className="absolute inset-x-0 -bottom-3 h-8 pointer-events-none"
+                                style={{ background: `radial-gradient(ellipse at center, ${arena.accent}25 0%, transparent 70%)` }}/>
+                            )}
+
+                            <div className="relative mx-auto mb-1.5 w-10 h-10 rounded-xl flex items-center justify-center"
+                              style={{
+                                background: earned
+                                  ? `linear-gradient(135deg, ${arena.accent}28, ${arena.accent}0c)`
+                                  : "rgba(0,0,0,0.03)",
+                                border: `1.5px solid ${earned ? `${arena.accent}50` : "rgba(0,0,0,0.06)"}`,
+                              }}>
+                              {earned && (
+                                <motion.div
+                                  className="absolute inset-0 rounded-xl"
+                                  style={{ border: `1px solid ${arena.accent}` }}
+                                  animate={{ opacity: [0.3, 0.8, 0.3] }}
+                                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                                />
+                              )}
+                              <span className={cn("text-xl relative", !earned && "grayscale opacity-40")}>
+                                {badge.emoji}
+                              </span>
+                            </div>
+
+                            <div className="font-black text-[9.5px] leading-tight mb-0.5"
+                              style={{ color: earned ? "#1a1a2e" : "#bbb" }}>
+                              {badge.name}
+                            </div>
+                            <div className="text-[8px] leading-snug" style={{ color: earned ? "#888" : "#ccc" }}>
+                              {badge.condition}
+                            </div>
+
+                            {earned && (
+                              <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                                style={{ background: arena.accent }}>
+                                <svg width="7" height="7" viewBox="0 0 12 12" fill="none">
+                                  <path d="M2.5 6.5l2.5 2.5 4.5-5.5" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </div>
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            </div>
+          </div>
+
+          {/* ─── Footer: Interests + audio settings ─── */}
+          <div className="flex flex-col gap-3">
+            {profile.interests?.length > 0 && (
+              <div className="rounded-xl p-3.5" style={{ background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.06)" }}>
+                <h3 className="font-bold text-[10px] uppercase tracking-[0.13em] mb-2 flex items-center gap-1.5" style={{ color: "#777" }}>
+                  <span>✨</span> Your Interests
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {profile.interests.map(interest => (
+                    <span key={interest}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                      style={{ background: `${arena.accent}1a`, border: `1px solid ${arena.accent}40`, color: arena.accent }}>
+                      {interest}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="relative rounded-3xl overflow-hidden"
               style={{
-                background: streak > 0 ? "linear-gradient(135deg, rgba(255,107,43,0.18), rgba(255,107,43,0.05))" : "rgba(255,255,255,0.03)",
-                borderColor: streak > 0 ? "rgba(255,107,43,0.35)" : "rgba(255,255,255,0.08)",
-                boxShadow: streak >= 3 ? "0 0 30px rgba(255,107,43,0.2)" : "none",
+                background: "rgba(255,255,255,0.92)",
+                border: "1px solid rgba(255,255,255,0.75)",
+                backdropFilter: "blur(20px)",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
               }}>
-              <div className="text-3xl mb-0.5">{streak >= 7 ? "🌟" : streak >= 3 ? "🔥" : "⚡"}</div>
-              <div className="font-display font-black text-2xl text-white leading-none">{streak}</div>
-              <div className="text-[9px] font-bold text-white/40 uppercase tracking-wider mt-1">Day Streak</div>
+              <div className="absolute top-0 left-0 right-0 h-1 pointer-events-none"
+                style={{ background: "linear-gradient(90deg, transparent, #FF2D78 30%, #00D4FF 70%, transparent)" }} />
+              <div className="p-5 md:p-6">
+              <h3 className="font-bold text-[10px] uppercase tracking-[0.13em] mb-2 flex items-center gap-1.5" style={{ color: "#777" }}>
+                <span>🎛️</span> Sound Effects
+              </h3>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-[12px] leading-tight" style={{ color: "#1a1a2e" }}>Arena & level-up audio</p>
+                  <p className="text-[9px] mt-0.5 leading-snug" style={{ color: "#999" }}>
+                    Stings, fanfare, and badge sounds. Off by default.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={arenaSfx}
+                  aria-label="Arena and level-up sounds"
+                  onClick={() => {
+                    const next = !arenaSfx;
+                    setGameSfxEnabled(next);
+                    setArenaSfx(next);
+                  }}
+                  className="relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200"
+                  style={{
+                    background: arenaSfx ? arena.accent : "rgba(0,0,0,0.16)",
+                    boxShadow: arenaSfx ? `0 0 10px ${arena.accent}66` : "inset 0 1px 2px rgba(0,0,0,0.1)",
+                  }}>
+                  <span
+                    className="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200"
+                    style={{ transform: arenaSfx ? "translateX(20px)" : "translateX(0)" }}
+                  />
+                </button>
+              </div>
+              </div>
             </div>
           </div>
         </motion.div>
 
-        {/* ─── Stat strip ─── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: "Total XP",   value: xp,                              sub: "earned",      icon: "⚡", color: arena.accent },
-            { label: "Creations",  value: creationCount ?? "—",            sub: "saved",       icon: "💎", color: "#00D4FF" },
-            { label: "Badges",     value: `${earnedBadges.size}/${BADGES.length}`, sub: "collected", icon: "🏅", color: "#FFB400" },
-            { label: "Arenas",     value: `${getUnlockedArenas(level).length}/6`,    sub: "unlocked",  icon: "🌌", color: "#C8FF00" },
-          ].map((s, i) => (
-            <motion.div key={s.label}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + i * 0.06 }}
-              className="rounded-2xl p-4 border backdrop-blur-xl relative overflow-hidden group"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                borderColor: "rgba(255,255,255,0.08)",
-              }}>
-              <div className="absolute -top-8 -right-8 w-20 h-20 rounded-full opacity-20 group-hover:opacity-40 transition-opacity"
-                style={{ background: s.color, filter: "blur(30px)" }}/>
-              <div className="relative">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">{s.label}</span>
-                  <span className="text-base">{s.icon}</span>
-                </div>
-                <div className="font-display font-black text-2xl text-white leading-none">{s.value}</div>
-                <div className="text-[10px] text-white/35 mt-1">{s.sub}</div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* ─── Learner Stats — RPG-style adaptive profile ─── */}
-        <LearnerStats profile={profile} outputCounts={typeCounts} />
-
-        {/* ─── Teacher View — how each AI teacher sees the student ─── */}
-        <TeacherViewCard
-          profile={profile}
-          learner_model={(profile as Profile & { learner_model?: Record<string, unknown> | null }).learner_model ?? null}
-        />
-
-        {/* ─── Trophy Hall — categorized badges ─── */}
-        <div>
-          <div className="flex items-baseline justify-between mb-4">
-            <h2 className="font-display font-black text-xl text-white flex items-center gap-2">
-              <span className="text-2xl">🏆</span> Trophy Hall
-            </h2>
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-white/30">
-              {earnedBadges.size} of {BADGES.length} earned
-            </span>
-          </div>
-
-          <div className="space-y-5">
-            {BADGE_CATEGORIES.map(cat => {
-              const catBadges = BADGES.filter(b => cat.ids.includes(b.id));
-              const catEarned = catBadges.filter(b => earnedBadges.has(b.id)).length;
-              return (
-                <div key={cat.id}>
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="text-base">{cat.icon}</span>
-                    <span className="font-display font-bold text-[11px] uppercase tracking-[0.15em] text-white/55">
-                      {cat.label}
-                    </span>
-                    <span className="text-[10px] font-mono text-white/30">
-                      {catEarned}/{catBadges.length}
-                    </span>
-                    <div className="flex-1 h-px bg-white/[0.06] ml-2"/>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {catBadges.map((badge, i) => {
-                      const earned = earnedBadges.has(badge.id);
-                      return (
-                        <motion.div key={badge.id}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.05 * i }}
-                          whileHover={earned ? { y: -3, scale: 1.02 } : {}}
-                          className="relative rounded-2xl p-4 border overflow-hidden text-center group cursor-default"
-                          style={{
-                            background: earned
-                              ? "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)"
-                              : "rgba(255,255,255,0.015)",
-                            borderColor: earned ? `${arena.accent}45` : "rgba(255,255,255,0.05)",
-                            boxShadow: earned ? `0 8px 28px -8px ${arena.accentGlow}, inset 0 1px 0 rgba(255,255,255,0.06)` : "none",
-                          }}>
-
-                          {/* Pedestal glow for earned */}
-                          {earned && (
-                            <div className="absolute inset-x-0 -bottom-4 h-12 pointer-events-none"
-                              style={{ background: `radial-gradient(ellipse at center, ${arena.accent}30 0%, transparent 70%)` }}/>
-                          )}
-
-                          {/* Trophy emoji on pedestal */}
-                          <div className="relative mx-auto mb-2 w-14 h-14 rounded-2xl flex items-center justify-center"
-                            style={{
-                              background: earned
-                                ? `linear-gradient(135deg, ${arena.accent}30, ${arena.accent}10)`
-                                : "rgba(255,255,255,0.03)",
-                              border: `1.5px solid ${earned ? `${arena.accent}55` : "rgba(255,255,255,0.06)"}`,
-                              boxShadow: earned ? `inset 0 0 20px ${arena.accent}20` : "none",
-                            }}>
-                            {earned && (
-                              <motion.div
-                                className="absolute inset-0 rounded-2xl"
-                                style={{ border: `1px solid ${arena.accent}` }}
-                                animate={{ opacity: [0.3, 0.8, 0.3] }}
-                                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                              />
-                            )}
-                            <span className={cn("text-3xl relative", !earned && "grayscale opacity-40")}>
-                              {badge.emoji}
-                            </span>
-                          </div>
-
-                          <div className={cn("font-display font-black text-[11px] leading-tight mb-1",
-                            earned ? "text-white" : "text-white/40")}>
-                            {badge.name}
-                          </div>
-                          <div className={cn("text-[9px] leading-snug",
-                            earned ? "text-white/50" : "text-white/25")}>
-                            {badge.condition}
-                          </div>
-
-                          {earned && (
-                            <div className="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center"
-                              style={{ background: arena.accent }}>
-                              <svg width="8" height="8" viewBox="0 0 12 12" fill="none">
-                                <path d="M2.5 6.5l2.5 2.5 4.5-5.5" stroke="#08080F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            </div>
-                          )}
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ─── Footer: Interests + audio settings ─── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {profile.interests?.length > 0 && (
-            <div className="rounded-2xl p-5 border backdrop-blur-xl"
-              style={{ background: "rgba(255,255,255,0.025)", borderColor: "rgba(255,255,255,0.07)" }}>
-              <h3 className="font-display font-bold text-[11px] uppercase tracking-[0.15em] text-white/55 mb-3 flex items-center gap-2">
-                <span>✨</span> Your Interests
-              </h3>
-              <div className="flex flex-wrap gap-1.5">
-                {profile.interests.map(interest => (
-                  <span key={interest}
-                    className="px-2.5 py-1 rounded-full text-[11px] font-bold border"
-                    style={{
-                      background: arena.accentDim,
-                      borderColor: `${arena.accent}40`,
-                      color: arena.accent,
-                    }}>
-                    {interest}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-2xl p-5 border backdrop-blur-xl"
-            style={{ background: "rgba(255,255,255,0.025)", borderColor: "rgba(255,255,255,0.07)" }}>
-            <h3 className="font-display font-bold text-[11px] uppercase tracking-[0.15em] text-white/55 mb-3 flex items-center gap-2">
-              <span>🎛️</span> Sound Effects
-            </h3>
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-display font-bold text-[13px] text-white leading-tight">Arena & level-up audio</p>
-                <p className="text-[10px] text-white/40 mt-1 leading-snug">
-                  Stings, fanfare, and badge sounds. Off by default.
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={arenaSfx}
-                aria-label="Arena and level-up sounds"
-                onClick={() => {
-                  const next = !arenaSfx;
-                  setGameSfxEnabled(next);
-                  setArenaSfx(next);
-                }}
-                className={cn(
-                  "relative h-7 w-12 shrink-0 rounded-full border transition-colors",
-                  arenaSfx ? "border-white/25" : "border-white/10 bg-white/[0.06]",
-                )}
-                style={arenaSfx ? { background: arena.accentDim, borderColor: `${arena.accent}55` } : undefined}>
-                <span
-                  className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200",
-                    arenaSfx ? "translate-x-[1.5rem]" : "translate-x-0.5",
-                  )}
-                  style={arenaSfx ? { boxShadow: `0 0 10px ${arena.accentGlow}` } : undefined}
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="h-8"/>
+        <div className="h-6"/>
       </div>
     </div>
   );
@@ -823,10 +826,13 @@ export default function ProfilePage() {
   }, []);
 
   if (loading) return (
-    <div className="studio-bg flex items-center justify-center" style={{ height: "100vh" }}>
-      <div className="flex gap-2">
+    <div className="relative flex items-center justify-center" style={{ height: "100vh" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/panels/background.png" alt="" aria-hidden draggable={false}
+        style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", objectFit: "fill", zIndex: 0, pointerEvents: "none", userSelect: "none" }} />
+      <div className="relative z-10 flex gap-2">
         {[0,1,2].map(i => (
-          <div key={i} className="dot w-3 h-3 rounded-full bg-[#C8FF00] shadow-[0_0_12px_rgba(200,255,0,0.45)]"/>
+          <div key={i} className="dot w-3 h-3 rounded-full bg-[#7C3AED] shadow-[0_0_12px_rgba(124,58,237,0.45)]"/>
         ))}
       </div>
     </div>

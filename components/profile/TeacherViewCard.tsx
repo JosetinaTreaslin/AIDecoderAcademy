@@ -68,19 +68,14 @@ function CardRow({
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5">
       <span
-        className="uppercase tracking-[0.16em] shrink-0"
-        style={{
-          fontSize: 9,
-          fontWeight: 800,
-          color: accent,
-          fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)",
-        }}
+        className="uppercase tracking-[0.12em] shrink-0 font-bold"
+        style={{ fontSize: "0.64em", color: accent }}
       >
         {k}
       </span>
       <span
         className="text-right leading-snug"
-        style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}
+        style={{ fontSize: "0.89em", fontWeight: 600, color: "#444" }}
       >
         {v}
       </span>
@@ -97,16 +92,14 @@ interface MiniCardProps {
   role:      string;
   accent:    string;        // primary accent (eyebrow / labels)
   accent2:   string;        // secondary accent (used in quote rule)
-  gradient:  string;        // card background
   border:    string;
-  glow:      string;
   rows:      Array<{ k: string; v: string }>;
   quote:     string;
   empty:     string | null; // cold-start message, or null when there's data
 }
 
 function MiniCard({
-  index, iconSrc, emoji, title, role, accent, accent2, gradient, border, glow, rows, quote, empty,
+  index, iconSrc, emoji, title, role, accent, accent2, border, rows, quote, empty,
 }: MiniCardProps) {
   return (
     <motion.div
@@ -115,10 +108,10 @@ function MiniCard({
       transition={{ duration: 0.5, delay: 0.08 * index, ease: [0.16, 1, 0.3, 1] }}
       className="relative rounded-2xl overflow-hidden flex flex-col"
       style={{
-        background: gradient,
+        background: "rgba(255,255,255,0.92)",
         border: `1px solid ${border}`,
         backdropFilter: "blur(20px)",
-        boxShadow: `0 18px 44px -22px ${glow}, inset 0 1px 0 rgba(255,255,255,0.07)`,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
       }}
     >
       {/* Top hairline in the teacher's accent */}
@@ -153,23 +146,18 @@ function MiniCard({
           </div>
           <div className="min-w-0">
             <div
-              className="uppercase tracking-[0.2em] mb-0.5"
-              style={{
-                fontSize: 8.5,
-                fontWeight: 800,
-                color: accent,
-                fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)",
-              }}
+              className="uppercase tracking-[0.16em] mb-0.5 font-bold"
+              style={{ fontSize: "0.6em", color: accent }}
             >
               {role}
             </div>
             <h3
               className="leading-none truncate"
               style={{
-                fontFamily: "var(--font-syne,'Syne',sans-serif)",
-                fontSize: 16,
+                fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)",
+                fontSize: "1.14em",
                 fontWeight: 900,
-                color: "#fff",
+                color: "#1a1a2e",
                 letterSpacing: "-0.01em",
               }}
             >
@@ -183,9 +171,9 @@ function MiniCard({
           <div
             className="rounded-xl px-3.5 py-4 text-[12.5px] leading-relaxed"
             style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px dashed rgba(255,255,255,0.12)",
-              color: "rgba(255,255,255,0.6)",
+              background: "rgba(0,0,0,0.02)",
+              border: "1px dashed rgba(0,0,0,0.12)",
+              color: "#999",
             }}
           >
             {empty}
@@ -193,7 +181,7 @@ function MiniCard({
         ) : (
           <>
             {/* Stat rows */}
-            <div className="border-t border-white/[0.07] pt-1">
+            <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: 4 }}>
               {rows.map(r => (
                 <CardRow key={r.k} k={r.k} v={r.v} accent={accent} />
               ))}
@@ -203,7 +191,7 @@ function MiniCard({
             <div
               className="mt-auto rounded-xl px-3.5 py-3 relative"
               style={{
-                background: `linear-gradient(180deg, ${accent}1f, ${accent2}10)`,
+                background: `linear-gradient(180deg, ${accent}14, ${accent2}0a)`,
                 border: `1px solid ${accent}33`,
               }}
             >
@@ -212,7 +200,7 @@ function MiniCard({
                 className="absolute -top-1 left-3 select-none"
                 style={{
                   fontFamily: "var(--font-syne,'Syne',sans-serif)",
-                  fontSize: 30,
+                  fontSize: "2.14em",
                   lineHeight: 1,
                   color: `${accent}66`,
                 }}
@@ -221,7 +209,7 @@ function MiniCard({
               </span>
               <p
                 className="italic leading-relaxed pl-3"
-                style={{ fontSize: 12.5, color: "rgba(255,255,255,0.82)" }}
+                style={{ fontSize: "0.89em", color: "#555" }}
               >
                 {quote}
               </p>
@@ -292,13 +280,26 @@ export default function TeacherViewCard({ profile, learner_model }: TeacherViewC
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="relative rounded-3xl overflow-hidden"
+      style={{
+        background: "rgba(255,255,255,0.92)",
+        border:     "1px solid rgba(255,255,255,0.75)",
+        backdropFilter: "blur(20px)",
+        boxShadow:  "0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
+      }}
     >
+      {/* Top hairline */}
+      <div className="absolute top-0 left-0 right-0 h-1 pointer-events-none"
+        style={{ background: "linear-gradient(90deg, transparent, #E8B84B 30%, #7C3AED 70%, transparent)" }} />
+
+      <div className="p-5 md:p-6">
       {/* Section heading */}
       <div className="flex items-baseline gap-2 mb-4">
-        <h2 className="font-display font-black text-xl text-white flex items-center gap-2">
+        <h2 className="font-black text-xl flex items-center gap-2"
+          style={{ color: "#1a1a2e", fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)" }}>
           <span className="text-2xl">🪞</span> Through Your Teachers&apos; Eyes
         </h2>
-        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-white/30">
+        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#bbb" }}>
           {coldStart ? "no notes yet" : `from ${reflections} session${reflections === 1 ? "" : "s"}`}
         </span>
       </div>
@@ -312,9 +313,7 @@ export default function TeacherViewCard({ profile, learner_model }: TeacherViewC
           role="Classroom Teacher"
           accent="#E8B84B"
           accent2="#8B7CFF"
-          gradient="linear-gradient(165deg, rgba(30,32,68,0.72) 0%, rgba(18,18,38,0.9) 100%)"
-          border="rgba(232,184,75,0.26)"
-          glow="rgba(232,184,75,0.32)"
+          border="rgba(232,184,75,0.35)"
           rows={bhavnaRows}
           quote={bhavnaQuote}
           empty={coldStart ? `Ms. Bhavna hasn't taught ${name} yet — take a class and her notes will appear here.` : null}
@@ -326,15 +325,14 @@ export default function TeacherViewCard({ profile, learner_model }: TeacherViewC
           iconSrc="/classroom/teacher-validator-face.png"
           title="Validator's Assessment"
           role="Skeptical Mentor"
-          accent="#8FB0D4"
+          accent="#5B82A8"
           accent2="#5E7A9E"
-          gradient="linear-gradient(165deg, rgba(28,36,48,0.78) 0%, rgba(16,20,28,0.92) 100%)"
-          border="rgba(143,176,212,0.24)"
-          glow="rgba(143,176,212,0.28)"
+          border="rgba(91,130,168,0.35)"
           rows={validatorRows}
           quote={validatorQuote}
           empty={coldStart ? `The Validator hasn't reviewed ${name}'s work yet — submit something and the verdict lands here.` : null}
         />
+      </div>
       </div>
     </motion.section>
   );

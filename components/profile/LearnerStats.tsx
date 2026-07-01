@@ -96,18 +96,14 @@ function StatBar({ row, index, coldStart }: { row: StatRow; index: number; coldS
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35, delay: 0.05 * index, ease: [0.16, 1, 0.3, 1] }}
       className="grid items-center"
-      style={{ gridTemplateColumns: "104px 1fr 56px 64px", gap: 12, padding: "6px 0" }}
+      style={{ gridTemplateColumns: "7.4em 1fr 4em 4.6em", gap: "0.86em", padding: "0.43em 0" }}
     >
       {/* Label */}
       <div className="flex items-center gap-2 min-w-0">
-        <span style={{ fontSize: 16 }}>{row.emoji}</span>
+        <span style={{ fontSize: "1.14em" }}>{row.emoji}</span>
         <span
-          className="uppercase tracking-[0.14em] font-bold truncate"
-          style={{
-            fontSize: 10.5,
-            color:    "rgba(255,255,255,0.78)",
-            fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)",
-          }}
+          className="uppercase tracking-[0.1em] font-bold truncate"
+          style={{ fontSize: "0.75em", color: "#666" }}
         >
           {row.label}
         </span>
@@ -117,9 +113,9 @@ function StatBar({ row, index, coldStart }: { row: StatRow; index: number; coldS
       <div
         className="relative h-2.5 rounded-full overflow-hidden"
         style={{
-          background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))",
-          border:     "1px solid rgba(255,255,255,0.06)",
-          boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.35)",
+          background: "rgba(0,0,0,0.05)",
+          border:     "1px solid rgba(0,0,0,0.06)",
+          boxShadow:  "inset 0 1px 2px rgba(0,0,0,0.06)",
         }}
       >
         <motion.div
@@ -148,9 +144,9 @@ function StatBar({ row, index, coldStart }: { row: StatRow; index: number; coldS
       <div className="text-right">
         <span
           style={{
-            color:      "#fff",
-            fontSize:   13,
-            fontFamily: "var(--font-syne,'Syne',sans-serif)",
+            color:      "#1a1a2e",
+            fontSize:   "0.93em",
+            fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)",
             fontWeight: 900,
             letterSpacing: "-0.01em",
           }}
@@ -162,18 +158,18 @@ function StatBar({ row, index, coldStart }: { row: StatRow; index: number; coldS
       {/* Trend chip */}
       <div className="text-right">
         {!coldStart && row.trend === "up" && (
-          <span style={{ color: "#7CFFB2", fontSize: 11, fontWeight: 700 }}>▲ +{Math.abs(row.delta)}%</span>
+          <span style={{ color: "#16A34A", fontSize: "0.79em", fontWeight: 700 }}>▲ +{Math.abs(row.delta)}%</span>
         )}
         {!coldStart && row.trend === "down" && (
-          <span style={{ color: "#FF7C9F", fontSize: 11, fontWeight: 700 }}>▼ {row.delta}%</span>
+          <span style={{ color: "#DC2626", fontSize: "0.79em", fontWeight: 700 }}>▼ {row.delta}%</span>
         )}
         {!coldStart && row.trend === "flat" && (
-          <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700 }}>—</span>
+          <span style={{ color: "#bbb", fontSize: "0.79em", fontWeight: 700 }}>—</span>
         )}
         {(coldStart || row.trend === "new") && (
           <span
             className="uppercase tracking-widest"
-            style={{ color: row.hue, fontSize: 9, fontWeight: 800 }}
+            style={{ color: row.hue, fontSize: "0.64em", fontWeight: 800 }}
           >
             new
           </span>
@@ -204,24 +200,22 @@ export default function LearnerStats({ profile, outputCounts = {} }: LearnerStat
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="relative rounded-3xl p-6"
         style={{
-          background: "linear-gradient(135deg, rgba(255,213,124,0.10), rgba(124,168,255,0.10))",
-          border:     "1px solid rgba(255,213,124,0.30)",
+          background: "rgba(255,255,255,0.92)",
+          border:     "1px solid rgba(255,255,255,0.75)",
           backdropFilter: "blur(20px)",
+          boxShadow:  "0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
         }}
       >
         <div
-          className="uppercase tracking-[0.22em] mb-2"
-          style={{
-            fontSize: 9.5, color: "#FFD57C", fontWeight: 800,
-            fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)",
-          }}
+          className="uppercase tracking-[0.18em] mb-2"
+          style={{ fontSize: "0.68em", color: "#E8A93C", fontWeight: 800 }}
         >
           Stars Collected
         </div>
         <div
           style={{
-            fontFamily: "var(--font-syne,'Syne',sans-serif)",
-            color: "#fff", fontSize: 28, fontWeight: 900, lineHeight: 1.1,
+            fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)",
+            color: "#1a1a2e", fontSize: 28, fontWeight: 900, lineHeight: 1.1,
             letterSpacing: "-0.02em",
           }}
         >
@@ -230,7 +224,7 @@ export default function LearnerStats({ profile, outputCounts = {} }: LearnerStat
         <div className="mt-3 text-2xl tracking-wider" aria-label={`${stars} stars`}>
           {"⭐".repeat(stars) || "✨"}
         </div>
-        <p className="mt-3 text-[13px] text-white/75 leading-relaxed">
+        <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "#888" }}>
           Keep playing — every creation is a star.
         </p>
       </motion.section>
@@ -257,17 +251,17 @@ export default function LearnerStats({ profile, outputCounts = {} }: LearnerStat
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className="relative rounded-3xl overflow-hidden"
       style={{
-        background: "linear-gradient(170deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)",
-        border:     "1px solid rgba(255,255,255,0.08)",
-        backdropFilter: "blur(24px)",
-        boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.06)",
+        background: "rgba(255,255,255,0.92)",
+        border:     "1px solid rgba(255,255,255,0.75)",
+        backdropFilter: "blur(20px)",
+        boxShadow:  "0 8px 32px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.8) inset",
       }}
     >
       {/* Top hairline */}
       <div
-        className="absolute top-0 left-0 right-0 h-px pointer-events-none"
+        className="absolute top-0 left-0 right-0 h-1 pointer-events-none"
         style={{
-          background: "linear-gradient(90deg, transparent, rgba(0,212,255,0.55) 30%, rgba(124,58,237,0.55) 70%, transparent)",
+          background: "linear-gradient(90deg, transparent, #00AEEF 30%, #7C3AED 70%, transparent)",
         }}
       />
 
@@ -276,21 +270,16 @@ export default function LearnerStats({ profile, outputCounts = {} }: LearnerStat
         <div className="flex items-end justify-between mb-4">
           <div>
             <div
-              className="uppercase tracking-[0.22em] mb-1"
-              style={{
-                fontSize: 9.5,
-                color: "#7AD7FF",
-                fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)",
-                fontWeight: 800,
-              }}
+              className="uppercase tracking-[0.18em] mb-1 font-bold"
+              style={{ fontSize: "0.68em", color: "#0891B2" }}
             >
               Your Creator Stats
             </div>
             <h2
               style={{
-                fontFamily: "var(--font-syne,'Syne',sans-serif)",
-                color:      "#fff",
-                fontSize:   22,
+                fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)",
+                color:      "#1a1a2e",
+                fontSize:   "1.57em",
                 fontWeight: 900,
                 letterSpacing: "-0.02em",
                 lineHeight: 1.1,
@@ -304,12 +293,12 @@ export default function LearnerStats({ profile, outputCounts = {} }: LearnerStat
             </h2>
           </div>
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-widest text-white/40 font-mono">Overall</div>
+            <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "#bbb" }}>Overall</div>
             <div
               style={{
-                fontFamily: "var(--font-syne,'Syne',sans-serif)",
-                color:      "#fff",
-                fontSize:   28,
+                fontFamily: "var(--font-space-grotesk,'Space Grotesk',sans-serif)",
+                color:      "#1a1a2e",
+                fontSize:   "2em",
                 fontWeight: 900,
                 letterSpacing: "-0.04em",
                 lineHeight: 1,
@@ -323,7 +312,7 @@ export default function LearnerStats({ profile, outputCounts = {} }: LearnerStat
         </div>
 
         {/* Bars */}
-        <div className="border-t border-white/[0.06] pt-2">
+        <div style={{ borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: 8 }}>
           {rows.map((r, i) => (
             <StatBar key={r.key} row={r} index={i} coldStart={coldStart} />
           ))}
@@ -335,38 +324,32 @@ export default function LearnerStats({ profile, outputCounts = {} }: LearnerStat
           <div
             className="relative rounded-2xl p-4"
             style={{
-              background: "linear-gradient(180deg, rgba(0,212,255,0.06), rgba(124,58,237,0.04))",
-              border:     "1px solid rgba(125, 211, 252, 0.18)",
-              boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.07)",
+              background: "linear-gradient(180deg, rgba(0,174,239,0.07), rgba(124,58,237,0.05))",
+              border:     "1px solid rgba(0,174,239,0.22)",
             }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={14} style={{ color: "#7AD7FF" }} />
+              <Sparkles size={14} style={{ color: "#0891B2" }} />
               <span
-                className="uppercase tracking-[0.18em]"
-                style={{
-                  fontSize: 9,
-                  color: "#7AD7FF",
-                  fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)",
-                  fontWeight: 800,
-                }}
+                className="uppercase tracking-[0.14em] font-bold"
+                style={{ fontSize: "0.64em", color: "#0891B2" }}
               >
                 AIDA Notices
               </span>
             </div>
             {coldStart ? (
-              <p className="text-[13px] leading-relaxed text-white/70">
+              <p className="text-[13px] leading-relaxed" style={{ color: "#777" }}>
                 Start creating in the playground and AIDA will begin learning how you think.
               </p>
             ) : (
-              <p className="text-[13px] leading-relaxed text-white/80">
+              <p className="text-[13px] leading-relaxed" style={{ color: "#555" }}>
                 {weekly?.weekly_summary && weekly.weekly_summary.length > 0 ? (
                   weekly.weekly_summary
                 ) : strengths.length > 0 ? (
                   <>
-                    You&apos;re strong in <span className="text-white font-semibold">{strengths[0].concept.replace(/_/g, " ")}</span>
+                    You&apos;re strong in <span className="font-semibold" style={{ color: "#1a1a2e" }}>{strengths[0].concept.replace(/_/g, " ")}</span>
                     {growth[0] ? (
-                      <> and there&apos;s room to grow in <span className="text-white font-semibold">{growth[0].concept.replace(/_/g, " ")}</span>.</>
+                      <> and there&apos;s room to grow in <span className="font-semibold" style={{ color: "#1a1a2e" }}>{growth[0].concept.replace(/_/g, " ")}</span>.</>
                     ) : "."}
                   </>
                 ) : (
@@ -380,28 +363,22 @@ export default function LearnerStats({ profile, outputCounts = {} }: LearnerStat
           <div
             className="relative rounded-2xl p-4"
             style={{
-              background: "linear-gradient(180deg, rgba(200,255,0,0.05), rgba(0,255,148,0.03))",
-              border:     "1px solid rgba(200,255,0,0.22)",
-              boxShadow:  "inset 0 1px 0 rgba(255,255,255,0.07)",
+              background: "linear-gradient(180deg, rgba(124,58,237,0.06), rgba(34,197,94,0.04))",
+              border:     "1px solid rgba(124,58,237,0.2)",
             }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <Zap size={14} style={{ color: "#C8FF00" }} />
+              <Zap size={14} style={{ color: "#7C3AED" }} />
               <span
-                className="uppercase tracking-[0.18em]"
-                style={{
-                  fontSize: 9,
-                  color: "#C8FF00",
-                  fontFamily: "var(--font-jetbrains-mono,'JetBrains Mono',monospace)",
-                  fontWeight: 800,
-                }}
+                className="uppercase tracking-[0.14em] font-bold"
+                style={{ fontSize: "0.64em", color: "#7C3AED" }}
               >
                 This Week&apos;s Focus
               </span>
             </div>
-            <p className="text-[13px] leading-relaxed text-white/80">{focusText}</p>
+            <p className="text-[13px] leading-relaxed" style={{ color: "#555" }}>{focusText}</p>
             {(weekly?.plateau_warnings?.length ?? 0) > 0 && (
-              <div className="mt-2 text-[11px] flex items-center gap-1 text-white/55">
+              <div className="mt-2 text-[11px] flex items-center gap-1" style={{ color: "#999" }}>
                 <TrendingUp size={11} />
                 {weekly!.plateau_warnings[0]}
               </div>
